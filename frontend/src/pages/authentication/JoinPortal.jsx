@@ -40,12 +40,7 @@ const JoinPortal = () => {
             )}
            
             <button>Register</button>
-            {/* <span className="social-text">or register with</span> */}
-            {/* <div className="social-container">
-              <a href="#" className="social">f</a>
-              <a href="#" className="social">G</a>
-              <a href="#" className="social">in</a>
-            </div> */}
+           
           </form>
         </div>
 
@@ -66,16 +61,7 @@ const JoinPortal = () => {
                               <a href="#">Forgot Password?</a>
                           </div>          
             </div>
-            {/* <div className="helper-links">
-               <label><input type="checkbox" /> Remember me</label>
-               <a href="#">Forgot password?</a>
-            </div>
-            <button type="button" className="btn-solid">Login</button>
-            <span className="social-text">or login with</span>
-            <div className="social-container">
-              <a href="#" className="social">f</a>
-              <a href="#" className="social">G</a>
-              <a href="#" className="social">in</a> */}
+           
            <button>Login</button>
           </form>
         </div>
@@ -103,5 +89,6 @@ const JoinPortal = () => {
     </div>
   );
 };
+
 
 export default JoinPortal;
