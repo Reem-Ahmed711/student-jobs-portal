@@ -1,60 +1,17 @@
-import { db } from "../firebaseConfig.js";
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  serverTimestamp 
-} from "firebase/firestore";
+const admin = require("../config/firebase");
 
-
-export async function createProfile(uid, profileData) {
-  try {
-    const userRef = doc(db, "users", uid);
-
-    await setDoc(userRef, {
-      ...profileData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    return { success: true, message: "Profile created successfully" };
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
+async function getProfile(uid) {
+  const doc = await admin.firestore().collection("users").doc(uid).get();
+  if (!doc.exists) throw new Error("User not found");
+  return doc.data();
 }
 
-
-export async function getProfile(uid) {
-  try {
-    const userRef = doc(db, "users", uid);
-    const snapshot = await getDoc(userRef);
-
-    if (!snapshot.exists()) {
-      return { success: false, message: "User not found" };
-    }
-
-    return { success: true, data: snapshot.data() };
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
+async function updateProfile(uid, data) {
+  await admin.firestore().collection("users").doc(uid).update({
+    ...data,
+   updatedAt: new Date().toISOString(),
+  });
+  return { message: "Profile updated successfully" };
 }
 
-
-export async function updateProfile(uid, updatedData) {
-  try {
-    const userRef = doc(db, "users", uid);
-
-    await updateDoc(userRef, {
-      ...updatedData,
-      updatedAt: serverTimestamp()
-    });
-
-    return { success: true, message: "Profile updated successfully" };
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
+module.exports = { getProfile, updateProfile };

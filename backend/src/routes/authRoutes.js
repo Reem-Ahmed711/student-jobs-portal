@@ -1,22 +1,34 @@
 const express = require("express");
 const router = express.Router();
 
-const { loginUser } = require("../auth/authService"); 
-const verifyTokenMiddleware = require("../middleware/verifyToken");
+const { registerUser, loginUser } = require("../auth/authService"); 
+const verifyToken = require("../middleware/verifyToken");
 
 
+// ✅ Register
+router.post("/register", async (req, res) => {
+  try {
+    const result = await registerUser(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+
+// ✅ Login
 router.post("/login", async (req, res) => {
   try {
     const result = await loginUser(req.body);
     res.json(result);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
 
-router.get("/profile", verifyTokenMiddleware, async (req, res) => {
- 
+// ✅ Get current user
+router.get("/me", verifyToken, async (req, res) => {
   res.json(req.user);
 });
 

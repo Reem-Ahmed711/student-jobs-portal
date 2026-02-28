@@ -1,55 +1,25 @@
-import { db } from "../config/firebase.js";
-import { 
-  collection, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc 
-} from "firebase/firestore";
+const express = require("express");
+const router = express.Router();
+const verifyToken = require("../middleware/verifyToken");
+// استدعاء ملف الـ controller اللي لسه معدلينه فوق
+const dashboardController = require("../controllers/dashboardController"); 
 
-export async function getAllUsers() {
+// السطر ده هو اللي كان بيطلع الـ TypeError لأنه كان بينادي اسم غلط
+router.get("/users", verifyToken, dashboardController.getAllUsers);
+
+module.exports = router;
+
+async function updateProfile(uid, data) {
   try {
-    const usersRef = collection(db, "users");
-    const snapshot = await getDocs(usersRef);
-
-    const users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    return { success: true, data: users };
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
-
-export async function updateUserByAdmin(uid, updatedData) {
-  try {
-    const userRef = doc(db, "users", uid);
-
-    await updateDoc(userRef, {
-      ...updatedData
+    await admin.firestore().collection("users").doc(uid).update({
+      ...data,
+      updatedAt: new Date().toISOString(),
     });
-
-    return { success: true, message: "User updated successfully" };
-
+    return { message: "Profile updated successfully" };
   } catch (error) {
-    return { success: false, message: error.message };
+    throw new Error(error.message);
   }
 }
 
-/////(Firestore Only) 
-
-export async function deleteUser(uid) {
-  try {
-    const userRef = doc(db, "users", uid);
-
-    await deleteDoc(userRef);
-
-    return { success: true, message: "User deleted successfully" };
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
+// التصدير الصح عشان الـ require تشتغل
+module.exports = { getProfile, updateProfile };

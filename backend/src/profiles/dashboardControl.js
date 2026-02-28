@@ -1,40 +1,24 @@
-import { getAllUsers, updateUserByAdmin, deleteUser } from "./dashboardService.js";
+const { db } = require('../config/firebase'); // تأكدي من مسار ملف الفايربيز عندك
 
-export async function getAllUsersController(currentUserRole) {
+exports.getAllUsers = async (req, res) => {
   try {
-    if (currentUserRole !== "admin") {
-      return { success: false, message: "Access denied" };
+    // 1. التأكد من صلاحية الأدمن (بتيجي من الـ Middleware)
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied: Admins only" });
     }
 
-    return await getAllUsers();
+    // 2. جلب البيانات من Firestore
+    const usersSnapshot = await db.collection('users').get();
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // 3. إرسال الرد لـ Postman
+    res.status(200).json({ 
+      success: true, 
+      count: users.length,
+      data: users 
+    });
 
   } catch (error) {
-    return { success: false, message: error.message };
+    res.status(500).json({ success: false, message: error.message });
   }
-}
-
-export async function updateUserController(currentUserRole, uid, updatedData) {
-  try {
-    if (currentUserRole !== "admin") {
-      return { success: false, message: "Access denied" };
-    }
-
-    return await updateUserByAdmin(uid, updatedData);
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
-
-export async function deleteUserController(currentUserRole, uid) {
-  try {
-    if (currentUserRole !== "admin") {
-      return { success: false, message: "Access denied" };
-    }
-
-    return await deleteUser(uid);
-
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
+};
