@@ -1,16 +1,18 @@
 // src/app.js
 const express = require("express");
+const cors = require("cors");
 const app = express();
 
 app.use(express.json());
-
+app.use(cors()); 
+app.use(express.json());
 // Routes
-console.log("Loading Auth Routes:", require("./routes/authRoutes"));
+
 app.use("/api/auth", require("./routes/authRoutes"));
-// ✅ التعديل هنا: غيرنا المسار من routes لـ profiles
-console.log("Loading Profile Routes:", require("./profiles/profileRoutes"));
+
+
 app.use("/api/profile", require("./profiles/profileRoutes"));
-console.log("Loading Dashboard Routes:", require("./routes/dashboardRoutes"));
+
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 
 app.get("/", (req, res) => {
