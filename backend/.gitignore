@@ -1,4 +1,8 @@
 node_modules/
+**/node_modules/
+backend/src/config/service-account-key.json
 .env
-src/index.js
-src/deleteTestUsers.js
+.env.local
+.DS_Store
+package-lock.json
+**/package-lock.json

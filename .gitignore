@@ -1,36 +1,29 @@
-<<<<<<< HEAD
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
+node_modules/
+**/node_modules/
 
-# testing
-/coverage
-
-# production
-/build
-
-# misc
-.DS_Store
+# environment variables
+.env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
 
+# Firebase service account key
+backend/src/config/service-account-key.json
+
+# build outputs
+/build
+/dist
+/frontend/client/build
+
+# logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-=======
-node_modules/
-<<<<<<< HEAD
-.env git add .
-git commit -m "Add project files without node_modules and env"
-backend/src/config/service-account-key.json
-=======
-.env
-backend/src/config/service-account-key.json
-git add .gitignore
->>>>>>> temp-main
->>>>>>> origin/main
+
+# misc
+.DS_Store
+*.log
+
+# package lock (optional)
+package-lock.json
+**/package-lock.json

@@ -6,6 +6,4 @@ admin.initializeApp({
   storageBucket:"student-jobs-portal.firebasestorage.app"
 });
 
-console.log("Firebase Connected ✅");
-
 module.exports = admin;
