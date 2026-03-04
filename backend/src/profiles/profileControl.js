@@ -1,4 +1,3 @@
-// src/profiles/profileControl.js
 const { uploadProfileImage } = require("./storageService");
 const { updateProfile } = require("./profileService");
 
