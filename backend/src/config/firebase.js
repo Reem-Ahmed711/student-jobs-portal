@@ -3,7 +3,13 @@ const serviceAccount = require("./service-account-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket:"student-jobs-portal.firebasestorage.app"
+  storageBucket: "student-jobs-portal.firebasestorage.app"
 });
 
-module.exports = admin;
+// إنشاء اتصال Firestore
+const db = admin.firestore();
+
+console.log('✅ Firebase connected successfully');
+
+// صدّر الـ db مش admin
+module.exports = db;
