@@ -9,7 +9,7 @@ node_modules/
 
 # Firebase service account key
 backend/src/config/service-account-key.json
-
+app-backend/src/service-account-key.json
 # build outputs
 /build
 /dist
