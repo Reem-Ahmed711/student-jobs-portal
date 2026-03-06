@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("C:/Users/vista store/OneDrive/Desktop/jobPortal/Student-Jobs-Portal/backend/src/config/service-account-key.json");
+const serviceAccount = require("../../../backend/src/config/service-account-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
