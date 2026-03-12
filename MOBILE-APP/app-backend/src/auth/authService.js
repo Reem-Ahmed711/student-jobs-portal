@@ -1,13 +1,11 @@
 const { auth, db } = require("../config/firebase");
 const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require("firebase/auth");
 const { doc, setDoc, getDoc } = require("firebase/firestore");
-
 // Register
 async function registerUser({ name, email, password }) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-
 
     await setDoc(doc(db, "users", user.uid), { name, email });
 

@@ -1,9 +1,20 @@
-const admin = require('../config/firebase');
-const { validateRegisterInput, validateLoginInput } = require('./validation');
-const { assignRole } = require('./roleService');
-const axios = require('axios');
+const admin = require("firebase-admin");
+require("../config/firebase");
 
-async function registerUser({ name, email, password, role = 'student', department, year, gpa, skills }) {
+const { validateRegisterInput, validateLoginInput } = require("./validation");
+const { assignRole } = require("./roleService");
+const axios = require("axios");
+
+async function registerUser({
+  name,
+  email,
+  password,
+  role = "student",
+  department,
+  year,
+  gpa,
+  skills,
+}) {
   validateRegisterInput({ name, email, password });
 
   const userRecord = await admin.auth().createUser({
@@ -12,28 +23,34 @@ async function registerUser({ name, email, password, role = 'student', departmen
     displayName: name,
   });
 
-  const userData = { 
-    name, 
-    email, 
-    role, 
+  const userData = {
+    name,
+    email,
+    role,
     createdAt: new Date().toISOString(),
-    department: department || '',
-    year: year || '',
-    gpa: gpa || '',
+    department: department || "",
+    year: year || "",
+    gpa: gpa || "",
     skills: skills || [],
-    profileImage: '',
-    phone: '',
-    about: '',
-    linkedin: '',
-    github: ''
+    profileImage: "",
+    phone: "",
+    about: "",
+    linkedin: "",
+    github: "",
   };
 
-  const userDocRef = admin.firestore().collection('users').doc(userRecord.uid);
+  const userDocRef = admin.firestore().collection("users").doc(userRecord.uid);
   await userDocRef.set(userData);
 
   await assignRole(userRecord.uid, role);
 
-  return { uid: userRecord.uid, name: userRecord.displayName, email: userRecord.email, role, ...userData };
+  return {
+    uid: userRecord.uid,
+    name: userRecord.displayName,
+    email: userRecord.email,
+    role,
+    ...userData,
+  };
 }
 
 async function loginUser({ email, password }) {
@@ -43,18 +60,24 @@ async function loginUser({ email, password }) {
   try {
     const response = await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
-      { email, password, returnSecureToken: true }
+      { email, password, returnSecureToken: true },
     );
 
     const { localId, idToken } = response.data;
 
-    const userDoc = await admin.firestore().collection('users').doc(localId).get();
+    const userDoc = await admin
+      .firestore()
+      .collection("users")
+      .doc(localId)
+      .get();
     if (!userDoc.exists) throw new Error("User not found");
 
     const userData = userDoc.data();
     return { uid: localId, ...userData, token: idToken };
   } catch (err) {
-    throw new Error("Login failed: " + (err.response?.data?.error?.message || err.message));
+    throw new Error(
+      "Login failed: " + (err.response?.data?.error?.message || err.message),
+    );
   }
 }
 
@@ -62,32 +85,32 @@ async function googleLogin(idToken) {
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const { uid, email, name, picture } = decodedToken;
-    
-    const userDoc = await admin.firestore().collection('users').doc(uid).get();
-    
+
+    const userDoc = await admin.firestore().collection("users").doc(uid).get();
+
     if (!userDoc.exists) {
       const userData = {
-        name: name || email.split('@')[0],
+        name: name || email.split("@")[0],
         email,
-        role: 'student',
+        role: "student",
         createdAt: new Date().toISOString(),
-        department: '',
-        year: '',
-        gpa: '',
+        department: "",
+        year: "",
+        gpa: "",
         skills: [],
-        profileImage: picture || '',
-        phone: '',
-        about: '',
-        linkedin: '',
-        github: ''
+        profileImage: picture || "",
+        phone: "",
+        about: "",
+        linkedin: "",
+        github: "",
       };
-      
-      await admin.firestore().collection('users').doc(uid).set(userData);
-      await assignRole(uid, 'student');
-      
+
+      await admin.firestore().collection("users").doc(uid).set(userData);
+      await assignRole(uid, "student");
+
       return { uid, ...userData, token: idToken };
     }
-    
+
     const userData = userDoc.data();
     return { uid, ...userData, token: idToken };
   } catch (error) {
@@ -98,7 +121,7 @@ async function googleLogin(idToken) {
 async function linkedinLogin(accessToken, profileData) {
   try {
     const { email, name, id } = profileData;
-    
+
     let userRecord;
     try {
       userRecord = await admin.auth().getUserByEmail(email);
@@ -106,36 +129,36 @@ async function linkedinLogin(accessToken, profileData) {
       userRecord = await admin.auth().createUser({
         email,
         displayName: name,
-        uid: id
+        uid: id,
       });
     }
-    
+
     const uid = userRecord.uid;
-    const userDoc = await admin.firestore().collection('users').doc(uid).get();
-    
+    const userDoc = await admin.firestore().collection("users").doc(uid).get();
+
     if (!userDoc.exists) {
       const userData = {
-        name: name || email.split('@')[0],
+        name: name || email.split("@")[0],
         email,
-        role: 'student',
+        role: "student",
         createdAt: new Date().toISOString(),
-        department: '',
-        year: '',
-        gpa: '',
+        department: "",
+        year: "",
+        gpa: "",
         skills: [],
-        profileImage: '',
-        phone: '',
-        about: '',
-        linkedin: '',
-        github: ''
+        profileImage: "",
+        phone: "",
+        about: "",
+        linkedin: "",
+        github: "",
       };
-      
-      await admin.firestore().collection('users').doc(uid).set(userData);
-      await assignRole(uid, 'student');
-      
+
+      await admin.firestore().collection("users").doc(uid).set(userData);
+      await assignRole(uid, "student");
+
       return { uid, ...userData };
     }
-    
+
     const userData = userDoc.data();
     return { uid, ...userData };
   } catch (error) {
@@ -147,10 +170,10 @@ async function forgotPassword(email) {
   try {
     const link = await admin.auth().generatePasswordResetLink(email);
     console.log(`Password reset link for ${email}:`, link);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "Password reset link generated",
-      link: link 
+      link: link,
     };
   } catch (error) {
     throw new Error("Failed to generate reset link: " + error.message);
@@ -169,7 +192,7 @@ async function verifyToken(idToken) {
   const decodedToken = await admin.auth().verifyIdToken(idToken);
   const uid = decodedToken.uid;
 
-  const userDoc = await admin.firestore().collection('users').doc(uid).get();
+  const userDoc = await admin.firestore().collection("users").doc(uid).get();
   if (!userDoc.exists) throw new Error("User not found");
 
   const userData = userDoc.data();
@@ -178,26 +201,26 @@ async function verifyToken(idToken) {
 
 async function updateUserProfile(uid, profileData) {
   try {
-    const userRef = admin.firestore().collection('users').doc(uid);
+    const userRef = admin.firestore().collection("users").doc(uid);
     await userRef.update({
       ...profileData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
-    
+
     const updated = await userRef.get();
     return { success: true, data: updated.data() };
   } catch (error) {
     throw new Error("Failed to update profile: " + error.message);
   }
 }
-
-module.exports = { 
-  registerUser, 
-  loginUser, 
+//updata
+module.exports = {
+  registerUser,
+  loginUser,
   googleLogin,
   linkedinLogin,
   forgotPassword,
   resetPassword,
   verifyToken,
-  updateUserProfile
+  updateUserProfile,
 };
