@@ -23,3 +23,6 @@ Thumbs.db
 
 # Build
 build/
+
+# Ignore backend service account key
+MOBILE-APP/app-backend/src/service-account-key.json
