@@ -36,7 +36,6 @@ function validateLogin({ email, password }) {
       message: "Invalid email"
     };
   }
-
   if (!password) {
     return {
       valid: false,
