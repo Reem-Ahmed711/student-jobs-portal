@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("./service-Account-Key.json");
+const serviceAccount = require("../../../backend/src/config/service-account-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -74,7 +74,6 @@ await db.collection("users").doc(userRecord.uid).set({
 });
 ////////////////////////
 
-
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -107,4 +106,3 @@ app.post("/login", async (req, res) => {
 app.listen(3000, () => {
   console.log("Server runnnnning on port 3000");
 });
-

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { registerUser } from "./api.js";
 import {
   View,
   Text,
@@ -50,6 +51,44 @@ export default function RegisterScreen() {
   const [showYearDropdown, setShowYearDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showEmpDeptDropdown, setShowEmpDeptDropdown] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // ── Handle Registration ──
+  const handleRegister = async () => {
+    try {
+      setErrorMsg("");
+
+      if (!fullName || !email || !password) {
+        setErrorMsg("Please fill all required fields.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMsg("Passwords do not match.");
+        return;
+      }
+
+      setLoading(true);
+
+      const res = await registerUser(fullName, email, password);
+
+      console.log(res);
+
+      if (res.success || res.valid) {
+        alert("Account created successfully!");
+        router.push("/login");
+      } else {
+        setErrorMsg(res.message || "Registration failed.");
+      }
+    } catch (err: any) {
+      console.log(err);
+      setErrorMsg(err.response?.data?.message || "Server error. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getPasswordStrength = () => {
     if (password.length === 0) return { label: "", color: "#e2e8f0", width: "0%" };
@@ -109,7 +148,7 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Card */}
+          {/* Header */}
           <View style={styles.headerCard}>
             <TouchableOpacity
               style={styles.backBtn}
@@ -128,7 +167,7 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          {/* Progress Bar */}
+          {/* Progress */}
           <View style={styles.progressBg}>
             <LinearGradient
               colors={["#1d4ed8", "#60a5fa"]}
@@ -137,9 +176,10 @@ export default function RegisterScreen() {
             />
           </View>
 
-          {/* ── STEP 1 ── */}
+          {/* STEP 1 */}
           {step === 1 && (
             <>
+              {/* User Type */}
               <Text style={styles.sectionLabel}>I am a</Text>
               <View style={styles.userTypeRow}>
                 {(["Student", "Employer"] as const).map((type) => (
@@ -163,6 +203,7 @@ export default function RegisterScreen() {
                 ))}
               </View>
 
+              {/* Personal Info */}
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionDot} />
@@ -244,60 +285,21 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              {userType === "Employer" && (
-                <View style={styles.sectionCard}>
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.sectionDot} />
-                    <Text style={styles.sectionTitle}>Work Information</Text>
-                  </View>
-
-                  <Text style={styles.label}>Position / Role</Text>
-                  <Dropdown value={role} placeholder="Select your role" options={ROLES}
-                    visible={showRoleDropdown}
-                    onToggle={() => setShowRoleDropdown(!showRoleDropdown)}
-                    onSelect={setRole} />
-
-                  <Text style={styles.label}>Phone Number</Text>
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.inputIcon}>📞</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="+20 1XX XXX XXXX"
-                      placeholderTextColor="#94a3b8"
-                      keyboardType="phone-pad"
-                      value={phone}
-                      onChangeText={setPhone}
-                    />
-                  </View>
-
-                  <Text style={styles.label}>Department</Text>
-                  <Dropdown value={empDepartment} placeholder="Select department" options={DEPARTMENTS}
-                    visible={showEmpDeptDropdown}
-                    onToggle={() => setShowEmpDeptDropdown(!showEmpDeptDropdown)}
-                    onSelect={setEmpDepartment} />
-
-                  <View style={styles.infoBox}>
-                    <Text style={styles.infoIcon}>ℹ️</Text>
-                    <Text style={styles.infoText}>
-                      You'll receive a verification email to confirm your account.
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity style={styles.checkRow} onPress={() => setAgreed(!agreed)}>
-                    <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
-                      {agreed && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text style={styles.checkText}>
-                      I agree to the <Text style={styles.link}>Terms and Conditions</Text>
-                      {" "}and <Text style={styles.link}>Privacy Policy</Text>
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              {errorMsg ? (
+                <Text style={{ color: "#ef4444", marginTop: 6, textAlign: "center" }}>
+                  {errorMsg}
+                </Text>
+              ) : null}
 
               <TouchableOpacity
                 activeOpacity={0.85}
-                onPress={() => userType === "Student" ? setStep(2) : null}
+                onPress={() => {
+                  if (userType === "Student") {
+                    setStep(2);
+                  } else {
+                    handleRegister();
+                  }
+                }}
               >
                 <LinearGradient
                   colors={["#1d4ed8", "#3b82f6"]}
@@ -305,23 +307,17 @@ export default function RegisterScreen() {
                   style={styles.primaryBtn}
                 >
                   <Text style={styles.primaryBtnText}>
-                    {userType === "Student" ? "Next  →" : "Create Account"}
+                    {loading ? "Loading..." : userType === "Student" ? "Next →" : "Create Account"}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-
-              <View style={styles.signInRow}>
-                <Text style={styles.signInText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => router.back()}>
-                  <Text style={styles.signInLink}>Sign In</Text>
-                </TouchableOpacity>
-              </View>
             </>
           )}
 
-          {/* ── STEP 2 Student ── */}
+          {/* STEP 2 Student */}
           {step === 2 && userType === "Student" && (
             <>
+              {/* Academic Info */}
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionDot} />
@@ -358,6 +354,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
+              {/* Skills */}
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionDot} />
@@ -387,27 +384,18 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionDot} />
-                  <Text style={styles.sectionTitle}>Upload CV</Text>
-                </View>
-                <TouchableOpacity style={styles.uploadBox} activeOpacity={0.8}>
-                  <View style={styles.uploadIconCircle}>
-                    <Text style={styles.uploadIconText}>⬆️</Text>
-                  </View>
-                  <Text style={styles.uploadText}>Tap to upload CV</Text>
-                  <Text style={styles.uploadHint}>PDF only · Max 5MB</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity activeOpacity={0.85}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleRegister}
+              >
                 <LinearGradient
                   colors={["#1d4ed8", "#3b82f6"]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={styles.primaryBtn}
                 >
-                  <Text style={styles.primaryBtnText}>Create Account 🎉</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {loading ? "Loading..." : "Create Account 🎉"}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </>
