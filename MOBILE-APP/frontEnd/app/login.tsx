@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ import {
   Poppins_700Bold,
   Poppins_800ExtraBold,
 } from "@expo-google-fonts/poppins";
-import { loginUser } from "./api.js";
+import { loginUser } from "../src/api.js";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState<string>("");
@@ -49,8 +50,20 @@ export default function LoginScreen() {
       setLoading(true);
       const res = await loginUser(email, password);
     if (res.valid) {
-        router.push("/");
-      } else {
+  const userData = res.data; // البيانات اللي جايه من API
+  await AsyncStorage.setItem("userData", JSON.stringify(userData));
+
+  router.replace({
+    pathname: "/StudentDashboard",
+    params: {
+      name: userData.name || email,
+      department: userData.department || '',
+      gpa: userData.gpa || '',
+      year: userData.year || '',
+        profilePic: userData.profilePic,
+    },
+  });
+} else {
         setErrorMsg(res.message || "Invalid credentials.");
       }
     } catch (err: any) {
