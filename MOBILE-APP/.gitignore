@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+
+# Ignore backend service account key
+MOBILE-APP/app-backend/src/service-account-key.json
