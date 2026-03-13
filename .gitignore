@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# Firebase service account key
+Backend/src/config/service-account-key.json
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# build outputs
+/build
+/dist
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+.DS_Store
+*.log
+.idea/
+.vscode/
+package-lock.json
+**/package-lock.json
