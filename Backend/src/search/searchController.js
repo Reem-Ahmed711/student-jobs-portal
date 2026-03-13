@@ -39,7 +39,6 @@ exports.searchJobs = async (req, res) => {
 exports.getJobDetails = async (req, res) => {
 
   try {
-
     const { id } = req.params;
 
     const doc = await db.collection("jobs").doc(id).get();
