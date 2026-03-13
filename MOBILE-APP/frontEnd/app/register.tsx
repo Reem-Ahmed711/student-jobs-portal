@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { registerUser } from "./api.js";
+import { registerUser } from "../src/api.js";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -78,7 +79,21 @@ export default function RegisterScreen() {
 
       if (res.success || res.valid) {
         alert("Account created successfully!");
-        router.push("/login");
+        if (userType === "Student") {
+          localStorage.setItem('userData', JSON.stringify({
+  name: fullName,
+  department: department,
+  gpa: gpa,
+  year: academicYear,
+}));
+      
+         router.replace({
+  pathname: "/StudentDashboard",
+  params: { name: fullName, department: department, gpa: gpa, year: academicYear }
+});
+        } else {
+          router.replace("/login");
+        }
       } else {
         setErrorMsg(res.message || "Registration failed.");
       }
