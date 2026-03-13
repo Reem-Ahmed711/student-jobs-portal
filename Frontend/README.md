@@ -1,70 +1,257 @@
-# Getting Started with Create React App
+# 🎓 Student Jobs Portal - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+<div align="center">
 
-## Available Scripts
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![React](https://img.shields.io/badge/React-19.2.4-61dafb)
+![React Router](https://img.shields.io/badge/React%20Router-7.13.1-CA4245)
+![Axios](https://img.shields.io/badge/Axios-1.13.6-671ddf)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-In the project directory, you can run:
+**A comprehensive job portal for Cairo University students to find part-time opportunities with role-based interfaces for Students, Employers, and Admins.**
 
-### `npm start`
+[🚀 Live Demo](#) • [📖 Documentation](#) • [🐛 Report Bug](#) • [✨ Request Feature](#)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+</div>
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 📋 Table of Contents
+- [✨ Features](#-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📁 Project Structure](#-project-structure)
+- [🚀 Getting Started](#-getting-started)
+- [📸 Screenshots](#-screenshots)
+- [👥 User Roles](#-user-roles)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## ✨ Features
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 👨‍🎓 For Students
+| Feature | Description |
+|---------|-------------|
+| **Smart Dashboard** | Real-time statistics on applications, interviews, and saved jobs |
+| **Advanced Job Search** | Filter by department, job type, hours, and skills |
+| **Match Percentage** | AI-powered job matching based on student skills and GPA |
+| **Application Tracking** | Track application status (Pending, Interview, Accepted, Rejected) |
+| **Saved Jobs** | Bookmark jobs and apply later |
+| **Profile Management** | Update skills, upload CV, and manage personal information |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 👔 For Employers
+| Feature | Description |
+|---------|-------------|
+| **Employer Dashboard** | Overview of active jobs and applicants |
+| **Job Posting** | Multi-step form with live preview |
+| **Applicant Management** | Review, shortlist, and contact applicants |
+| **AI Matching** | Smart candidate recommendations based on job requirements |
+| **Hiring History** | Track all hiring activities and statistics |
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 👑 For Admins
+| Feature | Description |
+|---------|-------------|
+| **Admin Dashboard** | Comprehensive analytics with interactive charts |
+| **User Management** | Manage students, employers, and permissions |
+| **Job Moderation** | Approve or reject job postings |
+| **System Monitoring** | Track platform usage and performance |
 
-### `npm run eject`
+### 🎨 UI/UX Highlights
+- **Responsive Design** – Works flawlessly on desktop, tablet, and mobile
+- **Dark/Light Theme** – Eye-friendly color scheme with Cairo University colors
+- **Smooth Animations** – Fade, slide, and hover effects for better UX
+- **Empty States** – Beautiful illustrations when no data is available
+- **Loading Skeletons** – Professional loading indicators
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🛠️ Tech Stack
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```javascript
+const techStack = {
+  framework: 'React 19.2.4',
+  routing: 'React Router DOM 7.13.1',
+  httpClient: 'Axios 1.13.6',
+  styling: 'Custom CSS with CSS Variables',
+  charts: 'Recharts 3.7.0',
+  icons: 'Font Awesome + 1000+ Custom SVGs',
+  stateManagement: 'Context API + useReducer',
+  authentication: 'JWT with localStorage',
+  buildTool: 'Create React App'
+};
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 📁 Project Structure
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
+frontend/
+├── public/                  # Static files
+│   ├── index.html          # Main HTML file
+│   └── favicon.ico         # Site icon
+│
+├── src/                     # Source code
+│   ├── components/          # Reusable components
+│   │   ├── Navbar.jsx      # Dynamic navigation
+│   │   ├── JobCard.jsx     # Job display card
+│   │   ├── StatCard.jsx    # Statistics card
+│   │   ├── LoadingSpinner.jsx
+│   │   └── ProfileCard.jsx
+│   │
+│   ├── pages/               # All pages by role
+│   │   ├── student/        # Student pages
+│   │   ├── employer/       # Employer pages
+│   │   ├── admin/          # Admin pages
+│   │   ├── login.jsx
+│   │   ├── Register.jsx
+│   │   ├── ForgotPassword.jsx
+│   │   └── NotFound.jsx
+│   │
+│   ├── context/             # Context providers
+│   │   └── AuthContext.js  # Authentication management
+│   │
+│   ├── services/            # API services
+│   │   └── api.js          # All backend calls
+│   │
+│   ├── styles/              # CSS files
+│   │   └── main.css        # Global styles
+│   │
+│   ├── utils/               # Helper functions
+│   │   ├── mockData.js     # Mock data for testing
+│   │   ├── jobsData.js     # Job utilities
+│   │   └── applicationsData.js
+│   │
+│   ├── App.js               # Main component
+│   └── index.js             # Entry point
+│
+└── package.json              # Dependencies
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 🚀 Getting Started
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-### Analyzing the Bundle Size
+### Installation
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Reem-Ahmed711/student-jobs-portal.git
+   cd student-jobs-portal/frontend
+   ```
 
-### Making a Progressive Web App
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+3. **Start the development server**
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
 
-### Advanced Configuration
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Available Scripts
 
-### Deployment
+| Script | Description |
+|--------|-------------|
+| `npm start` | Starts development server with hot reload |
+| `npm test` | Launches test runner |
+| `npm run build` | Creates production build in `build/` folder |
+| `npm run eject` | Ejects from Create React App (one-way) |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+---
 
-### `npm run build` fails to minify
+## 📸 Screenshots
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+| Page | Description |
+|------|-------------|
+| **Login Page** | Beautiful split-screen design with social login options |
+| **Student Dashboard** | Personal statistics and job recommendations |
+| **Available Jobs** | Advanced filtering and search with match indicators |
+| **Employer Dashboard** | Job posting analytics and applicant tracking |
+| **Admin Dashboard** | Platform statistics with interactive charts |
+
+*Screenshots will be added soon*
+
+---
+
+## 👥 User Roles
+
+### 🎓 Student
+- Browse and search for jobs
+- Apply for positions
+- Save jobs for later
+- Track application status
+- Manage profile and skills
+- Upload CV
+
+### 💼 Employer
+- Post new job opportunities
+- Manage job listings
+- Review applications
+- Shortlist candidates
+- Schedule interviews
+- Track hiring history
+
+### 👑 Admin
+- Monitor platform activity
+- Manage users and permissions
+- Moderate job postings
+- View system analytics
+- Handle reports and issues
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+### Contribution Guidelines
+- Follow existing code style
+- Write meaningful commit messages
+- Test your changes thoroughly
+- Update documentation as needed
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Cairo University** – For inspiring this project
+- **React Community** – For amazing tools and libraries
+- **Font Awesome** – For beautiful icons
+- **All Contributors** – Who helped make this project better
+
+---
+
+<div align="center">
+
+**Made with ❤️ by Reem Ahmed & Team**  
+Cairo University - Faculty of Science
+
+[![GitHub](https://img.shields.io/badge/GitHub-Reem--Ahmed711-181717?style=for-the-badge&logo=github)](https://github.com/Reem-Ahmed711)
+
+</div>
