@@ -331,7 +331,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   
   **Made with  by Cairo University Students**
   
-  [![GitHub](https://img.shields.io/badge/GitHub-Reem--Ahmed711-181717?style=for-the-badge&logo=github)](https://github.com/Reem-Ahmed711)
+ [![GitHub](https://img.shields.io/badge/GitHub-Reem--Ahmed711-181717?style=for-the-badge&logo=github)](https://github.com/Reem-Ahmed711)
+[![GitHub](https://img.shields.io/badge/GitHub-Dina--Ebrahim-181717?style=for-the-badge&logo=github)](https://github.com/Dina-Ebrahim)
+[![GitHub](https://img.shields.io/badge/GitHub-FatmaAbdelmotagly-181717?style=for-the-badge&logo=github)](https://github.com/FatmaAbdelmotagly)
+[![GitHub](https://img.shields.io/badge/GitHub-Sara--Mahmoud1-181717?style=for-the-badge&logo=github)](https://github.com/Sara-Mahmoud1)
 
   <br>
   
