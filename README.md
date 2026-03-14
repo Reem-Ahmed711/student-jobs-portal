@@ -1,6 +1,6 @@
 <div align="center">
   
-  # 🎓 Cairo University Student Jobs Portal
+  #  Cairo University Student Jobs Portal
 
   ![Version](https://img.shields.io/badge/version-2.0.0-blue)
   ![React](https://img.shields.io/badge/React-19.2.4-61dafb)
@@ -11,42 +11,42 @@
 
   **A comprehensive job portal connecting Cairo University students with part-time opportunities across all faculties**
 
-  [🚀 Live Demo](#) • [📖 Documentation](#) • [📱 Mobile App](#) • [🐛 Report Bug](#)
+  [ Live Demo](#) • [ Documentation](#) • [ Mobile App](#) • [ Report Bug](#)
 
 </div>
 
 ---
 
-## 📋 Table of Contents
-- [✨ Project Overview](#-project-overview)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📁 Project Structure](#-project-structure)
-- [🚀 Getting Started](#-getting-started)
+##  Table of Contents
+- [ Project Overview](#-project-overview)
+- [ Tech Stack](#️-tech-stack)
+- [ Project Structure](#-project-structure)
+- [ Getting Started](#-getting-started)
   - [Backend Setup](#backend-setup)
   - [Frontend Setup](#frontend-setup)
   - [Mobile App Setup](#mobile-app-setup)
-- [👥 User Roles & Features](#-user-roles--features)
-- [📸 Screenshots](#-screenshots)
-- [🔐 Environment Variables](#-environment-variables)
-- [🤝 Team Members](#-team-members)
-- [📄 License](#-license)
+- [ User Roles & Features](#-user-roles--features)
+- [ Screenshots](#-screenshots)
+- [ Environment Variables](#-environment-variables)
+- [ Team Members](#-team-members)
+- [ License](#-license)
 
 ---
 
-## ✨ Project Overview
+##  Project Overview
 
 **Student Jobs Portal** is a full-stack platform designed exclusively for Cairo University students and faculty departments. It bridges the gap between students seeking part-time opportunities and departments looking for teaching/research assistants.
 
-### 🎯 Key Objectives
-- ✅ Connect students with on-campus job opportunities
-- ✅ Streamline the application and hiring process
-- ✅ Provide AI-powered job matching based on skills and GPA
-- ✅ Offer role-specific dashboards for students, employers, and admins
-- ✅ Cross-platform support (Web + Mobile)
+###  Key Objectives
+-  Connect students with on-campus job opportunities
+-  Streamline the application and hiring process
+-  Provide AI-powered job matching based on skills and GPA
+-  Offer role-specific dashboards for students, employers, and admins
+-  Cross-platform support (Web + Mobile)
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### **Frontend (Web)**
 ```json
@@ -87,7 +87,7 @@
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 student-jobs-portal/
@@ -130,7 +130,7 @@ student-jobs-portal/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - Node.js (v18 or higher)
@@ -156,7 +156,7 @@ npm install
 # Start the server
 npm start
 ```
-Server runs on **http://localhost:5000** 🚀
+
 
 ---
 
@@ -172,7 +172,7 @@ npm install
 # Start the development server
 npm start
 ```
-Frontend runs on **http://localhost:3000** 🎨
+
 
 ---
 
@@ -195,9 +195,9 @@ npx react-native run-android
 
 ---
 
-## 👥 User Roles & Features
+##  User Roles & Features
 
-### 🎓 **Students**
+###  **Students**
 | Feature | Description |
 |---------|-------------|
 | **Smart Dashboard** | Real-time statistics on applications and saved jobs |
@@ -207,7 +207,7 @@ npx react-native run-android
 | **Profile Management** | Upload CV, manage skills, update personal info |
 | **Saved Jobs** | Bookmark interesting positions for later |
 
-### 💼 **Employers (Faculty Departments)**
+###  **Employers (Faculty Departments)**
 | Feature | Description |
 |---------|-------------|
 | **Department Dashboard** | Overview of active jobs and applicants |
@@ -217,7 +217,7 @@ npx react-native run-android
 | **Hiring History** | Track all hiring activities |
 | **Interview Scheduling** | Manage interview timelines |
 
-### 👑 **Admins**
+###  **Admins**
 | Feature | Description |
 |---------|-------------|
 | **Platform Analytics** | Comprehensive statistics with interactive charts |
@@ -228,7 +228,7 @@ npx react-native run-android
 
 ---
 
-## 📸 Screenshots
+##  Screenshots
 
 | Platform | Page | Preview |
 |----------|------|---------|
@@ -241,7 +241,7 @@ npx react-native run-android
 
 ---
 
-## 🔐 Environment Variables
+##  Environment Variables
 
 ### Backend (.env)
 ```env
@@ -267,18 +267,18 @@ FIREBASE_API_KEY=your_api_key
 
 ---
 
-## 🤝 Team Members
+##  Team Members
 
 | Name | Role | Specialization | Responsibilities |
 |------|------|----------------|------------------|
 | **Reem Ahmed** | Frontend Developer | Web Frontend | Student/Employer/Admin Pages, Job Features, UI/UX |
 | **Sara Mahmoud** | Frontend Developer | Mobile Frontend | Mobile App Screens, Navigation |
-| **Dina Ebrahim** | Backend Developer | Backend & Firebase | Authentication, Jobs API, Security |
-| **Fatma Abdelmotagly** | Backend Developer | Backend & Mobile API | User Profiles, Mobile Backend Logic |
+| **Dina Ibrahim** | Backend Developer | Backend & Firebase | Authentication, Jobs API, Security |
+| **Fatma Ahmed** | Backend Developer | Backend & Mobile API | User Profiles, Mobile Backend Logic |
 
 ---
 
-## 📊 Project Statistics
+##  Project Statistics
 
 | Metric | Count |
 |--------|-------|
@@ -291,27 +291,27 @@ FIREBASE_API_KEY=your_api_key
 
 ---
 
-## 🎯 Key Achievements
+##  Key Achievements
 
-✅ Full-stack application with React + Node.js + Firebase  
-✅ Role-based authentication and authorization  
-✅ Responsive design for all devices  
-✅ AI-powered job matching algorithm  
-✅ Real-time application tracking  
-✅ Cross-platform support (Web + Mobile)  
-✅ 1000+ custom SVG icons  
-✅ Comprehensive error handling  
-✅ Production-ready code structure  
+ Full-stack application with React + Node.js + Firebase  
+ Role-based authentication and authorization  
+ Responsive design for all devices  
+ AI-powered job matching algorithm  
+ Real-time application tracking  
+ Cross-platform support (Web + Mobile)  
+ 1000+ custom SVG icons  
+ Comprehensive error handling  
+ Production-ready code structure  
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Cairo University** – For inspiring this project and providing real-world requirements
 - **Faculty of Science** – For supporting student innovation
@@ -323,19 +323,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
   
-  ## 🌟 Show Your Support
+  ##  Show Your Support
   
-  If you find this project helpful, please give it a ⭐️!
+  If you find this project helpful, please give it a !
 
   <br>
   
-  **Made with ❤️ by Cairo University Students**
+  **Made with  by Cairo University Students**
   
   [![GitHub](https://img.shields.io/badge/GitHub-Reem--Ahmed711-181717?style=for-the-badge&logo=github)](https://github.com/Reem-Ahmed711)
 
   <br>
   
-  ### 📞 Contact
+  ###  Contact
   
   For any inquiries, please reach out to any team member.
 
