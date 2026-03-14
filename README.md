@@ -273,8 +273,8 @@ FIREBASE_API_KEY=your_api_key
 |------|------|----------------|------------------|
 | **Reem Ahmed** | Frontend Developer | Web Frontend | Student/Employer/Admin Pages, Job Features, UI/UX |
 | **Sara Mahmoud** | Frontend Developer | Mobile Frontend | Mobile App Screens, Navigation |
-| **Dina Ibrahim** | Backend Developer | Backend & Firebase | Authentication, Jobs API, Security |
-| **Fatma Ahmed** | Backend Developer | Backend & Mobile API | User Profiles, Mobile Backend Logic |
+| **Dina Ebrahim** | Backend Developer | Backend & Firebase | Authentication, Jobs API, Security |
+| **Fatma Abdelmotagly** | Backend Developer | Backend & Mobile API | User Profiles, Mobile Backend Logic |
 
 ---
 
