@@ -152,7 +152,7 @@ const StudentDashboard: React.FC = () => {
         if (stored) {
           const parsed = JSON.parse(stored);
           setUser({
-            name: parsed.name || "Student",
+            name: parsed.username || parsed.name || "Student",
             department: parsed.department || "Department",
             gpa: parsed.gpa || "-",
             year: parsed.year || "-",

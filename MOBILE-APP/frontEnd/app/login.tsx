@@ -56,7 +56,10 @@ export default function LoginScreen() {
       console.log("LOGIN RESPONSE:", res);
 
       if (res.valid) {
-        const userData = res.user;
+        const userData = {
+  ...res.user,
+  name: res.user.username || res.user.name || email,
+};
 
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
 
