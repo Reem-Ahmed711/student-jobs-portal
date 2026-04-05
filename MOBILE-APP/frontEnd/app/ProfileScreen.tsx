@@ -1,368 +1,3 @@
-// import React, { useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   ScrollView,
-//   TouchableOpacity,
-//   StyleSheet,
-//   StatusBar,
-//   SafeAreaView,
-//   Alert,
-// } from 'react-native';
-// import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-// import { useLocalSearchParams, useRouter } from 'expo-router';
-
-// // ─── Types ─────────────────────────────────────────────────────────────────
-// type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
-
-// // ─── Bottom Tab Bar ────────────────────────────────────────────────────────
-// const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
-//   const tabs: { key: TabKey; label: string }[] = [
-//     { key: 'home',         label: 'Home' },
-//     { key: 'jobs',         label: 'Jobs' },
-//     { key: 'applications', label: 'Applications' },
-//     { key: 'profile',      label: 'Profile' },
-//     { key: 'more',         label: 'More' },
-//   ];
-
-//   const getIcon = (key: TabKey, isActive: boolean) => {
-//     const color = isActive ? '#2563EB' : '#9CA3AF';
-//     switch (key) {
-//       case 'home':         return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
-//       case 'jobs':         return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
-//       case 'applications': return <Ionicons name={isActive ? 'document-text' : 'document-text-outline'} size={23} color={color} />;
-//       case 'profile':      return <Ionicons name={isActive ? 'person' : 'person-outline'} size={23} color={color} />;
-//       case 'more':         return <Feather name="more-horizontal" size={23} color={color} />;
-//     }
-//   };
-
-//   return (
-//     <View style={styles.tabBar}>
-//       {tabs.map((tab) => (
-//         <TouchableOpacity key={tab.key} style={styles.tabItem} onPress={() => onPress(tab.key)}>
-//           {getIcon(tab.key, active === tab.key)}
-//           <Text style={[styles.tabLabel, active === tab.key && styles.tabLabelActive]}>
-//             {tab.label}
-//           </Text>
-//         </TouchableOpacity>
-//       ))}
-//     </View>
-//   );
-// };
-
-// // ─── Setting Row ───────────────────────────────────────────────────────────
-// interface SettingRowProps {
-//   icon: React.ReactNode;
-//   label: string;
-//   onPress?: () => void;
-//   danger?: boolean;
-// }
-
-// const SettingRow: React.FC<SettingRowProps> = ({ icon, label, onPress, danger }) => (
-//   <TouchableOpacity style={styles.settingRow} onPress={onPress} activeOpacity={0.7}>
-//     <View style={styles.settingLeft}>
-//       <View style={[styles.settingIconWrap, danger && { backgroundColor: '#FEE2E2' }]}>
-//         {icon}
-//       </View>
-//       <Text style={[styles.settingLabel, danger && { color: '#DC2626' }]}>{label}</Text>
-//     </View>
-//     {!danger && <Feather name="chevron-right" size={18} color="#9CA3AF" />}
-//   </TouchableOpacity>
-// );
-
-// // ─── Main Screen ───────────────────────────────────────────────────────────
-// const ProfileScreen: React.FC = () => {
-//   const [activeTab, setActiveTab] = useState<TabKey>('profile');
-//   const router = useRouter();
-
-//   // Get params passed from login/register
-//   const { name, department, gpa, year, email } = useLocalSearchParams();
-
-//   const fullName  = (name as string)       || 'Student';
-//   const dept      = (department as string) || 'Department';
-//   const gpaValue  = (gpa as string)        || '-';
-//   const yearValue = (year as string)       || '-';
-//   const emailVal  = (email as string)      || 'student@university.edu';
-//   const firstName = fullName.split(' ')[0];
-//   const initial   = firstName.charAt(0).toUpperCase();
-
-//   const handleLogout = () => {
-//   if (window.confirm('Are you sure you want to logout?')) {
-//     router.replace('/login');
-//   }
-// };
-
-//   const handleTabPress = (key: TabKey) => {
-//     setActiveTab(key);
-//     if (key === 'home') {
-//       router.replace({
-//         pathname: '/StudentDashboard',
-//         params: { name, department, gpa, year, email },
-//       });
-//     }
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.safe}>
-//       <StatusBar barStyle="light-content" backgroundColor="#2563EB" />
-
-//       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-
-//         {/* ── Blue Header with Avatar ── */}
-//         <View style={styles.header}>
-//           {/* Avatar */}
-//           <View style={styles.avatarWrap}>
-//             <View style={styles.avatarCircle}>
-//               <Text style={styles.avatarInitial}>{initial}</Text>
-//             </View>
-//             <TouchableOpacity style={styles.editAvatarBtn}>
-//               <Feather name="edit-2" size={12} color="#fff" />
-//             </TouchableOpacity>
-//           </View>
-
-//           <Text style={styles.headerName}>{fullName}</Text>
-//           <Text style={styles.headerDept}>{dept}</Text>
-//           <Text style={styles.headerMeta}>{yearValue}  •  GPA: {gpaValue}</Text>
-//         </View>
-
-//         {/* ── Stats Row ── */}
-//         <View style={styles.statsRow}>
-//           <View style={styles.statItem}>
-//             <Text style={styles.statNumber}>3</Text>
-//             <Text style={styles.statLabel}>Applied</Text>
-//           </View>
-//           <View style={styles.statDivider} />
-//           <View style={styles.statItem}>
-//             <Text style={styles.statNumber}>2</Text>
-//             <Text style={styles.statLabel}>Saved</Text>
-//           </View>
-//           <View style={styles.statDivider} />
-//           <View style={styles.statItem}>
-//             <Text style={styles.statNumber}>1</Text>
-//             <Text style={styles.statLabel}>Interviews</Text>
-//           </View>
-//         </View>
-
-//         {/* ── Contact Information ── */}
-//         <View style={styles.sectionLabel}>
-//           <Text style={styles.sectionLabelText}>CONTACT INFORMATION</Text>
-//         </View>
-
-//         <View style={styles.card}>
-//           {/* Email */}
-//           <View style={styles.contactRow}>
-//             <View style={[styles.contactIconWrap, { backgroundColor: '#EFF6FF' }]}>
-//               <Ionicons name="mail-outline" size={18} color="#2563EB" />
-//             </View>
-//             <View>
-//               <Text style={styles.contactLabel}>Email</Text>
-//               <Text style={styles.contactValue}>{emailVal}</Text>
-//             </View>
-//           </View>
-
-//           <View style={styles.divider} />
-
-//           {/* Phone */}
-//           <View style={styles.contactRow}>
-//             <View style={[styles.contactIconWrap, { backgroundColor: '#F0FDF4' }]}>
-//               <Ionicons name="call-outline" size={18} color="#16A34A" />
-//             </View>
-//             <View>
-//               <Text style={styles.contactLabel}>Phone</Text>
-//               <Text style={styles.contactValue}>+20 101 234 5678</Text>
-//             </View>
-//           </View>
-
-//           <View style={styles.divider} />
-
-//           {/* Student ID */}
-//           <View style={styles.contactRow}>
-//             <View style={[styles.contactIconWrap, { backgroundColor: '#F5F3FF' }]}>
-//               <Ionicons name="school-outline" size={18} color="#7C3AED" />
-//             </View>
-//             <View>
-//               <Text style={styles.contactLabel}>Student ID</Text>
-//               <Text style={styles.contactValue}>202212345</Text>
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* ── Settings ── */}
-//         <View style={styles.sectionLabel}>
-//           <Text style={styles.sectionLabelText}>SETTINGS</Text>
-//         </View>
-
-//         <View style={styles.card}>
-//           <SettingRow
-//             icon={<Ionicons name="person-outline" size={18} color="#2563EB" />}
-//             label="Edit Profile"
-//           />
-//           <View style={styles.divider} />
-//           <SettingRow
-//             icon={<Ionicons name="document-text-outline" size={18} color="#2563EB" />}
-//             label="My Documents"
-//           />
-//           <View style={styles.divider} />
-//           <SettingRow
-//             icon={<Ionicons name="notifications-outline" size={18} color="#2563EB" />}
-//             label="Notifications"
-//           />
-//           <View style={styles.divider} />
-//           <SettingRow
-//             icon={<Ionicons name="lock-closed-outline" size={18} color="#2563EB" />}
-//             label="Privacy & Security"
-//           />
-//           <View style={styles.divider} />
-//           <SettingRow
-//             icon={<Ionicons name="help-circle-outline" size={18} color="#2563EB" />}
-//             label="Help & Support"
-//           />
-//         </View>
-
-//         {/* ── Logout Button ── */}
-//         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-//           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-//           <Text style={styles.logoutText}>Logout</Text>
-//         </TouchableOpacity>
-
-//         <View style={{ height: 24 }} />
-//       </ScrollView>
-
-//       <BottomTabBar active={activeTab} onPress={handleTabPress} />
-//     </SafeAreaView>
-//   );
-// };
-
-// export default ProfileScreen;
-
-// // ─── Styles ────────────────────────────────────────────────────────────────
-// const styles = StyleSheet.create({
-//   safe: { flex: 1, backgroundColor: '#F1F5F9' },
-//   scroll: { flex: 1 },
-
-//   // ── Header
-//   header: {
-//     backgroundColor: '#2563EB',
-//     paddingTop: 30,
-//     paddingBottom: 30,
-//     alignItems: 'center',
-//   },
-//   avatarWrap: { position: 'relative', marginBottom: 14 },
-//   avatarCircle: {
-//     width: 90, height: 90, borderRadius: 45,
-//     backgroundColor: '#fff',
-//     justifyContent: 'center', alignItems: 'center',
-//     borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)',
-//   },
-//   avatarInitial: { fontSize: 36, fontWeight: '800', color: '#2563EB' },
-//   editAvatarBtn: {
-//     position: 'absolute', bottom: 2, right: 2,
-//     backgroundColor: '#2563EB', borderRadius: 12,
-//     width: 24, height: 24,
-//     justifyContent: 'center', alignItems: 'center',
-//     borderWidth: 2, borderColor: '#fff',
-//   },
-//   headerName: { color: '#fff', fontSize: 22, fontWeight: '800' },
-//   headerDept: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 4 },
-//   headerMeta: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
-
-//   // ── Stats
-//   statsRow: {
-//     flexDirection: 'row',
-//     backgroundColor: '#fff',
-//     marginHorizontal: 16,
-//     marginTop: -20,
-//     borderRadius: 16,
-//     padding: 16,
-//     shadowColor: '#000',
-//     shadowOpacity: 0.08,
-//     shadowRadius: 12,
-//     shadowOffset: { width: 0, height: 4 },
-//     elevation: 5,
-//     marginBottom: 20,
-//   },
-//   statItem: { flex: 1, alignItems: 'center' },
-//   statNumber: { fontSize: 22, fontWeight: '800', color: '#111827' },
-//   statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-//   statDivider: { width: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
-
-//   // ── Section Label
-//   sectionLabel: { paddingHorizontal: 20, marginBottom: 8 },
-//   sectionLabelText: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 1 },
-
-//   // ── Card
-//   card: {
-//     backgroundColor: '#fff',
-//     marginHorizontal: 16,
-//     borderRadius: 16,
-//     paddingHorizontal: 16,
-//     marginBottom: 20,
-//     shadowColor: '#000',
-//     shadowOpacity: 0.04,
-//     shadowRadius: 8,
-//     shadowOffset: { width: 0, height: 2 },
-//     elevation: 2,
-//   },
-
-//   // ── Contact
-//   contactRow: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     paddingVertical: 14,
-//     gap: 14,
-//   },
-//   contactIconWrap: {
-//     width: 38, height: 38, borderRadius: 10,
-//     justifyContent: 'center', alignItems: 'center',
-//   },
-//   contactLabel: { fontSize: 11, color: '#9CA3AF', marginBottom: 2 },
-//   contactValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
-
-//   // ── Divider
-//   divider: { height: 1, backgroundColor: '#F3F4F6' },
-
-//   // ── Settings
-//   settingRow: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'space-between',
-//     paddingVertical: 16,
-//   },
-//   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-//   settingIconWrap: {
-//     width: 38, height: 38, borderRadius: 10,
-//     backgroundColor: '#EFF6FF',
-//     justifyContent: 'center', alignItems: 'center',
-//   },
-//   settingLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
-
-//   // ── Logout
-//   logoutBtn: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//     gap: 8,
-//     marginHorizontal: 16,
-//     paddingVertical: 16,
-//     borderRadius: 16,
-//     borderWidth: 1.5,
-//     borderColor: '#FECACA',
-//     backgroundColor: '#FFF',
-//   },
-//   logoutText: { fontSize: 15, fontWeight: '700', color: '#DC2626' },
-
-//   // ── Tab Bar
-//   tabBar: {
-//     flexDirection: 'row', backgroundColor: '#fff',
-//     borderTopWidth: 1, borderTopColor: '#E5E7EB',
-//     paddingBottom: 8, paddingTop: 10,
-//     shadowColor: '#000', shadowOpacity: 0.06,
-//     shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 8,
-//   },
-//   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-//   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-//   tabLabelActive: { color: '#2563EB', fontWeight: '600' },
-// });
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -371,13 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   TextInput,
   Platform,
   Image,
   Modal,
   KeyboardAvoidingView,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -397,26 +33,15 @@ interface ProfileData {
   photo: string | null;
 }
 
-// ─── Save Helper ───────────────────────────────────────────────────────────
+// ─── Save/Load Helpers ─────────────────────────────────────────────────────
 const saveProfileData = async (data: ProfileData) => {
   const json = JSON.stringify(data);
-  // Save to localStorage (web)
-  if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.setItem('userData', json);
-  }
-  // Save to AsyncStorage (mobile)
   try {
     await AsyncStorage.setItem('userData', json);
   } catch (_) {}
 };
 
 const loadProfileData = async (): Promise<Partial<ProfileData>> => {
-  // Try localStorage first (web)
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const stored = window.localStorage.getItem('userData');
-    if (stored) return JSON.parse(stored);
-  }
-  // Fallback to AsyncStorage (mobile)
   try {
     const stored = await AsyncStorage.getItem('userData');
     if (stored) return JSON.parse(stored);
@@ -484,7 +109,7 @@ const EditModal: React.FC<EditModalProps> = ({ visible, profile, onSave, onClose
     <View style={styles.modalField}>
       <Text style={styles.modalFieldLabel}>{label}</Text>
       <TextInput
-    style={styles.modalInput}
+        style={styles.modalInput}
         value={form[field] as string}
         onChangeText={(v) => update(field, v)}
         keyboardType={keyboard}
@@ -495,7 +120,7 @@ const EditModal: React.FC<EditModalProps> = ({ visible, profile, onSave, onClose
     </View>
   );
 
- return (
+  return (
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -503,8 +128,6 @@ const EditModal: React.FC<EditModalProps> = ({ visible, profile, onSave, onClose
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-
-            {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={onClose}>
@@ -512,30 +135,30 @@ const EditModal: React.FC<EditModalProps> = ({ visible, profile, onSave, onClose
               </TouchableOpacity>
             </View>
 
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
+              <Field label="Full Name"     field="name" />
+              <Field label="Department"    field="department" />
+              <Field label="Academic Year" field="year" />
+              <Field label="GPA"           field="gpa"   keyboard="decimal-pad" />
+              <Field label="Email"         field="email" keyboard="email-address" />
+              <Field label="Phone"         field="phone" keyboard="phone-pad" />
+              <Field label="Student ID"    field="studentId" />
+            </ScrollView>
 
-           <ScrollView  showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"  // ← هذا هو الحل
-              contentContainerStyle={{ paddingBottom: 16 }}>
-            <Field label="Full Name"   field="name" />
-            <Field label="Department"  field="department" />
-            <Field label="Academic Year" field="year" />
-            <Field label="GPA"         field="gpa"   keyboard="decimal-pad" />
-            <Field label="Email"       field="email" keyboard="email-address" />
-            <Field label="Phone"       field="phone" keyboard="phone-pad" />
-            <Field label="Student ID"  field="studentId" />
-          </ScrollView>
-
-          {/* Save Button */}
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => onSave(form)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.saveBtnText}>Save Changes</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={() => onSave(form)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-       </View>
-        </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -545,7 +168,6 @@ const ProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('profile');
   const [editVisible, setEditVisible] = useState(false);
   const router = useRouter();
-
   const params = useLocalSearchParams();
 
   const [profile, setProfile] = useState<ProfileData>({
@@ -559,7 +181,6 @@ const ProfileScreen: React.FC = () => {
     photo:      null,
   });
 
-  // Load saved data on mount
   useEffect(() => {
     loadProfileData().then((saved) => {
       if (saved && Object.keys(saved).length > 0) {
@@ -573,41 +194,19 @@ const ProfileScreen: React.FC = () => {
 
   // ── Pick Photo ────────────────────────────────────────────────────────
   const handlePickPhoto = async () => {
-    if (Platform.OS === 'web') {
-      // Web: use file input
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e: any) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const uri = ev.target?.result as string;
-            const updated = { ...profile, photo: uri };
-            setProfile(updated);
-            saveProfileData(updated);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    } else {
-      // Mobile: use expo-image-picker
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') return;
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-      if (!result.canceled && result.assets[0]) {
-        const uri = result.assets[0].uri;
-        const updated = { ...profile, photo: uri };
-        setProfile(updated);
-        saveProfileData(updated);
-      }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      const updated = { ...profile, photo: uri };
+      setProfile(updated);
+      saveProfileData(updated);
     }
   };
 
@@ -618,31 +217,55 @@ const ProfileScreen: React.FC = () => {
     setEditVisible(false);
   };
 
-  // ── Logout ────────────────────────────────────────────────────────────
+  // ✅ الإصلاح: استبدال window.confirm بـ Alert.alert
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      if (window.confirm('Are you sure you want to logout?')) {
-        router.replace('/login');
-      }
-    } else {
-      router.replace('/login');
-    }
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('userData');
+            } catch (_) {}
+            router.replace('/login');
+          },
+        },
+      ]
+    );
   };
 
   // ── Tab Press ─────────────────────────────────────────────────────────
   const handleTabPress = (key: TabKey) => {
     setActiveTab(key);
-    if (key === 'home') {
-      router.replace({
-        pathname: '/StudentDashboard',
-        params: {
-          name: profile.name,
-          department: profile.department,
-          gpa: profile.gpa,
-          year: profile.year,
-          email: profile.email,
-        },
-      });
+
+    const userData = {
+      name:       profile.name,
+      department: profile.department,
+      gpa:        profile.gpa,
+      year:       profile.year,
+      email:      profile.email,
+    };
+
+    switch (key) {
+      case 'home':
+        router.push({ pathname: '/StudentDashboard', params: userData });
+        break;
+      case 'jobs':
+        router.push({ pathname: '/JobsScreen', params: userData });
+        break;
+      case 'applications':
+        router.push({ pathname: '/ApplicationsScreen', params: userData });
+        break;
+      case 'more':
+        router.push({ pathname: '/MoreScreen', params: userData });
+        break;
     }
   };
 
@@ -654,7 +277,6 @@ const ProfileScreen: React.FC = () => {
 
         {/* ── Blue Header ── */}
         <View style={styles.header}>
-          {/* Avatar */}
           <TouchableOpacity style={styles.avatarWrap} onPress={handlePickPhoto}>
             {profile.photo ? (
               <Image source={{ uri: profile.photo }} style={styles.avatarImage} />
@@ -734,7 +356,6 @@ const ProfileScreen: React.FC = () => {
         </View>
 
         <View style={styles.card}>
-          {/* Edit Profile */}
           <TouchableOpacity style={styles.settingRow} onPress={() => setEditVisible(true)} activeOpacity={0.7}>
             <View style={styles.settingLeft}>
               <View style={styles.settingIconWrap}>
@@ -795,7 +416,6 @@ const ProfileScreen: React.FC = () => {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      {/* ── Edit Modal ── */}
       <EditModal
         visible={editVisible}
         profile={profile}
@@ -815,7 +435,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
 
-  // Header
   header: {
     backgroundColor: '#2563EB',
     paddingTop: 30,
@@ -845,7 +464,6 @@ const styles = StyleSheet.create({
   headerDept: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 4 },
   headerMeta: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
 
-  // Stats
   statsRow: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -861,11 +479,9 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   statDivider: { width: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
 
-  // Section Label
   sectionLabel: { paddingHorizontal: 20, marginBottom: 8 },
   sectionLabelText: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 1 },
 
-  // Card
   card: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
@@ -875,7 +491,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  // Contact
   contactRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 14, gap: 14,
@@ -887,10 +502,8 @@ const styles = StyleSheet.create({
   contactLabel: { fontSize: 11, color: '#9CA3AF', marginBottom: 2 },
   contactValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
 
-  // Divider
   divider: { height: 1, backgroundColor: '#F3F4F6' },
 
-  // Settings
   settingRow: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingVertical: 16,
@@ -903,7 +516,6 @@ const styles = StyleSheet.create({
   },
   settingLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
 
-  // Logout
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, marginHorizontal: 16, paddingVertical: 16,
@@ -911,7 +523,6 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: '#DC2626' },
 
-  // Tab Bar
   tabBar: {
     flexDirection: 'row', backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: '#E5E7EB',
@@ -921,7 +532,6 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
   tabLabelActive: { color: '#2563EB', fontWeight: '600' },
 
-  // Modal
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',

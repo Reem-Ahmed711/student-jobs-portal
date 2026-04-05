@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// حطي IP جهازك الحقيقي
-const API_URL = "http://192.168.1.7:3000";
+const API_URL = "http://10.238.2.249:3000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,10 +19,16 @@ export const registerUser = async (username, email, password) => {
       password,
     });
 
-    return response.data;
+    return { success: true, data: response.data };
   } catch (err) {
-    console.error("Register error:", err.response?.data || err.message);
-    throw err.response?.data || err;
+    const errorData = err.response?.data;
+
+    // validation error من الـ server زي "Email already in use"
+    if (errorData && errorData.message) {
+      return { success: false, message: errorData.message };
+    }
+
+    return { success: false, message: "حدث خطأ، حاول مرة أخرى" };
   }
 };
 
@@ -38,10 +43,15 @@ export const loginUser = async (email, password) => {
 
     console.log("LOGIN RESPONSE:", response.data);
 
-    return response.data;
+    return { success: true, data: response.data };
   } catch (err) {
-    console.error("Login error:", err.response?.data || err.message);
-    throw err.response?.data || err;
+    const errorData = err.response?.data;
+
+    if (errorData && errorData.message) {
+      return { success: false, message: errorData.message };
+    }
+
+    return { success: false, message: "حدث خطأ، حاول مرة أخرى" };
   }
 };
 

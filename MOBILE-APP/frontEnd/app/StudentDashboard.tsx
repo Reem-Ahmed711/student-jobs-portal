@@ -5,9 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  StatusBar,
-  SafeAreaView,
+  StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -173,19 +173,29 @@ const StudentDashboard: React.FC = () => {
   const gpaValue = user.gpa || "-";
   const yearValue = user.year || "-";
 
+  const userData = {
+    name: user.name,
+    department: user.department,
+    gpa: user.gpa,
+    year: user.year,
+    email: user.email,
+  };
+
   const handleTabPress = (key: TabKey) => {
     setActiveTab(key);
-    if (key === "profile") {
-      router.replace({
-        pathname: "/ProfileScreen",
-        params: {
-          name: user.name,
-          department: user.department,
-          gpa: user.gpa,
-          year: user.year,
-          email: user.email,
-        },
-      });
+    switch (key) {
+      case 'profile':
+        router.replace({ pathname: "/ProfileScreen", params: userData });
+        break;
+      case 'jobs':
+        router.replace({ pathname: "/JobsScreen", params: userData });
+        break;
+      case 'applications':
+        router.replace({ pathname: "/ApplicationsScreen", params: userData });
+        break;
+      case 'more':
+        router.replace({ pathname: "/MoreScreen", params: userData });
+        break;
     }
   };
 
@@ -226,27 +236,29 @@ const StudentDashboard: React.FC = () => {
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <TouchableOpacity style={styles.statCard} onPress={() => handleTabPress('applications')}>
               <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
                 <Ionicons name="document-text-outline" size={22} color="#2563EB" />
               </View>
               <Text style={styles.statNumber}>3</Text>
               <Text style={styles.statLabel}>Applied</Text>
-            </View>
-            <View style={styles.statCard}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statCard} onPress={() => handleTabPress('jobs')}>
               <View style={[styles.statIconWrap, { backgroundColor: '#F0FDF4' }]}>
                 <MaterialCommunityIcons name="briefcase-outline" size={22} color="#16A34A" />
               </View>
               <Text style={styles.statNumber}>2</Text>
               <Text style={styles.statLabel}>Saved Jobs</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Recommended */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recommended for You</Text>
-              <TouchableOpacity><Text style={styles.seeAll}>See All</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => handleTabPress('jobs')}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
             </View>
             {recommendedJobs.map((job) => <JobCard key={job.id} job={job} />)}
           </View>
@@ -255,7 +267,9 @@ const StudentDashboard: React.FC = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <TouchableOpacity><Text style={styles.seeAll}>View All</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => handleTabPress('applications')}>
+                <Text style={styles.seeAll}>View All</Text>
+              </TouchableOpacity>
             </View>
             {recentActivity.map((item) => <ActivityCard key={item.id} item={item} />)}
           </View>

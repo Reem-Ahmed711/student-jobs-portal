@@ -77,15 +77,18 @@ export default function RegisterScreen() {
 
       console.log(res);
 
-      if (res.success || res.valid) {
+      if (res.success) {
         alert("Account created successfully!");
         if (userType === "Student") {
-          localStorage.setItem('userData', JSON.stringify({
-  name: fullName,
-  department: department,
-  gpa: gpa,
-  year: academicYear,
-}));
+      await AsyncStorage.setItem(
+  "userData",
+  JSON.stringify({
+    name: fullName,
+    department: department,
+    gpa: gpa,
+    year: academicYear,
+  })
+);
       
          router.replace({
   pathname: "/StudentDashboard",

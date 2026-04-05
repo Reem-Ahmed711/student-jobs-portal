@@ -16,6 +16,8 @@ app.get("/", (req, res) => {
 app.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
 
+  console.log("REGISTER BODY:", req.body);
+
   if (!username) {
     return res
       .status(400)
@@ -55,7 +57,7 @@ app.post("/register", async (req, res) => {
       message: "User registered successfully",
     });
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error("Firebase REGISTER error:", error);
 
     if (error.code === "auth/email-already-exists") {
       return res.status(400).json({
@@ -82,7 +84,7 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("Login request body:", req.body);
+  console.log("LOGIN BODY:", req.body);
 
   if (!email || !password) {
     return res.status(400).json({
@@ -139,6 +141,6 @@ app.post("/login", async (req, res) => {
 
 //////////////////// SERVER ////////////////////
 
-app.listen(3000, () => {
-  console.log("Server runnnnning on port 3000");
+app.listen(3000, "0.0.0.0", () => {
+  console.log("Server running on http://0.0.0.0:3000");
 });
