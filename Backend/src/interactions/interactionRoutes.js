@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { likeJob, addComment, getComments } = require("./interactionController");
-// ✅ صح
+
 const verifyToken = require("../middleware/verifyToken");
 
 router.post("/like", verifyToken, likeJob);
