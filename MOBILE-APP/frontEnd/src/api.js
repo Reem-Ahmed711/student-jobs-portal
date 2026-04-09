@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// مهم: لو بتشغلي Expo على الموبايل لازم الـ IP ده يكون IP جهاز اللابتوب
-// ويفضل يكون ثابت على نفس الشبكة
+
 const API_URL = "http://10.238.2.249:3000";
 
 const api = axios.create({
@@ -56,7 +55,7 @@ export const loginUser = async (email, password) => {
       return { success: false, message: errorData.message };
     }
 
-    return { success: false, message: "حدث خطأ، حاول مرة أخرى" };
+    return { success: false, message: "Error , try again" };
   }
 };
 
