@@ -1,4 +1,4 @@
-const interactionService = require("./interactionService");
+const interactionService = require("../services/interactionService");
 
 // POST /like
 exports.likeJob = async (req, res) => {

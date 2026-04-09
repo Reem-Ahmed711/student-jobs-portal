@@ -1,4 +1,4 @@
-const jobsService = require("./jobsService");
+const jobsService = require("../services/jobsService");
 
 exports.addJob = async (req, res) => {
   try {

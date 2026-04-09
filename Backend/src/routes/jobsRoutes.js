@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const jobsControl = require("./jobsControl");
-const applicationControl = require("./applicationControl");
+const jobsControl = require("../Controllers/jobsControl");
+const applicationControl = require("../Controllers/applicationControl");
 const verifyToken = require("../middleware/verifyToken");
 
 // Jobs routes

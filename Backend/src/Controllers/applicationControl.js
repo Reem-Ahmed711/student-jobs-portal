@@ -1,4 +1,4 @@
-const applicationService = require("./applicationService");
+const applicationService = require("../services/applicationService");
 
 exports.applyForJob = async (req, res) => {
   try {

@@ -3,10 +3,10 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require("../middleware/verifyToken");
 
-const { getProfile, updateProfile } = require("./profileService");
-const { uploadAndSaveProfileImage } = require("./profileController");
+const { getProfile, updateProfile } = require("../services/profileService");
+const { uploadAndSaveProfileImage } = require("../Controllers/profileController");
 
-const { getAllStudents } = require("../employer/employerService");
+const { getAllStudents } = require("../services/employerService");
 const {
   getUserRole,
   requireAdmin,
@@ -19,7 +19,7 @@ const {
   updateUserProfile, 
   deleteUser, 
   getAllUsers 
-} = require("../admin/adminService");
+} = require("../services/adminService");
 
 router.get('/', verifyToken, async (req, res) => {
   try {

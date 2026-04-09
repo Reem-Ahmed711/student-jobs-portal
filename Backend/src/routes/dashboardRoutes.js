@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const dashboardController = require("../Controllers/dashboardController"); 
 const verifyToken = require("../middleware/verifyToken");
 const admin = require("firebase-admin");
 
@@ -14,6 +15,7 @@ const getAllUsers = async (req, res) => {
         message: "Access denied: Admins only" 
       });
     }
+
 
     const usersSnapshot = await db.collection('users').get();
     
@@ -35,7 +37,7 @@ const getAllUsers = async (req, res) => {
     });
   }
 };
-
+router.get("/users", verifyToken, dashboardController.getAllUsers);
 router.get("/users", verifyToken, getAllUsers);
 
 module.exports = router;
