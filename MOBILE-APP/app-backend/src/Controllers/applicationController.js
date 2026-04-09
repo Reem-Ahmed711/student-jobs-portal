@@ -2,7 +2,7 @@ const {
   applyToJob,
   getJobApplications,
   getStudentApplications
-} = require("../services/applicationService");
+} = require("../Service/applicationService");
 
 const {
   requireStudent,

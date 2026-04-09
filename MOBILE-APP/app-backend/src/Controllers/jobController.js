@@ -4,7 +4,7 @@ const {
   deleteJob,
   getAllJobs,
   getJobById
-} = require("../services/jobService");
+} = require("../Service/jobService");
 
 const { requireEmployer } = require("../auth/roleGuard");
 

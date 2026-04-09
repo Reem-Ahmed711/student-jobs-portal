@@ -1,4 +1,4 @@
-const { admin, db } = require("../firebase/firebaseConfig");
+const { admin, db } = require("./../firebase");
 
 const registerController = async (req, res) => {
   const { username, email, password } = req.body;
