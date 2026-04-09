@@ -287,18 +287,18 @@ export default StudentDashboard;
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#2563EB' },
+  safe: { flex: 1, backgroundColor: '#1E3A5F' }, // Main Blue
   scroll: { flex: 1 },
-  header: { backgroundColor: '#2563EB', paddingHorizontal: 22, paddingTop: 22, paddingBottom: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  header: { backgroundColor: '#1E3A5F', paddingHorizontal: 22, paddingTop: 22, paddingBottom: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   greeting: { color: 'rgba(255,255,255,0.85)', fontSize: 14 },
   headerName: { color: '#fff', fontSize: 30, fontWeight: '800', marginTop: 2 },
   bellWrap: { position: 'relative', marginTop: 2 },
-  bellBadge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, width: 19, height: 19, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#2563EB' },
+  bellBadge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, width: 19, height: 19, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#1E3A5F' },
   bellBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   content: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingTop: 0 },
   profileCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginTop: -36, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.10, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 2, borderColor: '#E5E7EB' },
-  avatarInitial: { fontSize: 26, fontWeight: '800', color: '#2563EB' },
+  avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#2A4A7A', justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 2, borderColor: '#E5E7EB' }, // Secondary Blue
+  avatarInitial: { fontSize: 26, fontWeight: '800', color: '#1E3A5F' }, // Main Blue
   profileInfo: { flex: 1 },
   profileName: { fontSize: 16, fontWeight: '700', color: '#111827' },
   profileDept: { fontSize: 13, color: '#6B7280', marginTop: 3 },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   section: { marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  seeAll: { fontSize: 13, color: '#2563EB', fontWeight: '600' },
+  seeAll: { fontSize: 13, color: '#1E3A5F', fontWeight: '600' }, // Main Blue
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
@@ -329,5 +329,5 @@ const styles = StyleSheet.create({
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingBottom: 8, paddingTop: 10, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 8 },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-  tabLabelActive: { color: '#2563EB', fontWeight: '600' },
+  tabLabelActive: { color: '#1E3A5F', fontWeight: '600' }, // Main Blue
 });

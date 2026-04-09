@@ -60,7 +60,7 @@ const applications: Application[] = [
 ];
 
 const statusConfig: Record<AppStatus, { color: string; bg: string; icon: string }> = {
-  'Under Review': { color: '#7C3AED', bg: '#EDE9FE', icon: 'time-outline' },
+  'Under Review': { color: '#1E3A5F', bg: '#EDE9FE', icon: 'time-outline' },
   Shortlisted:   { color: '#16A34A', bg: '#DCFCE7', icon: 'ribbon-outline' },
   Rejected:      { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' },
   Pending:       { color: '#D97706', bg: '#FEF3C7', icon: 'ellipsis-horizontal-circle-outline' },
@@ -77,7 +77,7 @@ const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> =
   ];
 
   const getIcon = (key: TabKey, isActive: boolean) => {
-    const color = isActive ? '#2563EB' : '#9CA3AF';
+    const color = isActive ? '#1E3A5F' : '#9CA3AF';
     switch (key) {
       case 'home': return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
       case 'jobs': return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
@@ -121,7 +121,7 @@ const InterviewModal: React.FC<{
 
           <View style={styles.interviewCard}>
             <View style={styles.interviewIconWrap}>
-              <Ionicons name="calendar" size={32} color="#2563EB" />
+              <Ionicons name="calendar" size={32} color="#1E3A5F" />
             </View>
             <Text style={styles.interviewJobTitle}>{app.title}</Text>
             <Text style={styles.interviewDept}>{app.department}</Text>
@@ -129,7 +129,7 @@ const InterviewModal: React.FC<{
 
           <View style={styles.interviewInfoRow}>
             <View style={[styles.interviewInfoIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="time-outline" size={18} color="#2563EB" />
+              <Ionicons name="time-outline" size={18} color="#1E3A5F" />
             </View>
             <View>
               <Text style={styles.interviewInfoLabel}>Date & Time</Text>
@@ -244,7 +244,7 @@ const ApplicationsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#2563EB" />
+      <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
 
   header: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1E3A5F',
     paddingHorizontal: 22,
     paddingTop: 22,
     paddingBottom: 28,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 12, color: '#9CA3AF' },
 
   interviewBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1E3A5F',
     borderRadius: 12,
     height: 46,
     alignItems: 'center',
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-  tabLabelActive: { color: '#2563EB', fontWeight: '600' },
+  tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
 
   // Modal
   modalOverlay: {
@@ -432,15 +432,15 @@ const styles = StyleSheet.create({
   },
   interviewTipsTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 10 },
   tipItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2563EB' },
+  tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#1E3A5F' },
   tipText: { fontSize: 13, color: '#374151' },
 
   closeBtn: {
-    backgroundColor: '#2563EB',
-    borderRadius: 14,
-    height: 52,
+    backgroundColor: '#1E3A5F',
+    borderRadius: 12,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

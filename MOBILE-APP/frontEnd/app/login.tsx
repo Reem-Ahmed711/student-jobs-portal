@@ -11,6 +11,7 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  Alert,
 } from "react-native";
 import {
   useFonts,
@@ -19,6 +20,7 @@ import {
   Poppins_700Bold,
   Poppins_800ExtraBold,
 } from "@expo-google-fonts/poppins";
+import { LinearGradient } from "expo-linear-gradient";
 import { loginUser } from "../src/api.js";
 
 export default function LoginScreen() {
@@ -55,24 +57,40 @@ export default function LoginScreen() {
       const res = await loginUser(email, password);
       console.log("LOGIN RESPONSE:", res);
 
-      if (res.valid) {
+      if (res.success && res.data?.valid) {
+        const backendUser = res.data.user;
+
         const userData = {
-  ...res.user,
-  name: res.user.username || res.user.name || email,
-};
+          ...backendUser,
+          name: backendUser.username || backendUser.name || email,
+          email: backendUser.email || email,
+        };
 
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
 
-        router.replace({
-          pathname: "/StudentDashboard",
-          params: {
-            name: userData.username || email,
-            department: "",
-            gpa: "",
-            year: "",
-            profilePic: "",
-          },
-        });
+        Alert.alert("Success 🎉", `Welcome ${userData.name}!`);
+
+        // --- التعديل هنا للهندلة بناءً على الدومين ---
+        const userEmail = userData.email.toLowerCase();
+        
+        if (userEmail.endsWith("@cu.edu.eg")) {
+          // توجيه لداشبورد الدكتور أو الموظف (Employer)
+          router.replace("/employer/EmployerDashboard");
+        } else {
+          // توجيه لداشبورد الطالب العادي
+          router.replace({
+            pathname: "/StudentDashboard",
+            params: {
+              name: userData.name,
+              department: "",
+              gpa: "",
+              year: "",
+              profilePic: "",
+            },
+          });
+        }
+        // ------------------------------------------
+
       } else {
         setErrorMsg(res.message || "Invalid credentials.");
       }
@@ -87,6 +105,15 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
+
+      {/* نفس الأزرق بتاع الريجستر */}
+      <LinearGradient
+        colors={["#1E3A5F", "#2a4a7a"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.topAccent}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.kav}
@@ -99,7 +126,7 @@ export default function LoginScreen() {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
-              <Text style={styles.appName}>Student jobs portal</Text>
+              <Text style={styles.appName}>Student Jobs Portal</Text>
             </View>
           </View>
 
@@ -186,9 +213,7 @@ export default function LoginScreen() {
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-              >
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Text style={styles.toggleText}>
                   {showPassword ? "Hide" : "Show"}
                 </Text>
@@ -201,13 +226,19 @@ export default function LoginScreen() {
           {/* Sign In Button */}
           <TouchableOpacity
             activeOpacity={0.85}
-            style={[styles.signInBtn, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text style={styles.signInText}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Text>
+            <LinearGradient
+              colors={["#1E3A5F", "#2a4a7a"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.signInBtn, loading && { opacity: 0.7 }]}
+            >
+              <Text style={styles.signInText}>
+                {loading ? "Signing in..." : "Sign in"}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           {/* Forgot Password */}
@@ -251,6 +282,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f5f7fa" },
   kav: { flex: 1 },
+  topAccent: { height: 4, width: "100%" },
   scroll: { flexGrow: 1, paddingHorizontal: 26, paddingBottom: 40 },
 
   // Top Bar
@@ -284,7 +316,7 @@ const styles = StyleSheet.create({
   dot: {
     position: "absolute",
     borderRadius: 99,
-    backgroundColor: "#1a6fd4",
+    backgroundColor: "#1E3A5F",
   },
   planetRing: {
     position: "absolute",
@@ -346,7 +378,7 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontFamily: "Poppins_600SemiBold",
-    color: "#1a6fd4",
+    color: "#1E3A5F",
   },
 
   // Inputs
@@ -365,7 +397,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  inputBoxFocused: { borderColor: "#1a6fd4" },
+  inputBoxFocused: { borderColor: "#1E3A5F" },
   floatingLabel: {
     fontFamily: "Poppins_400Regular",
     fontSize: 11,
@@ -382,7 +414,7 @@ const styles = StyleSheet.create({
   toggleText: {
     fontFamily: "Poppins_600SemiBold",
     fontSize: 12,
-    color: "#1a6fd4",
+    color: "#1E3A5F",
     paddingLeft: 8,
   },
   errorText: {
@@ -398,12 +430,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 52,
     borderRadius: 30,
-    backgroundColor: "#1a6fd4",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
     marginBottom: 14,
-    shadowColor: "#1a6fd4",
+    shadowColor: "#1E3A5F",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 14,
@@ -421,7 +452,7 @@ const styles = StyleSheet.create({
   forgotText: {
     fontFamily: "Poppins_600SemiBold",
     fontSize: 13,
-    color: "#1a6fd4",
+    color: "#1E3A5F",
   },
 
   // Divider

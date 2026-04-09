@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
 interface Job {
@@ -27,84 +27,25 @@ interface Job {
   match: number;
   saved: boolean;
   closingSoon?: boolean;
-  type?: string;
 }
 
-// ─── Sample Data ────────────────────────────────────────────────────────────
+// ─── Colors ───────────────────────────────────────────────
+const primaryBlue = '#1E3A5F';
+const secondaryBlue = '#2A4A7A';
+
+// ─── Sample Data ─────────────────────────────────────────
 const allJobs: Job[] = [
-  {
-    id: '1',
-    title: 'Research Assistant - Organic Chemistry',
-    department: 'Chemistry Department',
-    hours: '20 hrs/week',
-    salary: 'EGP 3,000/month',
-    applicants: 24,
-    deadline: 'Mar 15',
-    match: 95,
-    saved: false,
-  },
-  {
-    id: '2',
-    title: 'Teaching Assistant - Physics Lab',
-    department: 'Physics Department',
-    hours: '15 hrs/week',
-    salary: 'EGP 2,500/month',
-    applicants: 31,
-    deadline: 'Mar 10',
-    match: 88,
-    saved: true,
-    closingSoon: true,
-  },
-  {
-    id: '3',
-    title: 'Data Analysis Intern - BI Information',
-    department: 'Computer Science Department',
-    hours: '25 hrs/week',
-    salary: 'EGP 3,500/month',
-    applicants: 18,
-    deadline: 'Mar 20',
-    match: 82,
-    saved: false,
-  },
-  {
-    id: '4',
-    title: 'Mathematics Tutor',
-    department: 'Mathematics Department',
-    hours: '10 hrs/week',
-    salary: 'EGP 1,800/month',
-    applicants: 12,
-    deadline: 'Mar 18',
-    match: 79,
-    saved: false,
-  },
-  {
-    id: '5',
-    title: 'Lab Technician - Microbiology',
-    department: 'Microbiology Department',
-    hours: '30 hrs/week',
-    salary: 'EGP 4,000/month',
-    applicants: 9,
-    deadline: 'Mar 8',
-    match: 91,
-    saved: false,
-    closingSoon: true,
-  },
-  {
-    id: '6',
-    title: 'Student Affairs Assistant',
-    department: 'Administration',
-    hours: '20 hrs/week',
-    salary: 'EGP 2,200/month',
-    applicants: 42,
-    deadline: 'Mar 25',
-    match: 74,
-    saved: false,
-  },
+  { id: '1', title: 'Research Assistant - Organic Chemistry', department: 'Chemistry Department', hours: '20 hrs/week', salary: 'EGP 3,000/month', applicants: 24, deadline: 'Mar 15', match: 95, saved: false },
+  { id: '2', title: 'Teaching Assistant - Physics Lab', department: 'Physics Department', hours: '15 hrs/week', salary: 'EGP 2,500/month', applicants: 31, deadline: 'Mar 10', match: 88, saved: true, closingSoon: true },
+  { id: '3', title: 'Data Analysis Intern - BI Information', department: 'Computer Science Department', hours: '25 hrs/week', salary: 'EGP 3,500/month', applicants: 18, deadline: 'Mar 20', match: 82, saved: false },
+  { id: '4', title: 'Mathematics Tutor', department: 'Mathematics Department', hours: '10 hrs/week', salary: 'EGP 1,800/month', applicants: 12, deadline: 'Mar 18', match: 79, saved: false },
+  { id: '5', title: 'Lab Technician - Microbiology', department: 'Microbiology Department', hours: '30 hrs/week', salary: 'EGP 4,000/month', applicants: 9, deadline: 'Mar 8', match: 91, saved: false, closingSoon: true },
+  { id: '6', title: 'Student Affairs Assistant', department: 'Administration', hours: '20 hrs/week', salary: 'EGP 2,200/month', applicants: 42, deadline: 'Mar 25', match: 74, saved: false },
 ];
 
 const departments = ['All', 'Chemistry', 'Physics', 'Computer Science', 'Mathematics', 'Microbiology', 'Administration'];
 
-// ─── Bottom Tab Bar ─────────────────────────────────────────────────────────
+// ─── Bottom Tab Bar ─────────────────────────────────────────
 const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'home', label: 'Home' },
@@ -115,7 +56,7 @@ const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> =
   ];
 
   const getIcon = (key: TabKey, isActive: boolean) => {
-    const color = isActive ? '#2563EB' : '#9CA3AF';
+    const color = isActive ? primaryBlue : '#9CA3AF';
     switch (key) {
       case 'home': return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
       case 'jobs': return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
@@ -130,22 +71,16 @@ const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> =
       {tabs.map((tab) => (
         <TouchableOpacity key={tab.key} style={styles.tabItem} onPress={() => onPress(tab.key)}>
           {getIcon(tab.key, active === tab.key)}
-          <Text style={[styles.tabLabel, active === tab.key && styles.tabLabelActive]}>
-            {tab.label}
-          </Text>
+          <Text style={[styles.tabLabel, active === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
   );
 };
 
-// ─── Job Card ───────────────────────────────────────────────────────────────
-const JobCard: React.FC<{ job: Job; onSaveToggle: (id: string) => void; onPress: () => void }> = ({
-  job,
-  onSaveToggle,
-  onPress,
-}) => {
-  const matchColor = job.match >= 90 ? '#16A34A' : job.match >= 80 ? '#2563EB' : '#7C3AED';
+// ─── Job Card ──────────────────────────────────────────────
+const JobCard: React.FC<{ job: Job; onSaveToggle: (id: string) => void; onPress: () => void }> = ({ job, onSaveToggle, onPress }) => {
+  const matchColor = job.match >= 90 ? '#16A34A' : job.match >= 80 ? primaryBlue : secondaryBlue;
   const matchBg = job.match >= 90 ? '#DCFCE7' : job.match >= 80 ? '#DBEAFE' : '#EDE9FE';
 
   return (
@@ -153,11 +88,7 @@ const JobCard: React.FC<{ job: Job; onSaveToggle: (id: string) => void; onPress:
       <View style={styles.cardTopRow}>
         <Text style={styles.cardTitle} numberOfLines={2}>{job.title}</Text>
         <TouchableOpacity onPress={() => onSaveToggle(job.id)} style={styles.saveBtn}>
-          <Ionicons
-            name={job.saved ? 'bookmark' : 'bookmark-outline'}
-            size={20}
-            color={job.saved ? '#2563EB' : '#9CA3AF'}
-          />
+          <Ionicons name={job.saved ? 'bookmark' : 'bookmark-outline'} size={20} color={job.saved ? primaryBlue : '#9CA3AF'} />
         </TouchableOpacity>
       </View>
 
@@ -197,7 +128,7 @@ const JobCard: React.FC<{ job: Job; onSaveToggle: (id: string) => void; onPress:
   );
 };
 
-// ─── Filter Modal ────────────────────────────────────────────────────────────
+// ─── Filter Modal ───────────────────────────────────────────
 const FilterModal: React.FC<{
   visible: boolean;
   onClose: () => void;
@@ -219,17 +150,12 @@ const FilterModal: React.FC<{
           <TouchableOpacity
             key={dept}
             style={styles.filterOption}
-            onPress={() => {
-              onSelectDept(dept);
-              onClose();
-            }}
+            onPress={() => { onSelectDept(dept); onClose(); }}
           >
             <Text style={[styles.filterOptionText, selectedDept === dept && styles.filterOptionActive]}>
               {dept}
             </Text>
-            {selectedDept === dept && (
-              <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
-            )}
+            {selectedDept === dept && <Ionicons name="checkmark-circle" size={20} color={primaryBlue} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -237,15 +163,10 @@ const FilterModal: React.FC<{
   </Modal>
 );
 
-// ─── Job Detail Modal ────────────────────────────────────────────────────────
-const JobDetailModal: React.FC<{
-  visible: boolean;
-  job: Job | null;
-  onClose: () => void;
-  onApply: () => void;
-}> = ({ visible, job, onClose, onApply }) => {
+// ─── Job Detail Modal ───────────────────────────────────────
+const JobDetailModal: React.FC<{ visible: boolean; job: Job | null; onClose: () => void; onApply: () => void; }> = ({ visible, job, onClose, onApply }) => {
   if (!job) return null;
-  const matchColor = job.match >= 90 ? '#16A34A' : '#2563EB';
+  const matchColor = job.match >= 90 ? '#16A34A' : primaryBlue;
   const matchBg = job.match >= 90 ? '#DCFCE7' : '#DBEAFE';
 
   return (
@@ -261,43 +182,26 @@ const JobDetailModal: React.FC<{
 
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.detailDept}>{job.department}</Text>
-
             <View style={[styles.matchBadge, { backgroundColor: matchBg, alignSelf: 'flex-start', marginBottom: 16 }]}>
               <Text style={[styles.matchText, { color: matchColor }]}>{job.match}% Match</Text>
             </View>
 
             <View style={styles.detailGrid}>
-              <View style={styles.detailItem}>
-                <Feather name="clock" size={16} color="#2563EB" />
-                <Text style={styles.detailLabel}>Hours</Text>
-                <Text style={styles.detailValue}>{job.hours}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Feather name="trending-up" size={16} color="#2563EB" />
-                <Text style={styles.detailLabel}>Salary</Text>
-                <Text style={styles.detailValue}>{job.salary}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="people-outline" size={16} color="#2563EB" />
-                <Text style={styles.detailLabel}>Applicants</Text>
-                <Text style={styles.detailValue}>{job.applicants}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="calendar-outline" size={16} color="#2563EB" />
-                <Text style={styles.detailLabel}>Deadline</Text>
-                <Text style={styles.detailValue}>{job.deadline}</Text>
-              </View>
+              <View style={styles.detailItem}><Feather name="clock" size={16} color={primaryBlue} /><Text style={styles.detailLabel}>Hours</Text><Text style={styles.detailValue}>{job.hours}</Text></View>
+              <View style={styles.detailItem}><Feather name="trending-up" size={16} color={primaryBlue} /><Text style={styles.detailLabel}>Salary</Text><Text style={styles.detailValue}>{job.salary}</Text></View>
+              <View style={styles.detailItem}><Ionicons name="people-outline" size={16} color={primaryBlue} /><Text style={styles.detailLabel}>Applicants</Text><Text style={styles.detailValue}>{job.applicants}</Text></View>
+              <View style={styles.detailItem}><Ionicons name="calendar-outline" size={16} color={primaryBlue} /><Text style={styles.detailLabel}>Deadline</Text><Text style={styles.detailValue}>{job.deadline}</Text></View>
             </View>
 
             <Text style={styles.detailSectionTitle}>About This Role</Text>
             <Text style={styles.detailBody}>
-              This position is a great opportunity for students to gain hands-on experience in {job.department.replace(' Department', '')}. 
+              This position is a great opportunity for students to gain hands-on experience in {job.department.replace(' Department','')}.
               You'll be working closely with faculty members and contributing to real academic projects.
               {'\n\n'}Flexible hours are available to accommodate your academic schedule.
             </Text>
 
             <Text style={styles.detailSectionTitle}>Requirements</Text>
-            {['Currently enrolled student', 'Relevant coursework in the field', 'Strong attention to detail', 'Good communication skills'].map((req, i) => (
+            {['Currently enrolled student','Relevant coursework in the field','Strong attention to detail','Good communication skills'].map((req,i) => (
               <View key={i} style={styles.requirementItem}>
                 <View style={styles.requirementDot} />
                 <Text style={styles.requirementText}>{req}</Text>
@@ -314,7 +218,7 @@ const JobDetailModal: React.FC<{
   );
 };
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+// ─── Main Screen ─────────────────────────────────────────────
 const JobsScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('jobs');
   const [search, setSearch] = useState('');
@@ -327,7 +231,6 @@ const JobsScreen: React.FC = () => {
 
   const router = useRouter();
   const params = useLocalSearchParams();
-
   const userData = {
     name: (params.name as string) || 'Student',
     department: (params.department as string) || 'Department',
@@ -336,114 +239,61 @@ const JobsScreen: React.FC = () => {
     email: (params.email as string) || '',
   };
 
-  const filtered = jobs.filter((j) => {
-    const matchesSearch =
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.department.toLowerCase().includes(search.toLowerCase());
-    const matchesDept =
-      selectedDept === 'All' || j.department.toLowerCase().includes(selectedDept.toLowerCase());
+  const filtered = jobs.filter(j => {
+    const matchesSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.department.toLowerCase().includes(search.toLowerCase());
+    const matchesDept = selectedDept === 'All' || j.department.toLowerCase().includes(selectedDept.toLowerCase());
     return matchesSearch && matchesDept;
   });
 
-  const toggleSave = (id: string) => {
-    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, saved: !j.saved } : j)));
-  };
-
-  const handleApply = () => {
-    if (selectedJob) {
-      setAppliedIds((prev) => new Set(prev).add(selectedJob.id));
-      setDetailVisible(false);
-    }
-  };
-
+  const toggleSave = (id: string) => setJobs(prev => prev.map(j => j.id === id ? {...j, saved: !j.saved} : j));
+  const handleApply = () => { if(selectedJob){ setAppliedIds(prev => new Set(prev).add(selectedJob.id)); setDetailVisible(false); } };
   const handleTabPress = (key: TabKey) => {
     setActiveTab(key);
-    switch (key) {
-      case 'home':
-        router.replace({ pathname: '/StudentDashboard', params: userData });
-        break;
-      case 'applications':
-        router.replace({ pathname: '/ApplicationsScreen', params: userData });
-        break;
-      case 'profile':
-        router.replace({ pathname: '/ProfileScreen', params: userData });
-        break;
-      case 'more':
-        router.replace({ pathname: '/MoreScreen', params: userData });
-        break;
+    switch(key){
+      case 'home': router.replace({ pathname: '/StudentDashboard', params: userData }); break;
+      case 'applications': router.replace({ pathname: '/ApplicationsScreen', params: userData }); break;
+      case 'profile': router.replace({ pathname: '/ProfileScreen', params: userData }); break;
+      case 'more': router.replace({ pathname: '/MoreScreen', params: userData }); break;
     }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Job Opportunities</Text>
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={18} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search jobs or departments..."
-              placeholderTextColor="#9CA3AF"
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
+            <TextInput style={styles.searchInput} placeholder="Search jobs or departments..." placeholderTextColor="#9CA3AF" value={search} onChangeText={setSearch} />
+            {search.length>0 && <TouchableOpacity onPress={()=>setSearch('')}><Ionicons name="close-circle" size={18} color="#9CA3AF" /></TouchableOpacity>}
           </View>
         </View>
-        <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
-          <Ionicons name="options-outline" size={16} color="#2563EB" />
+        <TouchableOpacity style={styles.filterBtn} onPress={()=>setFilterVisible(true)}>
+          <Ionicons name="options-outline" size={16} color={primaryBlue} />
           <Text style={styles.filterBtnText}>Filters</Text>
-          {selectedDept !== 'All' && <View style={styles.filterDot} />}
+          {selectedDept!=='All' && <View style={styles.filterDot}/>}
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {filtered.length === 0 ? (
+          {filtered.length===0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+              <Ionicons name="search-outline" size={48} color="#D1D5DB"/>
               <Text style={styles.emptyTitle}>No jobs found</Text>
               <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
             </View>
-          ) : (
-            filtered.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onSaveToggle={toggleSave}
-                onPress={() => {
-                  setSelectedJob(job);
-                  setDetailVisible(true);
-                }}
-              />
-            ))
-          )}
-          <View style={{ height: 16 }} />
+          ) : filtered.map(job=>(
+            <JobCard key={job.id} job={job} onSaveToggle={toggleSave} onPress={()=>{ setSelectedJob(job); setDetailVisible(true); }}/>
+          ))}
+          <View style={{height:16}}/>
         </View>
       </ScrollView>
 
-      <FilterModal
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        selectedDept={selectedDept}
-        onSelectDept={setSelectedDept}
-      />
-
-      <JobDetailModal
-        visible={detailVisible}
-        job={selectedJob}
-        onClose={() => setDetailVisible(false)}
-        onApply={handleApply}
-      />
-
+      <FilterModal visible={filterVisible} onClose={()=>setFilterVisible(false)} selectedDept={selectedDept} onSelectDept={setSelectedDept} />
+      <JobDetailModal visible={detailVisible} job={selectedJob} onClose={()=>setDetailVisible(false)} onApply={handleApply} />
       <BottomTabBar active={activeTab} onPress={handleTabPress} />
     </SafeAreaView>
   );
@@ -451,170 +301,60 @@ const JobsScreen: React.FC = () => {
 
 export default JobsScreen;
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
-
-  header: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#111827', marginBottom: 12 },
-  searchRow: { marginBottom: 10 },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    gap: 8,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: '#111827' },
-  filterBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  filterBtnText: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
-  filterDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#EF4444', marginLeft: 2,
-  },
-
-  content: { padding: 16 },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
-  saveBtn: { padding: 2 },
-  cardDept: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 10 },
-
-  badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  matchBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  matchText: { fontSize: 12, fontWeight: '700' },
-  closingBadge: {
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: '#FEF3C7',
-  },
-  closingText: { fontSize: 12, fontWeight: '600', color: '#D97706' },
-
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  metaItem: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontSize: 12, color: '#9CA3AF' },
-  metaDot: { fontSize: 12, color: '#D1D5DB' },
-
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  deadlineText: { fontSize: 12, color: '#9CA3AF' },
-
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#6B7280', marginTop: 12 },
-  emptySubtitle: { fontSize: 14, color: '#9CA3AF', marginTop: 4 },
-
-  // Tab Bar
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingBottom: 8,
-    paddingTop: 10,
-    elevation: 8,
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-  tabLabelActive: { color: '#2563EB', fontWeight: '600' },
-
-  // Modals
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111827', flex: 1, marginRight: 8 },
-
-  filterSectionTitle: { fontSize: 13, fontWeight: '700', color: '#6B7280', marginBottom: 12 },
-  filterOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  filterOptionText: { fontSize: 15, color: '#374151', fontWeight: '500' },
-  filterOptionActive: { color: '#2563EB', fontWeight: '700' },
-
-  detailDept: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
-  detailGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  detailItem: {
-    backgroundColor: '#F8FAFF',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    width: '45%',
-    gap: 4,
-  },
-  detailLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
-  detailValue: { fontSize: 13, fontWeight: '700', color: '#111827' },
-  detailSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  detailBody: { fontSize: 14, color: '#6B7280', lineHeight: 22, marginBottom: 16 },
-  requirementItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  requirementDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: '#2563EB',
-  },
-  requirementText: { fontSize: 14, color: '#374151' },
-
-  applyBtn: {
-    backgroundColor: '#2563EB',
-    borderRadius: 14,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  header: { backgroundColor: '#fff', paddingHorizontal:20, paddingTop:20, paddingBottom:16, borderBottomWidth:1, borderBottomColor:'#F3F4F6' },
+  headerTitle: { fontSize:26, fontWeight:'800', color: primaryBlue, marginBottom:12 },
+  searchRow: { marginBottom:10 },
+  searchBox: { flexDirection:'row', alignItems:'center', backgroundColor:'#F8FAFF', borderRadius:12, paddingHorizontal:12, height:44, borderWidth:1.5, borderColor:'#E2E8F0', gap:8 },
+  searchInput: { flex:1, fontSize:14, color:'#111827' },
+  filterBtn: { flexDirection:'row', alignItems:'center', alignSelf:'flex-start', gap:6, backgroundColor:'#EFF6FF', borderRadius:10, paddingHorizontal:14, paddingVertical:8 },
+  filterBtnText: { fontSize:14, fontWeight:'600', color:primaryBlue },
+  filterDot: { width:8, height:8, borderRadius:4, backgroundColor:'#EF4444', marginLeft:2 },
+  content: { padding:16 },
+  card: { backgroundColor:'#fff', borderRadius:14, padding:16, marginBottom:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:8, elevation:2 },
+  cardTopRow:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  cardTitle:{ fontSize:16, fontWeight:'700', color:'#111827', flex:1, marginRight:8 },
+  cardDept:{ fontSize:14, color:'#6B7280', marginVertical:6 },
+  badgeRow:{ flexDirection:'row', gap:8, marginBottom:6 },
+  matchBadge:{ paddingHorizontal:8, paddingVertical:2, borderRadius:6 },
+  matchText:{ fontSize:12, fontWeight:'600' },
+  closingBadge:{ backgroundColor:'#FEE2E2', paddingHorizontal:8, paddingVertical:2, borderRadius:6 },
+  closingText:{ fontSize:12, fontWeight:'600', color:'#B91C1C' },
+  cardMeta:{ flexDirection:'row', alignItems:'center', marginVertical:4 },
+  metaItem:{ flexDirection:'row', alignItems:'center' },
+  metaText:{ fontSize:12, color:'#9CA3AF' },
+  metaDot:{ marginHorizontal:4, fontSize:12, color:'#9CA3AF' },
+  cardFooter:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginTop:8 },
+  deadlineText:{ fontSize:12, color:'#9CA3AF' },
+  saveBtn:{ padding:6 },
+  tabBar:{ flexDirection:'row', justifyContent:'space-around', alignItems:'center', height:64, backgroundColor:'#fff', borderTopWidth:1, borderTopColor:'#E5E7EB' },
+  tabItem:{ justifyContent:'center', alignItems:'center' },
+  tabLabel:{ fontSize:12, color:'#9CA3AF', marginTop:2 },
+  tabLabelActive:{ color:primaryBlue, fontWeight:'600' },
+  modalOverlay:{ flex:1, backgroundColor:'rgba(0,0,0,0.35)', justifyContent:'center', alignItems:'center' },
+  modalContainer:{ backgroundColor:'#fff', borderRadius:16, width:'90%', padding:16 },
+  modalHeader:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:16 },
+  modalTitle:{ fontSize:18, fontWeight:'700', color:'#111827' },
+  filterSectionTitle:{ fontSize:14, fontWeight:'700', color:'#111827', marginBottom:8 },
+  filterOption:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:8 },
+  filterOptionText:{ fontSize:14, color:'#6B7280' },
+  filterOptionActive:{ color:primaryBlue },
+  detailDept:{ fontSize:14, color:'#6B7280', marginBottom:8 },
+  detailGrid:{ flexDirection:'row', flexWrap:'wrap', gap:12, marginBottom:16 },
+  detailItem:{ width:'48%', backgroundColor:'#EFF6FF', borderRadius:10, padding:8, marginBottom:8 },
+  detailLabel:{ fontSize:12, color:'#6B7280' },
+  detailValue:{ fontSize:14, fontWeight:'600', color:'#111827' },
+  detailSectionTitle:{ fontSize:16, fontWeight:'700', color:'#111827', marginVertical:8 },
+  detailBody:{ fontSize:14, color:'#4B5563', lineHeight:20 },
+  requirementItem:{ flexDirection:'row', alignItems:'center', marginBottom:6 },
+  requirementDot:{ width:6, height:6, borderRadius:3, backgroundColor:primaryBlue, marginRight:8 },
+  requirementText:{ fontSize:14, color:'#4B5563' },
+  applyBtn:{ backgroundColor:primaryBlue, borderRadius:14, height:52, alignItems:'center', justifyContent:'center', marginTop:12 },
+  applyBtnText:{ color:'#fff', fontSize:16, fontWeight:'700' },
+  emptyState:{ justifyContent:'center', alignItems:'center', marginTop:60 },
+  emptyTitle:{ fontSize:16, fontWeight:'600', color:'#6B7280', marginTop:12 },
+  emptySubtitle:{ fontSize:14, color:'#9CA3AF', marginTop:4 }
 });

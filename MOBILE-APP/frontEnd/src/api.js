@@ -1,5 +1,7 @@
 import axios from "axios";
 
+// مهم: لو بتشغلي Expo على الموبايل لازم الـ IP ده يكون IP جهاز اللابتوب
+// ويفضل يكون ثابت على نفس الشبكة
 const API_URL = "http://10.238.2.249:3000";
 
 const api = axios.create({
@@ -11,19 +13,20 @@ const api = axios.create({
 
 //////////////////// REGISTER ////////////////////
 
-export const registerUser = async (username, email, password) => {
+export const registerUser = async (userData) => {
   try {
-    const response = await api.post("/register", {
-      username,
-      email,
-      password,
-    });
+    console.log("📤 REGISTER REQUEST:", userData);
+
+    const response = await api.post("/register", userData);
+
+    console.log("📥 REGISTER RESPONSE:", response.data);
 
     return { success: true, data: response.data };
   } catch (err) {
+    console.log("❌ REGISTER ERROR:", err?.response?.data || err.message);
+
     const errorData = err.response?.data;
 
-    // validation error من الـ server زي "Email already in use"
     if (errorData && errorData.message) {
       return { success: false, message: errorData.message };
     }
@@ -41,10 +44,12 @@ export const loginUser = async (email, password) => {
       password,
     });
 
-    console.log("LOGIN RESPONSE:", response.data);
+    console.log("📥 LOGIN RESPONSE:", response.data);
 
     return { success: true, data: response.data };
   } catch (err) {
+    console.log("❌ LOGIN ERROR:", err?.response?.data || err.message);
+
     const errorData = err.response?.data;
 
     if (errorData && errorData.message) {
