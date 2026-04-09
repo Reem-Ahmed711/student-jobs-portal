@@ -1,4 +1,4 @@
-// src/profile/profileRoute.js
+
 const express = require('express');
 const router = express.Router();
 const verifyToken = require("../middleware/verifyToken");
@@ -21,12 +21,6 @@ const {
   getAllUsers 
 } = require("../admin/adminService");
 
-/**
- * GET /profile
- * - Admin → أي user (يمكن إضافة ?uid=...)
- * - Employer → كل الطلاب
- * - Student → نفسه فقط
- */
 router.get('/', verifyToken, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -54,12 +48,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * PUT /profile
- * - Admin → يحدث أي user (body.uid = target)
- * - Student → يحدث نفسه فقط
- * - Employer → ممنوع
- */
+
 router.put('/', verifyToken, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -85,11 +74,7 @@ router.put('/', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * DELETE /profile
- * - Admin → يحذف أي user
- * - Student/Employer → ممنوع
- */
+
 router.delete('/', verifyToken, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -109,11 +94,7 @@ router.delete('/', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * POST /profile/upload
- * - رفع صورة profile
- * - Student/Admin فقط (Employer ممنوع)
- */
+
 router.post('/upload', verifyToken, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -123,7 +104,7 @@ router.post('/upload', verifyToken, async (req, res) => {
       return res.status(403).json({ message: "Employers cannot upload profile images" });
     }
 
-    const file = req.files.profileImage; // لو بتستخدمي multer أو أي middleware
+    const file = req.files.profileImage; 
     const result = await uploadAndSaveProfileImage(uid, file);
     res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
