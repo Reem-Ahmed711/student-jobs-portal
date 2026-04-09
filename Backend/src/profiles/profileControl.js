@@ -1,7 +1,7 @@
-const { uploadProfileImage } = require("./storageService");
-const { updateProfile } = require("./profileService");
+const { uploadProfileImage } = require("../storage/storageService"); 
+const { updateProfile } = require("./profileService"); 
 
-async function uploadAndSaveProfileImage(uid, file) {
+const uploadAndSaveProfileImage = async (uid, file) => {
   try {
     const uploadResult = await uploadProfileImage(uid, file);
     if (!uploadResult.success) return uploadResult;
@@ -11,6 +11,8 @@ async function uploadAndSaveProfileImage(uid, file) {
   } catch (error) {
     return { success: false, message: error.message };
   }
-}
+};
 
-module.exports = { uploadAndSaveProfileImage };
+module.exports = {
+  uploadAndSaveProfileImage
+};
