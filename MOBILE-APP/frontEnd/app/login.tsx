@@ -42,66 +42,74 @@ export default function LoginScreen() {
   });
 
   if (!fontsLoaded) return null;
+const handleLogin = async () => {
+  try {
+    setErrorMsg("");
 
-  const handleLogin = async () => {
-    try {
-      setErrorMsg("");
-
-      if (!email || !password) {
-        setErrorMsg("Please enter both email and password.");
-        return;
-      }
-
-      setLoading(true);
-
-      const res = await loginUser(email, password);
-      console.log("LOGIN RESPONSE:", res);
-
-      if (res.success && res.data?.valid) {
-        const backendUser = res.data.user;
-
-        const userData = {
-          ...backendUser,
-          name: backendUser.username || backendUser.name || email,
-          email: backendUser.email || email,
-        };
-
-        await AsyncStorage.setItem("userData", JSON.stringify(userData));
-
-        Alert.alert("Success 🎉", `Welcome ${userData.name}!`);
-
-        // --- التعديل هنا للهندلة بناءً على الدومين ---
-        const userEmail = userData.email.toLowerCase();
-        
-        if (userEmail.endsWith("@cu.edu.eg")) {
-          // توجيه لداشبورد الدكتور أو الموظف (Employer)
-          router.replace("/employer/EmployerDashboard");
-        } else {
-          // توجيه لداشبورد الطالب العادي
-          router.replace({
-            pathname: "/StudentDashboard",
-            params: {
-              name: userData.name,
-              department: "",
-              gpa: "",
-              year: "",
-              profilePic: "",
-            },
-          });
-        }
-        // ------------------------------------------
-
-      } else {
-        setErrorMsg(res.message || "Invalid credentials.");
-      }
-    } catch (err: any) {
-      console.log("LOGIN ERROR FRONT:", err);
-      setErrorMsg(err?.message || "Server error. Try again.");
-    } finally {
-      setLoading(false);
+    if (!email || !password) {
+      setErrorMsg("Please enter both email and password.");
+      return;
     }
-  };
 
+    // ✅ Admin test shortcut
+    if (email.toLowerCase() === "admin@test.com" && password === "123456") {
+      const adminData = {
+        name: "Admin",
+        email: "admin@test.com",
+        role: "admin",
+      };
+
+      await AsyncStorage.setItem("userData", JSON.stringify(adminData));
+
+      Alert.alert("Success 🎉", "Welcome Admin!");
+      router.replace("/admin/AdminDashboard");
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await loginUser(email, password);
+    console.log("LOGIN RESPONSE:", res);
+
+    if (res.success && res.data?.valid) {
+      const backendUser = res.data.user;
+
+      const userData = {
+        ...backendUser,
+        name: backendUser.username || backendUser.name || email,
+        email: backendUser.email || email,
+      };
+
+      await AsyncStorage.setItem("userData", JSON.stringify(userData));
+
+      Alert.alert("Success 🎉", `Welcome ${userData.name}!`);
+
+      const userEmail = userData.email.toLowerCase();
+
+      if (userEmail.endsWith("@cu.edu.eg")) {
+        router.replace("/employer/EmployerDashboard");
+      } else {
+        router.replace({
+          pathname: "/StudentDashboard",
+          params: {
+            name: userData.name,
+            department: "",
+            gpa: "",
+            year: "",
+            profilePic: "",
+          },
+        });
+      }
+    } else {
+      setErrorMsg(res.message || "Invalid credentials.");
+    }
+  } catch (err: any) {
+    console.log("LOGIN ERROR FRONT:", err);
+    setErrorMsg(err?.message || "Server error. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />

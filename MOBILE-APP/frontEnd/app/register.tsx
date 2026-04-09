@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { registerUser } from "../src/api.js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as DocumentPicker from "expo-document-picker";
 import {
   View,
   Text,
@@ -120,6 +121,10 @@ export default function RegisterScreen() {
   const [gpa, setGpa] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
+  // CV Upload
+  const [cvFile, setCvFile] = useState<{ name: string; uri: string; size?: number } | null>(null);
+  const [cvError, setCvError] = useState("");
+
   // Employer fields
   const [institutionName, setInstitutionName] = useState("");
   const [officialEmail, setOfficialEmail] = useState("");
@@ -205,6 +210,31 @@ export default function RegisterScreen() {
   const getSkillsList = () =>
     department === "Computer Science" ? CS_SKILLS : GENERAL_SKILLS;
 
+  // ── CV Picker ──
+  const handlePickCV = async () => {
+    setCvError("");
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+
+        // Check size (max 5MB)
+        if (file.size && file.size > 5 * 1024 * 1024) {
+          setCvError("File too large. Max size is 5MB.");
+          return;
+        }
+
+        setCvFile({ name: file.name, uri: file.uri, size: file.size });
+      }
+    } catch (err) {
+      setCvError("Failed to pick file. Please try again.");
+    }
+  };
+
   // ── Validation + Next ──
   const handleNext = () => {
     setErrorMsg("");
@@ -252,7 +282,7 @@ export default function RegisterScreen() {
   };
 
   // ── Submit ──
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     setErrorMsg("");
 
     if (!agreedTerms) {
@@ -260,7 +290,6 @@ const handleSubmit = async () => {
       return;
     }
 
-    // Validation إضافي للطالب في الخطوة الثانية
     if (userType === "student") {
       if (!department || !academicYear) {
         setErrorMsg("Please complete your academic information.");
@@ -271,44 +300,60 @@ const handleSubmit = async () => {
     setLoading(true);
 
     try {
-      // تجهيز البيانات بناءً على نوع المستخدم
-     // داخل handleSubmit في ملف register.tsx
-const payload = userType === "student" 
-  ? {
-      username: fullName.trim(), // غيرنا name لـ username
-      email: email.toLowerCase().trim(),
-      password: password,
-      role: "student",
-      department: department,
-      year: academicYear,
-    }
-  : {
-      username: institutionName.trim(), // السيرفر مستني username وليس name
-      email: officialEmail.toLowerCase().trim(),
-      password: empPassword,
-      role: "employer",
-      position: position,
-      institution: institutionName.trim(),
-    };
+      let res;
 
-      // استدعاء الدالة من ملف api.js
-      const res = await registerUser(payload);
+      if (userType === "student") {
+        // استخدام FormData لدعم رفع الـ CV
+        const formData = new FormData();
+        formData.append("username", fullName.trim());
+        formData.append("email", email.toLowerCase().trim());
+        formData.append("password", password);
+        formData.append("role", "student");
+        formData.append("department", department);
+        formData.append("year", academicYear);
+        if (gpa) formData.append("gpa", gpa);
+        if (selectedSkills.length > 0)
+          formData.append("skills", JSON.stringify(selectedSkills));
+        if (cvFile) {
+          formData.append("cv", {
+            uri: cvFile.uri,
+            name: cvFile.name,
+            type: "application/pdf",
+          } as any);
+        }
+
+        res = await registerUser(formData); // true = multipart
+      } else {
+        const payload = {
+          username: institutionName.trim(),
+          email: officialEmail.toLowerCase().trim(),
+          password: empPassword,
+          role: "employer",
+          position: position,
+          institution: institutionName.trim(),
+        };
+        res = await registerUser(payload);
+      }
 
       if (res.success) {
-        // حفظ بيانات المستخدم محلياً للاستخدام لاحقاً في الـ Dashboards
-        await AsyncStorage.setItem("userData", JSON.stringify(res.data.user || payload));
-        
-        Alert.alert("Success 🎉", userType === "student" ? "Welcome to Student Portal!" : "Account created! Awaiting verification.");
+        await AsyncStorage.setItem(
+          "userData",
+          JSON.stringify(res.data.user || {})
+        );
 
-        // التوجيه بناءً على نوع الحساب والمسارات اللي بعتيها
+        Alert.alert(
+          "Success 🎉",
+          userType === "student"
+            ? "Welcome to Student Portal!"
+            : "Account created! Awaiting verification."
+        );
+
         if (userType === "student") {
           router.replace("/StudentDashboard");
         } else {
-          // التوجيه لمسار الـ Employer اللي ذكرتيه
           router.replace("/employer/EmployerDashboard");
         }
       } else {
-        // عرض رسالة الخطأ القادمة من السيرفر (مثل: الايميل مستخدم مسبقاً)
         setErrorMsg(res.message || "Registration failed.");
       }
     } catch (err) {
@@ -584,6 +629,68 @@ const payload = userType === "student"
                       : "📚 Needs Improvement"}
                   </Text>
                 )}
+
+                {/* ── CV Upload ── */}
+                <Text style={styles.label}>
+                  CV / Resume{" "}
+                  <Text style={{ color: "#94a3b8", fontWeight: "400" }}>(Optional)</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.cvUploadBox,
+                    cvFile && styles.cvUploadBoxFilled,
+                  ]}
+                  onPress={handlePickCV}
+                  activeOpacity={0.8}
+                >
+                  {cvFile ? (
+                    <View style={styles.cvFileRow}>
+                      <View style={styles.cvFileIconWrapper}>
+                        <Text style={styles.cvFileIconEmoji}>📄</Text>
+                      </View>
+                      <View style={styles.cvFileInfo}>
+                        <Text style={styles.cvFileName} numberOfLines={1}>
+                          {cvFile.name}
+                        </Text>
+                        {cvFile.size && (
+                          <Text style={styles.cvFileSize}>
+                            {cvFile.size < 1024 * 1024
+                              ? `${(cvFile.size / 1024).toFixed(1)} KB`
+                              : `${(cvFile.size / (1024 * 1024)).toFixed(2)} MB`}
+                            {" "}• PDF
+                          </Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.cvRemoveBtn}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setCvFile(null);
+                          setCvError("");
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.cvRemoveText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.cvPlaceholder}>
+                      <View style={styles.cvUploadIconWrapper}>
+                        <Text style={styles.cvUploadIconEmoji}>📎</Text>
+                      </View>
+                      <Text style={styles.cvUploadTitle}>Upload your CV</Text>
+                      <Text style={styles.cvUploadSub}>PDF only • Max 5MB</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {cvError ? (
+                  <View style={styles.cvErrorRow}>
+                    <Text style={styles.cvErrorText}>⚠️ {cvError}</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.hint}>
+                  Helps employers review your profile faster
+                </Text>
               </View>
 
               <View style={styles.sectionCard}>
@@ -633,7 +740,8 @@ const payload = userType === "student"
                   {agreedTerms && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.checkText}>
-                  I agree to the <Text style={styles.link}>terms and conditions</Text>
+                  I agree to the{" "}
+                  <Text style={styles.link}>terms and conditions</Text>
                 </Text>
               </TouchableOpacity>
             </>
@@ -765,7 +873,8 @@ const payload = userType === "student"
                   {agreedTerms && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.checkText}>
-                  I agree to the <Text style={styles.link}>terms and conditions</Text>
+                  I agree to the{" "}
+                  <Text style={styles.link}>terms and conditions</Text>
                 </Text>
               </TouchableOpacity>
             </>
@@ -991,6 +1100,72 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f1f5f9",
   },
   dropdownItemText: { fontSize: 14, color: "#334155" },
+
+  // ── CV Upload Styles ──
+  cvUploadBox: {
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    borderStyle: "dashed",
+    borderRadius: 14,
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#f8faff",
+    marginBottom: 4,
+    marginTop: 2,
+  },
+  cvUploadBoxFilled: {
+    borderStyle: "solid",
+    borderColor: "#1E3A5F",
+    backgroundColor: "#eff6ff",
+    padding: 14,
+  },
+  cvPlaceholder: { alignItems: "center", gap: 8 },
+  cvUploadIconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  cvUploadIconEmoji: { fontSize: 24 },
+  cvUploadTitle: { fontSize: 14, fontWeight: "700", color: "#1E3A5F" },
+  cvUploadSub: { fontSize: 12, color: "#94a3b8" },
+  cvFileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+  },
+  cvFileIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cvFileIconEmoji: { fontSize: 22 },
+  cvFileInfo: { flex: 1 },
+  cvFileName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  cvFileSize: { fontSize: 11, color: "#64748b" },
+  cvRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#fee2e2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cvRemoveText: { fontSize: 12, color: "#ef4444", fontWeight: "800" },
+  cvErrorRow: { marginBottom: 4 },
+  cvErrorText: { fontSize: 12, color: "#dc2626" },
 
   skillsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
   skillChip: {

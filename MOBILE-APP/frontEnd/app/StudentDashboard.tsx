@@ -209,12 +209,15 @@ const StudentDashboard: React.FC = () => {
             <Text style={styles.greeting}>Good Morning,</Text>
             <Text style={styles.headerName}>{firstName}</Text>
           </View>
-          <TouchableOpacity style={styles.bellWrap}>
-            <Ionicons name="notifications-outline" size={26} color="#fff" />
-            <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>2</Text>
-            </View>
-          </TouchableOpacity>
+         <TouchableOpacity 
+  style={styles.bellWrap} 
+  onPress={() => router.push({ pathname: "/notifications", params: userData })}
+>
+  <Ionicons name="notifications-outline" size={26} color="#fff" />
+  <View style={styles.bellBadge}>
+    <Text style={styles.bellBadgeText}>2</Text>
+  </View>
+</TouchableOpacity>
         </View>
 
         <View style={styles.content}>
