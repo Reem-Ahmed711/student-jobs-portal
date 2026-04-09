@@ -3,11 +3,19 @@ const app = express();
 
 app.use(express.json());
 
+const authRoutes = require("./ٌRoutes/authRoute");
 const profileRoutes = require("./Routes/profile");
 const dashboardRoutes = require("./Routes/dashboard");
 
+const jobRoutes = require("./Routes/jobRoute");
+const applicationRoutes = require("./Routes/applicationRoute");
+
+app.use("/api", authRoutes);
 app.use("/api", profileRoutes);
 app.use("/api", dashboardRoutes);
+
+app.use("/api", jobRoutes);
+app.use("/api", applicationRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running 🚀");

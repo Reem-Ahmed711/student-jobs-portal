@@ -1,14 +1,7 @@
-import { db } from "../firebaseConfig.js";
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  serverTimestamp 
-} from "firebase/firestore";
+const { doc, setDoc, getDoc, updateDoc, serverTimestamp } = require("firebase/firestore");
+const { db } = require("../firebase/firebaseConfig");
 
-
-export async function createProfile(uid, profileData) {
+const createProfile = async (uid, profileData) => {
   try {
     const userRef = doc(db, "users", uid);
 
@@ -19,14 +12,12 @@ export async function createProfile(uid, profileData) {
     });
 
     return { success: true, message: "Profile created successfully" };
-
   } catch (error) {
     return { success: false, message: error.message };
   }
-}
+};
 
-
-export async function getProfile(uid) {
+const getProfile = async (uid) => {
   try {
     const userRef = doc(db, "users", uid);
     const snapshot = await getDoc(userRef);
@@ -36,14 +27,12 @@ export async function getProfile(uid) {
     }
 
     return { success: true, data: snapshot.data() };
-
   } catch (error) {
     return { success: false, message: error.message };
   }
-}
+};
 
-
-export async function updateProfile(uid, updatedData) {
+const updateProfile = async (uid, updatedData) => {
   try {
     const userRef = doc(db, "users", uid);
 
@@ -53,8 +42,13 @@ export async function updateProfile(uid, updatedData) {
     });
 
     return { success: true, message: "Profile updated successfully" };
-
   } catch (error) {
     return { success: false, message: error.message };
   }
-}
+};
+
+module.exports = {
+  createProfile,
+  getProfile,
+  updateProfile
+};
