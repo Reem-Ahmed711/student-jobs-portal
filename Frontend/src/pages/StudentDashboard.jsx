@@ -25,7 +25,6 @@ const StudentDashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // جلب الإحصائيات
         const statsResponse = await getStudentStats();
         setStats(statsResponse.data || {
           totalApplications: 12,
@@ -35,12 +34,10 @@ const StudentDashboard = () => {
           profileCompletion: 80
         });
 
-        // جلب الوظائف المقترحة
         const jobsResponse = await getRecommendedJobs();
         setRecommendedJobs(jobsResponse.data || []);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // بيانات وهمية في حالة الخطأ
         setStats({
           totalApplications: 12,
           pendingReview: 5,

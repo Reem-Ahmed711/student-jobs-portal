@@ -234,7 +234,6 @@ const Register = () => {
     setLoading(true); 
     setError('');
     
-    // تجهيز البيانات حسب نوع المستخدم
     const payload = userType === 'student'
       ? {
           name: formData.fullName,
@@ -268,22 +267,20 @@ const Register = () => {
     if (result.success) {
       console.log('✅ Registration successful! User role:', result.user?.role);
       
-      // Show success message
       alert(`Welcome ${result.user?.name}! Redirecting to dashboard...`);
       
-      // Redirect based on role
       if (result.user?.role === 'student') {
-        console.log('👉 Redirecting to student dashboard');
+        console.log(' Redirecting to student dashboard');
         navigate('/student-dashboard');
       } else if (result.user?.role === 'employer') {
-        console.log('👉 Redirecting to employer dashboard');
+        console.log('Redirecting to employer dashboard');
         navigate('/employer-dashboard');
       } else {
-        console.log('👉 Unknown role, redirecting to login');
+        console.log(' Unknown role, redirecting to login');
         navigate('/login');
       }
     } else {
-      console.error('❌ Registration failed:', result.error);
+      console.error(' Registration failed:', result.error);
       setError(result.error || 'Registration failed');
     }
   };
@@ -1051,7 +1048,6 @@ const Register = () => {
   );
 };
 
-// ===== Helper Components =====
 
 const InputField = ({ label, type = 'text', name, placeholder, icon, value, onChange, required }) => {
   const [isFocused, setIsFocused] = useState(false);

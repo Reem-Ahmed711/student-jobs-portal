@@ -11,6 +11,7 @@ import StudentSavedJobs from './pages/StudentSavedJobs';
 import StudentSkillsCV from './pages/StudentSkillsCV';
 import StudentSettings from './pages/StudentSettings';
 import StudentNotifications from './pages/StudentNotifications';
+import StudentProfile from './pages/StudentProfile';
 import AvailableJobs from './pages/AvailableJobs';
 import EmployerDashboard from './pages/employer/EmployerDashboard';
 import EmployerPostJob from './pages/employer/EmployerPostJob';
@@ -23,6 +24,7 @@ import EmployerSettings from './pages/employer/EmployerSettings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminManageUsers from './pages/admin/AdminManageUsers';
 import AdminManageJobs from './pages/admin/AdminManageJobs';
+import AdminProfile from './pages/admin/AdminProfile';
 import NotFound from './pages/NotFound';
 import './styles/main.css';
 
@@ -43,6 +45,7 @@ function App() {
           <Route path="/student-skills-cv" element={<StudentSkillsCV />} />
           <Route path="/student-settings" element={<StudentSettings />} />
           <Route path="/student-notifications" element={<StudentNotifications />} />
+          <Route path="/student-profile" element={<StudentProfile />} />
           <Route path="/available-jobs" element={<AvailableJobs />} />
           
           {/* Employer Routes */}
@@ -59,6 +62,7 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/admin-manage-users" element={<AdminManageUsers />} />
           <Route path="/admin-manage-jobs" element={<AdminManageJobs />} />
+          <Route path="/admin-profile" element={<AdminProfile />} />
           
           {/* 404 Route */}
           <Route path="*" element={<NotFound />} />

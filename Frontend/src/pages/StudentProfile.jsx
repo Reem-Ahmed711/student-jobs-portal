@@ -1,314 +1,296 @@
-// pages/StudentProfile.jsx
+// src/pages/StudentProfile.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-// import { Link } from 'react-router-dom'; // لو هتستخدمي روابط داخلية
+import { useAuth } from '../context/AuthContext';
+import { getProfile, updateProfile } from '../services/api';
 
 const StudentProfile = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'applications', 'saved', 'skills', 'settings'
-
-  const [stats] = useState({
-    totalApplications: 12,
-    pendingReview: 5,
-    interviewsScheduled: 2,
-    savedJobs: 7,
+  const { user, setUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    department: user?.department || '',
+    year: user?.year || '',
+    gpa: user?.gpa || '',
+    bio: user?.bio || '',
+    linkedin: user?.linkedin || '',
+    github: user?.github || ''
   });
 
-  const [recommendedJobs] = useState([
-    { id: 1, title: 'Teaching Assistant - Physics 101', department: 'Physics Department', hours: '15 hrs/week', deadline: '3 days left', match: '92%' },
-    { id: 2, title: 'Research Assistant - Quantum', department: 'Physics Department', hours: '20 hrs/week', deadline: '5 days left', match: '88%' },
-    { id: 3, title: 'Lab Assistant - General Physics', department: 'Physics Department', hours: '12 hrs/week', deadline: '7 days left', match: '85%' },
-  ]);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await getProfile();
+        if (response.data) {
+          setProfileData({
+            name: response.data.name || user?.name,
+            email: response.data.email || user?.email,
+            phone: response.data.phone || '',
+            department: response.data.department || '',
+            year: response.data.year || '',
+            gpa: response.data.gpa || '',
+            bio: response.data.bio || '',
+            linkedin: response.data.linkedin || '',
+            github: response.data.github || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
-  const [recentApplications] = useState([
-    { id: 1, title: 'Teaching Assistant - Physics 101', department: 'Physics', date: 'Feb 20, 2026', status: 'Pending' },
-    { id: 2, title: 'Research Assistant - Organic Chemistry', department: 'Chemistry', date: 'Feb 18, 2026', status: 'Interview' },
-    { id: 3, title: 'Lab Supervisor - Biology Lab', department: 'Biology', date: 'Feb 15, 2026', status: 'Accepted' },
-  ]);
+  const handleChange = (e) => {
+    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  };
 
-  if (!user) {
-    return <div>Loading...</div>; 
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await updateProfile(profileData);
+      if (setUser) {
+        setUser({ ...user, ...profileData });
+      }
+      setMessage('✅ Profile updated successfully!');
+      setIsEditing(false);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('❌ Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const userName = user?.name || 'Marium Ahmed';
-  const userDepartment = user?.department || 'Physics';
-  const userYear = user?.year || '3rd Year';
-  const userGpa = user?.gpa || '3.5';
-  const userSkills = user?.skills || ['Teaching', 'Research', 'Lab Work', 'Data Analysis', 'Communication', 'Technical Writing'];
+  const stats = [
+    { label: 'Applications', value: '12', icon: 'fa-file-alt', color: '#1E3A5F' },
+    { label: 'Interviews', value: '3', icon: 'fa-calendar-check', color: '#16a34a' },
+    { label: 'Saved Jobs', value: '7', icon: 'fa-bookmark', color: '#f59e0b' },
+    { label: 'Profile Views', value: '45', icon: 'fa-eye', color: '#3b82f6' }
+  ];
 
   return (
-    <div style={{ display: 'flex', background: '#f5f7fb', minHeight: '100vh' }}>
-      <Navbar userType="student" />
-      
-      <div style={{ marginLeft: '250px', padding: '30px', width: 'calc(100% - 250px)' }}>
+    <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
+      <Navbar />
+      <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
         {/* Header */}
-        <div style={{ marginBottom: '20px' }}>
-          <h2 style={{ color: '#0B2A4A', fontSize: '20px', fontWeight: '500' }}>Science Faculty</h2>
+        <div style={{ marginBottom: '30px', animation: 'slideInUp 0.5s ease-out' }}>
+          <h1 style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>
+            My Profile
+          </h1>
+          <p style={{ color: '#666' }}>View and manage your personal information</p>
         </div>
 
-        {/* Profile Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-          <div>
-            <h1 style={{ fontSize: '32px', color: '#0B2A4A', marginBottom: '5px' }}>{userName}</h1>
-            <p style={{ color: '#666', fontSize: '16px' }}>{userDepartment} {userYear} • Member since Sep 2023</p>
-          </div>
+        {message && (
           <div style={{
-            background: '#E6F0FA',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            color: '#0B2A4A',
-            fontWeight: '600'
+            background: message.includes('✅') ? '#d4edda' : '#f8d7da',
+            color: message.includes('✅') ? '#155724' : '#721c24',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            animation: 'slideInUp 0.3s ease-out'
           }}>
-            Complete Profile (80%)
+            {message}
           </div>
-        </div>
+        )}
 
-        {/* Tabs */}
-        <div style={{
-          display: 'flex',
-          gap: '25px',
-          marginBottom: '30px',
-          borderBottom: '1px solid #e0e0e0',
-          paddingBottom: '10px',
-          flexWrap: 'wrap'
-        }}>
-          {['Dashboard', 'Applications History', 'Saved Jobs', 'Skills & CV', 'Settings', 'Notifications'].map(tab => {
-            const tabKey = tab.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tabKey)}
-                style={{
-                  background: 'none',
-                  color: activeTab === tabKey ? '#0B2A4A' : '#666',
-                  border: 'none',
-                  borderBottom: activeTab === tabKey ? '3px solid #0B2A4A' : 'none',
-                  fontSize: '16px',
-                  fontWeight: activeTab === tabKey ? '600' : '400',
-                  cursor: 'pointer',
-                  padding: '5px 0'
-                }}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Dashboard Tab */}
-        {activeTab === 'dashboard' && (
-          <>
-            {/* Welcome Card */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
+          {/* Left Column - Profile Card */}
+          <div style={{ animation: 'slideInUp 0.6s ease-out' }}>
             <div style={{
-              padding: '25px',
-              background: 'linear-gradient(135deg, #0B2A4A 0%, #1e4a7a 100%)',
-              borderRadius: '12px',
-              color: 'white',
-              marginBottom: '30px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              background: 'white',
+              borderRadius: '16px',
+              padding: '30px',
+              textAlign: 'center',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
             }}>
-              <div>
-                <h2 style={{ marginBottom: '10px', fontSize: '24px' }}>Welcome back, {userName.split(' ')[0]}! 🎉</h2>
-                <p style={{ opacity: 0.9 }}>You have {recommendedJobs.length} new job recommendations based on your skills</p>
+              <div style={{ position: 'relative', width: '120px', margin: '0 auto 20px' }}>
+                <div style={{
+                  width: '120px',
+                  height: '120px',
+                  background: 'linear-gradient(135deg, #1E3A5F 0%, #2a4a7a 100%)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '48px',
+                  color: 'white'
+                }}>
+                  <i className="fas fa-user-graduate"></i>
+                </div>
+                <label htmlFor="profile-upload" style={{
+                  position: 'absolute',
+                  bottom: '5px',
+                  right: '5px',
+                  width: '32px',
+                  height: '32px',
+                  background: '#1E3A5F',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  cursor: 'pointer',
+                  border: '2px solid white'
+                }}>
+                  <i className="fas fa-camera" style={{ fontSize: '14px' }}></i>
+                </label>
+                <input type="file" id="profile-upload" accept="image/*" onChange={(e) => setProfileImage(e.target.files[0])} style={{ display: 'none' }} />
               </div>
+              <h2 style={{ color: '#1E3A5F', marginBottom: '5px' }}>{profileData.name || user?.name}</h2>
+              <p style={{ color: '#666', marginBottom: '5px' }}>{profileData.email || user?.email}</p>
+              <span style={{
+                display: 'inline-block',
+                background: '#1E3A5F',
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '12px'
+              }}>
+                Student
+              </span>
             </div>
 
             {/* Stats Cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '20px',
-              marginBottom: '30px'
-            }}>
-              <StatCard number={stats.totalApplications} label="Total Applications" change="+8% this month" changeColor="#00C851" />
-              <StatCard number={stats.pendingReview} label="Pending Review" subtext="Awaiting response" subtextColor="#ffbb33" />
-              <StatCard number={stats.interviewsScheduled} label="Interviews Scheduled" subtext="Next: Tomorrow" subtextColor="#0077B5" />
-              <StatCard number={stats.savedJobs} label="Saved Jobs" subtext="Ready to apply" subtextColor="#00C851" />
-            </div>
-
-            {/* Recommended Jobs */}
-            <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ color: '#0B2A4A', marginBottom: '20px', fontSize: '20px' }}>Recommended For You</h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '20px'
-              }}>
-                {recommendedJobs.map(job => (
-                  <JobCard key={job.id} job={job} />
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Applications Table */}
-            <div>
-              <h3 style={{ color: '#0B2A4A', marginBottom: '20px', fontSize: '20px' }}>Recent Applications</h3>
-              <div style={{
-                background: 'white',
-                borderRadius: '10px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                overflow: 'hidden',
-                overflowX: 'auto'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                      <th style={{ padding: '15px', textAlign: 'left', color: '#0B2A4A' }}>Job Title</th>
-                      <th style={{ padding: '15px', textAlign: 'left', color: '#0B2A4A' }}>Department</th>
-                      <th style={{ padding: '15px', textAlign: 'left', color: '#0B2A4A' }}>Applied Date</th>
-                      <th style={{ padding: '15px', textAlign: 'left', color: '#0B2A4A' }}>Status</th>
-                      <th style={{ padding: '15px', textAlign: 'left', color: '#0B2A4A' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentApplications.map(app => (
-                      <tr key={app.id} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                        <td style={{ padding: '15px' }}>{app.title}</td>
-                        <td style={{ padding: '15px' }}>{app.department}</td>
-                        <td style={{ padding: '15px' }}>{app.date}</td>
-                        <td style={{ padding: '15px' }}>
-                          <span style={{
-                            padding: '4px 12px',
-                            background: app.status === 'Pending' ? '#fff3cd' : app.status === 'Interview' ? '#d4edda' : '#cce5ff',
-                            color: app.status === 'Pending' ? '#856404' : app.status === 'Interview' ? '#155724' : '#004085',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}>
-                            {app.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '15px' }}>
-                          <button style={{ background: 'none', border: 'none', color: '#0B2A4A', cursor: 'pointer', textDecoration: 'underline' }}>
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Skills & CV Tab */}
-        {activeTab === 'skills-&-cv' && (
-          <div style={{ background: 'white', borderRadius: '12px', padding: '30px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ color: '#0B2A4A', marginBottom: '20px', fontSize: '20px' }}>Skills & CV</h3>
-            
-            {/* Skills Section */}
-            <div style={{ marginBottom: '30px' }}>
-              <h4 style={{ color: '#0B2A4A', marginBottom: '15px' }}>Your Skills</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {userSkills.map((skill, index) => (
-                  <span key={index} style={{
-                    background: '#E6F0FA',
-                    color: '#0B2A4A',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '500'
+            <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {stats.map((stat, index) => (
+                <div key={index} style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '15px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    background: `${stat.color}20`,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 10px',
+                    color: stat.color
                   }}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-              <button style={{ marginTop: '15px', padding: '8px 16px', background: 'none', border: '1px solid #0B2A4A', borderRadius: '6px', color: '#0B2A4A', cursor: 'pointer' }}>
-                + Add New Skill
-              </button>
-            </div>
-
-            {/* CV Upload Section */}
-            <div>
-              <h4 style={{ color: '#0B2A4A', marginBottom: '15px' }}>Upload CV</h4>
-              <div style={{
-                border: '2px dashed #ccc',
-                borderRadius: '8px',
-                padding: '40px',
-                textAlign: 'center',
-                background: '#fafafa'
-              }}>
-                <i className="fas fa-cloud-upload-alt" style={{ fontSize: '40px', color: '#0B2A4A', marginBottom: '10px' }}></i>
-                <p style={{ color: '#666', marginBottom: '10px' }}>Drag & drop or <span style={{ color: '#0B2A4A', fontWeight: '600', cursor: 'pointer' }}>browse</span></p>
-                <p style={{ color: '#999', fontSize: '14px' }}>PDF only, max 5MB</p>
-              </div>
-              <p style={{ marginTop: '10px', color: '#00C851' }}>CV_Reem_Ahmed.pdf uploaded</p>
+                    <i className={`fas ${stat.icon}`}></i>
+                  </div>
+                  <h3 style={{ fontSize: '20px', color: '#1E3A5F' }}>{stat.value}</h3>
+                  <p style={{ fontSize: '12px', color: '#666' }}>{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* هنا هتضيفي باقي التبويبات بنفس الطريقة: Applications History, Saved Jobs, Settings, Notifications */}
+          {/* Right Column - Edit Form */}
+          <div style={{ animation: 'slideInUp 0.7s ease-out' }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '30px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ color: '#1E3A5F', fontSize: '18px', fontWeight: '600' }}>
+                  <i className="fas fa-edit" style={{ marginRight: '10px' }}></i>
+                  Personal Information
+                </h3>
+                {!isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#1E3A5F',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-pen"></i> Edit
+                  </button>
+                )}
+              </div>
 
+              {isEditing ? (
+                <form onSubmit={handleSubmit}>
+                  <div className="input-group">
+                    <label className="input-label">Full Name</label>
+                    <input type="text" name="name" value={profileData.name} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }} required />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Email</label>
+                    <input type="email" name="email" value={profileData.email} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }} required />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Phone</label>
+                    <input type="tel" name="phone" value={profileData.phone} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Department</label>
+                    <select name="department" value={profileData.department} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }}>
+                      <option value="">Select Department</option>
+                      <option>Computer Science</option>
+                      <option>Physics</option>
+                      <option>Chemistry</option>
+                      <option>Mathematics</option>
+                      <option>Biology</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Academic Year</label>
+                    <select name="year" value={profileData.year} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }}>
+                      <option value="">Select Year</option>
+                      <option>1st Year</option>
+                      <option>2nd Year</option>
+                      <option>3rd Year</option>
+                      <option>4th Year</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">GPA (out of 5.0)</label>
+                    <input type="number" name="gpa" value={profileData.gpa} onChange={handleChange} step="0.1" min="0" max="5" className="input-field" style={{ paddingLeft: '1rem' }} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Bio</label>
+                    <textarea name="bio" value={profileData.bio} onChange={handleChange} rows="3" className="input-field" style={{ paddingLeft: '1rem' }} placeholder="Tell us about yourself..." />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">LinkedIn</label>
+                    <input type="text" name="linkedin" value={profileData.linkedin} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }} placeholder="linkedin.com/in/username" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">GitHub</label>
+                    <input type="text" name="github" value={profileData.github} onChange={handleChange} className="input-field" style={{ paddingLeft: '1rem' }} placeholder="github.com/username" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <button type="button" onClick={() => setIsEditing(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+                    <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1 }}>{loading ? 'Saving...' : 'Save Changes'}</button>
+                  </div>
+                </form>
+              ) : (
+                <div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Full Name</p><p style={{ fontWeight: '500' }}>{profileData.name || 'Not provided'}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Email</p><p style={{ fontWeight: '500' }}>{profileData.email}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Phone</p><p>{profileData.phone || 'Not provided'}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Department</p><p>{profileData.department || 'Not provided'}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Academic Year</p><p>{profileData.year || 'Not provided'}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>GPA</p><p>{profileData.gpa || 'Not provided'}</p></div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>Bio</p><p>{profileData.bio || 'No bio added'}</p></div>
+                  {profileData.linkedin && <div style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}><p style={{ color: '#999', fontSize: '12px' }}>LinkedIn</p><p><a href={`https://${profileData.linkedin}`} target="_blank" rel="noopener noreferrer" style={{ color: '#1E3A5F' }}>{profileData.linkedin}</a></p></div>}
+                  {profileData.github && <div style={{ padding: '10px 0' }}><p style={{ color: '#999', fontSize: '12px' }}>GitHub</p><p><a href={`https://${profileData.github}`} target="_blank" rel="noopener noreferrer" style={{ color: '#1E3A5F' }}>{profileData.github}</a></p></div>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-// === مكونات مساعدة (StatCard, JobCard) ===
-const StatCard = ({ number, label, change, changeColor, subtext, subtextColor }) => (
-  <div style={{
-    padding: '20px',
-    background: 'white',
-    borderRadius: '10px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-  }}>
-    <h3 style={{ fontSize: '28px', color: '#0B2A4A', marginBottom: '5px' }}>{number}</h3>
-    <p style={{ color: '#666', marginBottom: '5px' }}>{label}</p>
-    {change && <small style={{ color: changeColor }}>{change}</small>}
-    {subtext && <small style={{ color: subtextColor }}>{subtext}</small>}
-  </div>
-);
-
-const JobCard = ({ job }) => (
-  <div style={{
-    padding: '20px',
-    background: 'white',
-    borderRadius: '10px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    display: 'flex',
-    flexDirection: 'column'
-  }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-      <h4 style={{ color: '#0B2A4A', fontSize: '18px' }}>{job.title}</h4>
-      <span style={{ background: '#E6F0FA', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', color: '#0B2A4A' }}>
-        {job.match}
-      </span>
-    </div>
-    <p style={{ color: '#666', marginBottom: '5px' }}>{job.department}</p>
-    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px', color: '#666', fontSize: '14px' }}>
-      <span><i className="far fa-clock" style={{ marginRight: '5px' }}></i>{job.hours}</span>
-      <span><i className="far fa-calendar-alt" style={{ marginRight: '5px' }}></i>{job.deadline}</span>
-    </div>
-    <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
-      <button style={{
-        padding: '8px 20px',
-        background: '#0B2A4A',
-        color: 'white',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '14px',
-        flex: 1
-      }}>
-        Quick Apply
-      </button>
-      <button style={{
-        padding: '8px 20px',
-        background: 'white',
-        color: '#0B2A4A',
-        border: '1px solid #0B2A4A',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '14px'
-      }}>
-        <i className="far fa-bookmark"></i>
-      </button>
-    </div>
-  </div>
-);
 
 export default StudentProfile;

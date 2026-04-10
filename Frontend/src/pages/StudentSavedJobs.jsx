@@ -22,7 +22,6 @@ const StudentSavedJobs = () => {
         setSavedJobs(response.data || []);
       } catch (error) {
         console.error('Error fetching saved jobs:', error);
-        // بيانات وهمية في حالة الخطأ
         setSavedJobs([
           {
             id: 1,
@@ -80,7 +79,6 @@ const StudentSavedJobs = () => {
     try {
       await applyForJob({ jobId });
       alert('Application submitted successfully!');
-      // بعد التقديم، ممكن نشيلها من المحفوظات أو نخليها
     } catch (error) {
       console.error('Error applying for job:', error);
       alert('Failed to apply. Please try again.');

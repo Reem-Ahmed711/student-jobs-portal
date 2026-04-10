@@ -143,7 +143,7 @@ const Navbar = () => {
         </ul>
       )}
 
-      {/* Admin Navigation */}
+      {/* Admin Navigation - UPDATED with Profile */}
       {userType === 'admin' && (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
           <li style={{ marginBottom: '4px' }}>
@@ -159,6 +159,16 @@ const Navbar = () => {
           <li style={{ marginBottom: '4px' }}>
             <Link to="/admin-manage-jobs" style={linkStyle('/admin-manage-jobs')}>
               <i className="fas fa-briefcase" style={{ width: '20px' }}></i> Manage Jobs
+            </Link>
+          </li>
+          <li style={{ marginBottom: '4px' }}>
+            <Link to="/admin-profile" style={linkStyle('/admin-profile')}>
+              <i className="fas fa-user-shield" style={{ width: '20px' }}></i> Profile
+            </Link>
+          </li>
+          <li style={{ marginBottom: '4px' }}>
+            <Link to="/admin-settings" style={linkStyle('/admin-settings')}>
+              <i className="fas fa-cog" style={{ width: '20px' }}></i> Settings
             </Link>
           </li>
         </ul>

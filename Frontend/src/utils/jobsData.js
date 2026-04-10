@@ -252,7 +252,6 @@ export const allJobs = [
   }
 ];
 
-// وظائف مقترحة حسب قسم الطالب
 export const getRecommendedJobs = (user, limit = 3) => {
   if (!user?.department) return allJobs.slice(0, limit);
 
@@ -278,15 +277,12 @@ export const getRecommendedJobs = (user, limit = 3) => {
   return filtered.slice(0, limit);
 };
 
-// كل الوظائف المتاحة (لصفحة Available Jobs)
 export const getAllJobs = () => allJobs;
 
-// وظائف حسب القسم (للفلترة)
 export const getJobsByDepartment = (departmentCode) => {
   return allJobs.filter(job => job.departmentCode === departmentCode);
 };
 
-// إحصائيات سريعة
 export const getDepartmentStats = () => {
   const stats = {};
   allJobs.forEach(job => {

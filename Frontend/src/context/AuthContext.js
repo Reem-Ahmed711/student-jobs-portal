@@ -1,4 +1,4 @@
-// client/my-app/src/context/AuthContext.js
+// src/context/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { 
   login as apiLogin, 
@@ -19,14 +19,19 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem('token');
+      const savedRole = localStorage.getItem('userRole');
+      
       if (token) {
         try {
           const { data } = await apiGetProfile();
-          console.log('✅ User loaded from token:', data);
-          setUser(data);
+          // Use saved role if available, otherwise from API
+          const role = savedRole || data.role || 'student';
+          setUser({ ...data, role });
+          console.log('✅ User loaded, role:', role);
         } catch (err) {
           console.error('❌ Failed to load user:', err);
           localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
         }
       }
       setLoading(false);
@@ -38,10 +43,26 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const { data } = await apiLogin(formData);
-      console.log('✅ Login successful:', data);
+      console.log('✅ Login API response:', data);
+      
+      // Determine role based on email
+      let userRole = data.role;
+      if (data.email?.includes('admin')) {
+        userRole = 'admin';
+      } else if (data.email?.includes('@cu.edu.eg')) {
+        userRole = 'employer';
+      } else if (!userRole || userRole === 'student') {
+        userRole = 'student';
+      }
+      
+      const userData = { ...data, role: userRole };
+      console.log('👤 User role set to:', userRole);
+      
       localStorage.setItem('token', data.token);
-      setUser(data);
-      return { success: true, user: data };
+      localStorage.setItem('userRole', userRole);
+      setUser(userData);
+      
+      return { success: true, user: userData };
     } catch (err) {
       console.error('❌ Login failed:', err);
       const errorMessage = err.response?.data?.error || 
@@ -57,7 +78,6 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       console.log('📝 Sending registration data:', formData);
       
-      // تأكد من أن البيانات بتتناسب مع الـ backend
       const payload = {
         name: formData.fullName || formData.name,
         email: formData.email || formData.officialEmail,
@@ -74,9 +94,18 @@ export const AuthProvider = ({ children }) => {
 
       const { data } = await apiRegister(payload);
       console.log('✅ Registration successful:', data);
+      
+      let userRole = data.role;
+      if (data.email?.includes('admin')) userRole = 'admin';
+      else if (data.email?.includes('@cu.edu.eg')) userRole = 'employer';
+      
+      const userData = { ...data, role: userRole };
+      
       localStorage.setItem('token', data.token);
-      setUser(data);
-      return { success: true, user: data };
+      localStorage.setItem('userRole', userRole);
+      setUser(userData);
+      
+      return { success: true, user: userData };
     } catch (err) {
       console.error('❌ Registration failed:', err);
       const errorMessage = err.response?.data?.error || 
@@ -103,11 +132,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
     setUser(null);
   };
 
   const value = {
     user,
+    setUser,
     loading,
     error,
     login,

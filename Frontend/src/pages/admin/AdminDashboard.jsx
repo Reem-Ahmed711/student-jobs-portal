@@ -405,7 +405,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* ===== Flagged Content ===== */}
+        {/* Flagged Content */}
         <div className="card" style={{ animation: 'slideInUp 1.3s ease-out' }}>
           <h3 style={{ color: '#1E3A5F', fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>
             <i className="fas fa-flag" style={{ marginRight: '8px' }}></i>

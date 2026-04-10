@@ -43,7 +43,6 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      // استخدام بيانات وهمية للـ Google login
       const result = await login({ 
         email: 'google.user@gmail.com', 
         password: 'google-auth-mock' 
@@ -68,7 +67,6 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      // استخدام بيانات وهمية للـ LinkedIn login
       const result = await login({ 
         email: 'linkedin.user@linkedin.com', 
         password: 'linkedin-auth-mock' 

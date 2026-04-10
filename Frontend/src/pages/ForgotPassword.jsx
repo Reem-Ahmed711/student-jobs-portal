@@ -22,7 +22,6 @@ const ForgotPassword = () => {
     if (method === 'email') {
       result = await forgotPassword(email);
     } else {
-      // For phone, you'll need to implement this in backend later
       result = { success: true, message: 'Reset link sent to your phone' };
     }
 
