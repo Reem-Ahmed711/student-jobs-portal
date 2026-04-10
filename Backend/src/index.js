@@ -12,7 +12,11 @@ const applicationRoutes = require("./routes/jobsRoutes");
 const interactionRoutes = require("./routes/interactionRoutes");
 const cvRoutes = require("./routes/cvRoutes");
 const searchroutes = require("./routes/searchRoutes");
+const profileRoutes = require("./routes/profileRoutes");
+const employerRoutes = require("./routes/employerRoutes");
 
+app.use("/api/profile", profileRoutes);
+app.use("/api/employer", employerRoutes);
 app.use("/api", applicationRoutes);
 app.use("/api", interactionRoutes);
 app.use("/api", cvRoutes);
