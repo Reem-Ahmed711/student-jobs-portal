@@ -1,5 +1,5 @@
 
-const { db } = require("../firebase/firebaseConfig");
+const { db } = require("../firebase");
 const { collection,
      doc, 
      setDoc,

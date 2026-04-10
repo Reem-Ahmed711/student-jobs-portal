@@ -1,6 +1,6 @@
 
 const { doc, getDoc } = require("firebase/firestore");
-const { db } = require("../firebase/firebaseConfig");
+const { db } = require("../firebase");
 
 const getUserRole = async (uid) => {
   const docRef = doc(db, "users", uid);

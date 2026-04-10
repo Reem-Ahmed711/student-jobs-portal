@@ -1,52 +1,46 @@
-
-const { db } = require("../firebase/firebaseConfig");
-const { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, serverTimestamp } = require("firebase/firestore");
-
+const { db } = require("../firebase");
+const { FieldValue } = require("firebase-admin/firestore");
 
 const createJob = async (employerUid, jobData) => {
-  const jobRef = doc(collection(db, "jobs"));
-  await setDoc(jobRef, {
+  const jobRef = db.collection("jobs").doc();
+  await jobRef.set({
     ...jobData,
     employerUid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true, jobId: jobRef.id };
 };
 
-
 const updateJob = async (employerUid, jobId, updatedData) => {
-  const jobRef = doc(db, "jobs", jobId);
-  const snapshot = await getDoc(jobRef);
-  if (!snapshot.exists()) return { success: false, message: "Job not found" };
+  const jobRef = db.collection("jobs").doc(jobId);
+  const snapshot = await jobRef.get();
+  if (!snapshot.exists) return { success: false, message: "Job not found" };
   if (snapshot.data().employerUid !== employerUid) return { success: false, message: "Access denied" };
 
-  await updateDoc(jobRef, { ...updatedData, updatedAt: serverTimestamp() });
+  await jobRef.update({ ...updatedData, updatedAt: FieldValue.serverTimestamp() });
   return { success: true };
 };
-
 
 const deleteJob = async (employerUid, jobId) => {
-  const jobRef = doc(db, "jobs", jobId);
-  const snapshot = await getDoc(jobRef);
-  if (!snapshot.exists()) return { success: false, message: "Job not found" };
+  const jobRef = db.collection("jobs").doc(jobId);
+  const snapshot = await jobRef.get();
+  if (!snapshot.exists) return { success: false, message: "Job not found" };
   if (snapshot.data().employerUid !== employerUid) return { success: false, message: "Access denied" };
 
-  await deleteDoc(jobRef);
+  await jobRef.delete();
   return { success: true };
 };
 
-
 const getAllJobs = async () => {
-  const snapshot = await getDocs(collection(db, "jobs"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snapshot = await db.collection("jobs").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-
 const getJobById = async (jobId) => {
-  const jobRef = doc(db, "jobs", jobId);
-  const snapshot = await getDoc(jobRef);
-  if (!snapshot.exists()) return { success: false, message: "Job not found" };
+  const jobRef = db.collection("jobs").doc(jobId);
+  const snapshot = await jobRef.get();
+  if (!snapshot.exists) return { success: false, message: "Job not found" };
   return { success: true, data: snapshot.data() };
 };
 

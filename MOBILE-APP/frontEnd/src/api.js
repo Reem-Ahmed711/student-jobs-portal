@@ -1,7 +1,7 @@
 import axios from "axios";
 
 
-const API_URL = "http://10.238.2.249:3000";
+const API_URL = "http://10.17.158.249:3000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -16,7 +16,7 @@ export const registerUser = async (userData) => {
   try {
     console.log("📤 REGISTER REQUEST:", userData);
 
-    const response = await api.post("/register", userData);
+    const response = await api.post("/api/register", userData);
 
     console.log("📥 REGISTER RESPONSE:", response.data);
 
@@ -38,7 +38,7 @@ export const registerUser = async (userData) => {
 
 export const loginUser = async (email, password) => {
   try {
-    const response = await api.post("/login", {
+    const response = await api.post("/api/login", {
       email,
       password,
     });

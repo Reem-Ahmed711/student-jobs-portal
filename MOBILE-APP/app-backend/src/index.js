@@ -3,24 +3,26 @@ const app = express();
 
 app.use(express.json());
 
-const authRoutes = require("./ٌRoutes/authRoute");
+// ================= Routes =================
+const authRoute = require("./Routes/authRoute");
 const profileRoutes = require("./Routes/profile");
 const dashboardRoutes = require("./Routes/dashboard");
-
 const jobRoutes = require("./Routes/jobRoute");
 const applicationRoutes = require("./Routes/applicationRoute");
 
-app.use("/api", authRoutes);
+// ================= Use Routes =================
+app.use("/api", authRoute);
 app.use("/api", profileRoutes);
 app.use("/api", dashboardRoutes);
-
 app.use("/api", jobRoutes);
 app.use("/api", applicationRoutes);
 
+// ================= Home Route =================
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+// ================= 404 Handler =================
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -28,6 +30,7 @@ app.use((req, res) => {
   });
 });
 
+// ================= Error Handler =================
 app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
@@ -35,6 +38,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ================= Start Server =================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
