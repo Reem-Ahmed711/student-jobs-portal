@@ -1,28 +1,43 @@
+// MOBILE-APP/app-backend/src/index.js
 const express = require("express");
+const cors = require("cors");
+
 const app = express();
 
-app.use(express.json());
+// ================= CORS FIX =================
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  }),
+);
 
-// ================= Routes =================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ================= ROUTES =================
 const authRoute = require("./Routes/authRoute");
 const profileRoutes = require("./Routes/profile");
-const dashboardRoutes = require("./Routes/dashboard");
 const jobRoutes = require("./Routes/jobRoute");
 const applicationRoutes = require("./Routes/applicationRoute");
+const adminRoutes = require("./Routes/adminRoute");
+const employerRoutes = require("./Routes/employerRoute");
+const ratingRoutes = require("./Routes/ratingRoute");
 
-// ================= Use Routes =================
 app.use("/api", authRoute);
 app.use("/api", profileRoutes);
-app.use("/api", dashboardRoutes);
 app.use("/api", jobRoutes);
 app.use("/api", applicationRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api", employerRoutes);
+app.use("/api", ratingRoutes);
 
-// ================= Home Route =================
+// ================= HEALTH =================
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-// ================= 404 Handler =================
+// ================= 404 FIX =================
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -30,15 +45,15 @@ app.use((req, res) => {
   });
 });
 
-// ================= Error Handler =================
+// ================= ERROR HANDLER =================
 app.use((err, req, res, next) => {
+  console.error("Error:", err);
   res.status(500).json({
     success: false,
     message: err.message || "Server Error",
   });
 });
 
-// ================= Start Server =================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

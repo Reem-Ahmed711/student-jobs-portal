@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { registerUser } from "../src/api.js";
+import { registerUser } from "../src/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import {
@@ -29,6 +29,15 @@ const DEPARTMENTS = [
 ];
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Graduate"];
+
+// ✅ تعديل 1: إضافة الخريطة لتحويل السنة لنص رقم
+const YEAR_MAP: Record<string, string> = {
+  "1st Year": "1",
+  "2nd Year": "2",
+  "3rd Year": "3",
+  "4th Year": "4",
+  "Graduate": "5",
+};
 
 const CS_SKILLS = [
   "Python", "JavaScript", "Java", "C++",
@@ -222,7 +231,6 @@ export default function RegisterScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
 
-        // Check size (max 5MB)
         if (file.size && file.size > 5 * 1024 * 1024) {
           setCvError("File too large. Max size is 5MB.");
           return;
@@ -282,6 +290,8 @@ export default function RegisterScreen() {
   };
 
   // ── Submit ──
+ 
+    // ── Submit ──
   const handleSubmit = async () => {
     setErrorMsg("");
 
@@ -303,29 +313,21 @@ export default function RegisterScreen() {
       let res;
 
       if (userType === "student") {
-        // استخدام FormData لدعم رفع الـ CV
-        const formData = new FormData();
-        formData.append("username", fullName.trim());
-        formData.append("email", email.toLowerCase().trim());
-        formData.append("password", password);
-        formData.append("role", "student");
-        formData.append("department", department);
-        formData.append("year", academicYear);
-        if (gpa) formData.append("gpa", gpa);
-        if (selectedSkills.length > 0)
-          formData.append("skills", JSON.stringify(selectedSkills));
-        if (cvFile) {
-          formData.append("cv", {
-            uri: cvFile.uri,
-            name: cvFile.name,
-            type: "application/pdf",
-          } as any);
-        }
+        const payload = {
+          name: fullName.trim(),
+          email: email.toLowerCase().trim(),
+          password: password,
+          role: "student",
+          department: department,
+          year: YEAR_MAP[academicYear] || academicYear,
+          gpa: gpa || "",
+          skills: selectedSkills.length > 0 ? selectedSkills : [],
+        };
 
-        res = await registerUser(formData); // true = multipart
+        res = await registerUser(payload);
       } else {
         const payload = {
-          username: institutionName.trim(),
+          name: institutionName.trim(),
           email: officialEmail.toLowerCase().trim(),
           password: empPassword,
           role: "employer",
@@ -338,26 +340,31 @@ export default function RegisterScreen() {
       if (res.success) {
         await AsyncStorage.setItem(
           "userData",
-          JSON.stringify(res.data.user || {})
+          JSON.stringify(res.data || {})
         );
 
         Alert.alert(
           "Success 🎉",
           userType === "student"
             ? "Welcome to Student Portal!"
-            : "Account created! Awaiting verification."
+            : "Account created!"
         );
 
         if (userType === "student") {
-          router.replace("/StudentDashboard");
+          router.replace({
+            pathname: "/StudentDashboard",
+            params: { name: fullName }
+          });
         } else {
           router.replace("/employer/EmployerDashboard");
         }
       } else {
-        setErrorMsg(res.message || "Registration failed.");
+        // �️ هنا هنعرض الرسالة الحقيقية من الباك إند
+        setErrorMsg(res.message || "Registration failed");
       }
-    } catch (err) {
-      setErrorMsg("Network error. Please check your connection.");
+    } catch (err: any) {
+      // ✅ هنا هنعرض الرسالة الحقيقية لو حصل أي خطأ
+      setErrorMsg(err?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -1101,7 +1108,6 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: { fontSize: 14, color: "#334155" },
 
-  // ── CV Upload Styles ──
   cvUploadBox: {
     borderWidth: 2,
     borderColor: "#e2e8f0",

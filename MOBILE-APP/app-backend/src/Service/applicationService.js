@@ -1,32 +1,49 @@
+const admin = require("firebase-admin");
 
-const { db } = require("../firebase");
-const { collection,
-     doc, 
-     setDoc,
-      getDocs, 
-      query, 
-      where, 
-      serverTimestamp } = require("firebase/firestore");
+const db = admin.firestore();
 
-
+// ================= Apply to Job =================
 const applyToJob = async (studentUid, jobId) => {
-  const appRef = doc(collection(db, "applications"));
-  await setDoc(appRef, { studentUid, jobId, status: "pending", appliedAt: serverTimestamp() });
+  const appRef = db.collection("applications").doc();
+
+  await appRef.set({
+    studentUid,
+    jobId,
+    status: "pending",
+    appliedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
   return { success: true, applicationId: appRef.id };
 };
 
-
+// ================= Get Job Applications =================
 const getJobApplications = async (employerUid, jobId) => {
-  const q = query(collection(db, "applications"), where("jobId", "==", jobId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snapshot = await db
+    .collection("applications")
+    .where("jobId", "==", jobId)
+    .get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };
 
-
+// ================= Get Student Applications =================
 const getStudentApplications = async (studentUid) => {
-  const q = query(collection(db, "applications"), where("studentUid", "==", studentUid));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snapshot = await db
+    .collection("applications")
+    .where("studentUid", "==", studentUid)
+    .get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };
 
-module.exports = { applyToJob, getJobApplications, getStudentApplications };
+module.exports = {
+  applyToJob,
+  getJobApplications,
+  getStudentApplications,
+};
