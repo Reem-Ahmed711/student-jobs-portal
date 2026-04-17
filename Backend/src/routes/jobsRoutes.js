@@ -10,6 +10,16 @@ router.get("/jobs", jobsControl.getAllJobs);
 router.get("/jobs/:id", jobsControl.getJobById);
 
 // Application route
-router.post("/apply", verifyToken, applicationControl.applyForJob);
-
+router.post("/apply", verifyToken, applicationControl.applyForJob)
+// Accept application
+router.put(
+  "/applications/:id/accept",
+  verifyToken,
+  applicationControl.acceptApplication
+);
+router.get(
+  "/applications",
+  verifyToken,
+  applicationControl.getEmployerApplications
+);
 module.exports = router;

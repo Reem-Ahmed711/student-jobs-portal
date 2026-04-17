@@ -6,13 +6,14 @@ const StatCard = ({ number, label, icon, change, subtext, color = '#1E3A5F' }) =
   useEffect(() => {
     const duration = 1000;
     const steps = 60;
-    const increment = number / steps;
+    const numericValue = parseFloat(number) || 0;
+    const increment = numericValue / steps;
     let current = 0;
     
     const timer = setInterval(() => {
       current += increment;
-      if (current >= number) {
-        setAnimatedNumber(number);
+      if (current >= numericValue) {
+        setAnimatedNumber(numericValue);
         clearInterval(timer);
       } else {
         setAnimatedNumber(Math.round(current));
@@ -48,7 +49,11 @@ const StatCard = ({ number, label, icon, change, subtext, color = '#1E3A5F' }) =
         <i className={`fas ${icon}`}></i>
       </div>
       <div>
-        <h3 style={{ fontSize: '1.8rem', color: '#1E3A5F', marginBottom: '0.25rem' }}>{animatedNumber}</h3>
+        <h3 style={{ fontSize: '1.8rem', color: '#1E3A5F', marginBottom: '0.25rem' }}>
+          {typeof number === 'string' && number.includes('%') 
+            ? `${animatedNumber}%` 
+            : animatedNumber}
+        </h3>
         <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '0.25rem' }}>{label}</p>
         {change && (
           <small style={{ color: change > 0 ? '#16a34a' : '#ef4444', fontSize: '0.8rem' }}>

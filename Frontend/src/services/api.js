@@ -1,6 +1,6 @@
 // src/services/api.js
 import axios from 'axios';
-
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const USE_MOCK = true;
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -36,22 +36,17 @@ export const login = async (formData) => {
     userRole = 'employer';
   }
   
-  console.log('👤 Assigned role:', userRole);
-  
   return { 
     data: { 
       uid: '123456', 
       name: formData.email.split('@')[0], 
       email: formData.email, 
       role: userRole, 
-      token: 'mock-token-12345', 
-      department: userRole === 'student' ? 'Computer Science' : null,
-      year: userRole === 'student' ? '3rd Year' : null,
-      gpa: userRole === 'student' ? 3.7 : null,
-      institution: userRole === 'employer' ? 'Faculty of Science' : null
+      token: 'mock-token-12345'
     } 
   };
 };
+
 
 export const register = async (formData) => {
   await new Promise(resolve => setTimeout(resolve, 1500));
@@ -75,9 +70,19 @@ export const forgotPassword = async (email) => {
 
 export const getProfile = async () => {
   await new Promise(resolve => setTimeout(resolve, 500));
-  return { data: { uid: '123456', name: 'Test Student', email: 'student@test.com', role: 'student', department: 'Computer Science', year: '3rd Year', gpa: 3.7, skills: ['JavaScript', 'React', 'Python'] } };
+  return { 
+    data: { 
+      uid: '123456', 
+      name: 'Test Student', 
+      email: 'student@test.com', 
+      role: 'student', 
+      department: 'Computer Science', 
+      year: '3rd Year', 
+      gpa: 3.7, 
+      skills: ['JavaScript', 'React', 'Python'] 
+    } 
+  };
 };
-
 export const updateProfile = async (profileData) => {
   await new Promise(resolve => setTimeout(resolve, 1000));
   return { data: { success: true, message: 'Profile updated successfully', data: profileData } };
@@ -209,11 +214,38 @@ export const getAdminStats = async () => {
   await new Promise(resolve => setTimeout(resolve, 300));
   return { data: { totalUsers: MOCK_USERS.length, activeJobs: MOCK_JOBS.filter(j => new Date(j.deadline) > new Date()).length, totalApplications: MOCK_APPLICATIONS.length, placementRate: 67 } };
 };
-
+export const rejectApplication = async (applicantId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(`${API_URL}/api/employer/applicants/${applicantId}/reject`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error in rejectApplication:', error);
+    throw error;
+  }
+};
 export const getAllUsers = async () => {
   await new Promise(resolve => setTimeout(resolve, 500));
   return { data: MOCK_USERS };
 };
+export const getEmployerDashboard = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/api/employer/dashboard`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data; // هترجع البيانات مباشرة
+  } catch (error) {
+    console.error('Error in getEmployerDashboard:', error);
+    throw error;
+  }
+}; 
 
 export const updateUserRole = async (userId, role) => {
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -246,7 +278,27 @@ export const shortlistApplicant = async (applicationId) => {
   await new Promise(resolve => setTimeout(resolve, 500));
   return { data: { success: true, message: 'Shortlisted' } };
 };
-
+export const acceptApplication = async (applicantId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(`${API_URL}/api/employer/applicants/${applicantId}/accept`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error in acceptApplication:', error);
+    throw error;
+  }
+};
+export const getEmployerApplications = async () => {
+  const token = localStorage.getItem('token');
+  const response = await axios.get(`${API_BASE_URL}/applications`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response;
+};
 export default {
   login, register, googleLogin, linkedinLogin, forgotPassword, getProfile, updateProfile,
   getAllJobs, getJobById, createJob, updateJob, deleteJob,

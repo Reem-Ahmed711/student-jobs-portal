@@ -28,3 +28,29 @@ exports.createApplication = async (applicationData) => {
     throw new Error("Failed to create application: " + error.message);
   }
 };
+exports.acceptApplication = async (applicationId) => {
+  try {
+    await db
+      .collection(APPLICATIONS_COLLECTION)
+      .doc(applicationId)
+      .update({
+        status: "accepted",
+      });
+  } catch (error) {
+    throw new Error("Failed to accept application: " + error.message);
+  }
+};
+exports.getEmployerApplications = async () => {
+  try {
+    const snapshot = await db
+      .collection(APPLICATIONS_COLLECTION)
+      .get();
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    throw new Error("Failed to get applications: " + error.message);
+  }
+};

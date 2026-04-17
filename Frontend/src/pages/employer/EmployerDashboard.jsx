@@ -3,6 +3,7 @@ import Navbar from '../../components/Navbar';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
 import { mockEmployerJobs, mockApplicants } from '../../utils/mockData';
+import { acceptApplication } from '../../services/api';
 
 const EmployerDashboard = () => {
   const { user } = useAuth();
@@ -29,6 +30,21 @@ const EmployerDashboard = () => {
       setLoading(false);
     }, 1000);
   }, []);
+
+const handleAccept = async (applicantId) => {
+  try {
+    await acceptApplication(applicantId);
+    setRecentApplicants(prev =>
+      prev.map(app =>
+        app.id === applicantId ? { ...app, status: 'Accepted' } : app
+      )
+    );
+    alert('Applicant accepted successfully!');
+  } catch (error) {
+    console.error('Error accepting applicant:', error);
+    alert('Failed to accept applicant');
+  }
+};
 
   if (loading) {
     return (
@@ -161,9 +177,13 @@ const EmployerDashboard = () => {
                         <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px', marginRight: '8px' }}>
                           View
                         </button>
-                        <button className="btn btn-success" style={{ padding: '6px 12px', fontSize: '12px', background: '#00C851' }}>
-                          Accept
-                        </button>
+ <button
+  className="btn btn-success"
+  style={{ padding: '6px 12px', fontSize: '12px', background: '#00C851' }}
+  onClick={() => handleAccept(applicant.id)}
+>
+  Accept
+</button>
                       </td>
                     </tr>
                   ))}
@@ -208,7 +228,10 @@ const EmployerDashboard = () => {
                     </div>
                     
                     <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${(job.applicants / 30) * 100}%` }} />
+                      <div 
+  className="progress-fill" 
+  style={{ width: `${((job.applicants || 0) / 30) * 100}%` }} 
+/>
                     </div>
                   </div>
 
