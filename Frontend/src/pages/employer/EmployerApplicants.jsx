@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
+import axios from "axios";
+axios.defaults.baseURL = "http://localhost:5000";
 
 const EmployerApplicants = () => {
   const [selectedJob, setSelectedJob] = useState('all');
@@ -12,7 +14,7 @@ const EmployerApplicants = () => {
     { id: 'lab', name: 'Lab Assistant - General Physics', count: 12 }
   ];
 
-  const applicants = [
+const [applicants, setApplicants] = useState( [
     {
       id: 1,
       name: 'Ahmed Mohamed',
@@ -43,7 +45,7 @@ const EmployerApplicants = () => {
       gpa: '3.9',
       experience: 'Research intern at NRC'
     }
-  ];
+  ]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -53,7 +55,23 @@ const EmployerApplicants = () => {
       default: return { bg: '#e2e3e5', color: '#383d41' };
     }
   };
+const handleAccept = async (id) => {
+  try {
+    console.log("الـ ID اللي مبعوث للباك إند:", id);
+    
+    // تأكدي إن المسار ده هو اللي موجود في الـ Controllers في الباك إند
+    const response = await axios.put(`/api/applications/${id}/accept`);
 
+    if (response.status === 200) {
+      // لو الرد تمام، بنشيل الشخص من القائمة في الـ Frontend
+      setApplicants(prev => prev.filter(a => a.id !== id));
+      alert("تم قبول المتقدم بنجاح!");
+    }
+  } catch (error) {
+    console.error("حصل مشكلة في الربط:", error.response?.data || error.message);
+    alert("faild to accept the imployee");
+  }
+};
   return (
     <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
       <Navbar />
@@ -198,10 +216,14 @@ const EmployerApplicants = () => {
                     <i className="fas fa-user" style={{ marginRight: '5px' }}></i>
                     View Profile
                   </button>
-                  <button className="btn btn-success" style={{ background: '#00C851' }}>
-                    <i className="fas fa-check" style={{ marginRight: '5px' }}></i>
-                    Shortlist
-                  </button>
+                  <button
+  className="btn btn-success"
+  style={{ background: '#00C851' }}
+  onClick={() => handleAccept(applicant.id)}
+>
+  <i className="fas fa-check" style={{ marginRight: '5px' }}></i>
+  Accept
+</button>
                   <button className="btn btn-primary">
                     <i className="fas fa-envelope" style={{ marginRight: '5px' }}></i>
                     Contact
