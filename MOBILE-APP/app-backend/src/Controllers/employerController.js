@@ -35,13 +35,31 @@ const updateEmployerProfileController = async (req, res) => {
   }
 };
 
-// ================= Get Employer Jobs =================
+// ================= Get Employer Jobs (مع عدد المتقدمين) =================
 const getEmployerJobsController = async (req, res) => {
   try {
     await requireEmployer(req.user.uid);
     const { status } = req.query;
     const result = await getEmployerJobs(req.user.uid, { status });
-    res.status(200).json({ success: true, data: result });
+    
+    // ✅ إضافة عدد المتقدمين لكل وظيفة
+    const db = require("firebase-admin").firestore();
+    const jobsWithCounts = [];
+    
+    for (const job of result) {
+      // جلب عدد المتقدمين للوظيفة
+      const applicantsSnapshot = await db
+        .collection("applications")
+        .where("jobId", "==", job.id)
+        .get();
+      
+      jobsWithCounts.push({
+        ...job,
+        applicantsCount: applicantsSnapshot.size,
+      });
+    }
+    
+    res.status(200).json({ success: true, data: jobsWithCounts });
   } catch (err) {
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
@@ -56,8 +74,7 @@ const getJobApplicationsWithDetailsController = async (req, res) => {
     const result = await getJobApplicationsWithDetails(req.user.uid, jobId);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
-      console.log("Dashboard Error:", err); // ✅ ضيفي ده
-
+    console.log("Dashboard Error:", err);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -102,11 +119,25 @@ const getEmployerStatsController = async (req, res) => {
   }
 };
 
-// ================= Get Employer Dashboard =================
+// ================= Get Employer Dashboard (محسن) =================
 const getEmployerDashboardController = async (req, res) => {
   try {
     await requireEmployer(req.user.uid);
     const result = await getEmployerDashboard(req.user.uid);
+    
+    // ✅ إضافة عدد المتقدمين لكل وظيفة في الـ Dashboard
+    const db = require("firebase-admin").firestore();
+    
+    if (result.jobs && result.jobs.length > 0) {
+      for (const job of result.jobs) {
+        const applicantsSnapshot = await db
+          .collection("applications")
+          .where("jobId", "==", job.id)
+          .get();
+        job.applicantsCount = applicantsSnapshot.size;
+      }
+    }
+    
     res.status(200).json({ success: true, data: result });
   } catch (err) {
     const status = err.message.includes("Access denied") ? 403 : 500;

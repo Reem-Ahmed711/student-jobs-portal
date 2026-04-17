@@ -15,6 +15,7 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStudentApplications } from '../src/api';
+import axios from 'axios';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -24,6 +25,8 @@ interface Application {
   studentUid: string;
   status: string;
   appliedAt?: any;
+  jobTitle?: string;
+  jobDepartment?: string;
 }
 
 const statusConfig: Record<string, { color: string; bg: string; icon: string }> = {
@@ -90,12 +93,48 @@ const ApplicationsScreen: React.FC = () => {
     email: (params.email as string) || '',
   };
 
+  // جلب بيانات الوظيفة لكل application
+  const fetchJobDetails = async (jobId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const API_URL = 'http://10.17.158.249:3000';
+      const res = await axios.get(`${API_URL}/api/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data && res.data.data) {
+        return {
+          jobTitle: res.data.data.title || 'Unknown Job',
+          jobDepartment: res.data.data.department || 'Unknown Department'
+        };
+      }
+    } catch (err) {
+      console.log('Error fetching job:', jobId, err);
+    }
+    return {
+      jobTitle: 'Unknown Job',
+      jobDepartment: 'Unknown Department'
+    };
+  };
+
   const fetchApplications = async () => {
     try {
       const res = await getStudentApplications();
       if (res.success) {
         const apps = Array.isArray(res.data) ? res.data : [];
-        setApplications(apps);
+        
+        // جلب بيانات الوظائف لكل تطبيق
+        const appsWithJobDetails = await Promise.all(
+          apps.map(async (app: Application) => {
+            const jobDetails = await fetchJobDetails(app.jobId);
+            return {
+              ...app,
+              jobTitle: jobDetails.jobTitle,
+              jobDepartment: jobDetails.jobDepartment,
+            };
+          })
+        );
+        
+        setApplications(appsWithJobDetails);
       }
     } catch (err) {
       console.log('Failed to fetch applications:', err);
@@ -217,14 +256,14 @@ const ApplicationsScreen: React.FC = () => {
                 <View key={app.id} style={styles.card}>
                   <View style={styles.cardTopRow}>
                     <Text style={styles.cardTitle} numberOfLines={2}>
-                      Application #{app.id.slice(0, 10)}...
+                      {app.jobTitle || 'Loading...'}
                     </Text>
                     <View style={[styles.statusIconWrap, { backgroundColor: cfg.bg }]}>
                       <Ionicons name={cfg.icon as any} size={18} color={cfg.color} />
                     </View>
                   </View>
 
-                  <Text style={styles.cardDept}>Job ID: {app.jobId.slice(0, 10)}...</Text>
+                  <Text style={styles.cardDept}>{app.jobDepartment || 'Loading...'}</Text>
 
                   <View style={[styles.statusBadge, { backgroundColor: cfg.bg, alignSelf: 'flex-start', marginBottom: 12 }]}>
                     <Text style={[styles.statusText, { color: cfg.color }]}>{app.status.toUpperCase()}</Text>

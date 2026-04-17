@@ -140,7 +140,14 @@ export const getJobApplicants = async (jobId) => {
     const res = await api.get(`/api/applications/job/${jobId}`);
     return { success: true, data: res.data };
   } catch (err) {
-    return { success: false, data: [] };
+    // عشان تشوفي الخطأ الحقيقي
+    console.log("🔴 getJobApplicants ERROR:", err.response?.status, err.response?.data);
+    return { 
+      success: false, 
+      data: [],
+      status: err.response?.status,
+      message: err.response?.data?.message || err.message
+    };
   }
 };
 

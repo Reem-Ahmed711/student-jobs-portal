@@ -1,4 +1,5 @@
-import React from 'react';
+// MOBILE-APP/frontEnd/app/MoreScreen.tsx
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +9,55 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
+
+// ========== Bottom Tab Bar - نفس تصميم StudentDashboard ==========
+const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'home', label: 'Home' },
+    { key: 'jobs', label: 'Jobs' },
+    { key: 'applications', label: 'Apps' },
+    { key: 'profile', label: 'Profile' },
+    { key: 'more', label: 'More' },
+  ];
+
+  const getIcon = (key: TabKey, isActive: boolean) => {
+    const color = isActive ? '#1E3A5F' : '#9CA3AF';
+    switch (key) {
+      case 'home':
+        return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
+      case 'jobs':
+        return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
+      case 'applications':
+        return <Ionicons name={isActive ? 'document-text' : 'document-text-outline'} size={23} color={color} />;
+      case 'profile':
+        return <Ionicons name={isActive ? 'person' : 'person-outline'} size={23} color={color} />;
+      case 'more':
+        return <Feather name="more-horizontal" size={23} color={color} />;
+    }
+  };
+
+  return (
+    <View style={styles.tabBar}>
+      {tabs.map((tab) => (
+        <TouchableOpacity key={tab.key} style={styles.tabItem} onPress={() => onPress(tab.key)}>
+          {getIcon(tab.key, active === tab.key)}
+          <Text style={[styles.tabLabel, active === tab.key && styles.tabLabelActive]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
+
 export default function MoreScreen() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabKey>('more');
 
   // Simple logout function
   const handleLogout = () => {
@@ -41,7 +85,43 @@ export default function MoreScreen() {
     );
   };
 
-  // Simple navigation functions
+  // ========== التنقل بين التبويبات ==========
+  const handleTabPress = (key: TabKey) => {
+    setActiveTab(key);
+    
+    // حفظ بيانات المستخدم لتمريرها
+    const loadUserData = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('userData');
+        const userData = stored ? JSON.parse(stored) : {};
+        const params = {
+          name: userData.name || 'Student',
+          email: userData.email || '',
+          department: userData.department || '',
+          gpa: userData.gpa || '',
+          year: userData.year || '',
+        };
+
+        const pathMap: Record<string, string> = {
+          home: '/StudentDashboard',
+          jobs: '/JobsScreen',
+          applications: '/ApplicationsScreen',
+          profile: '/ProfileScreen',
+          more: '/MoreScreen',
+        };
+        
+        if (pathMap[key] && pathMap[key] !== '/MoreScreen') {
+          router.replace({ pathname: pathMap[key] as any, params: params as any });
+        }
+      } catch (error) {
+        console.log('Error loading user data:', error);
+      }
+    };
+    
+    loadUserData();
+  };
+
+  // Navigation functions
   const goToSavedJobs = () => {
     Alert.alert('Saved Jobs', 'This feature will be available soon!');
   };
@@ -138,7 +218,12 @@ export default function MoreScreen() {
         {/* Version */}
         <Text style={styles.versionText}>Version 1.0.0</Text>
         <Text style={styles.versionText}>© 2026 Cairo University</Text>
+        
+        <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Bottom Tab Bar */}
+      <BottomTabBar active={activeTab} onPress={handleTabPress} />
     </SafeAreaView>
   );
 }
@@ -224,5 +309,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     marginTop: 4,
+  },
+  // ========== Styles للـ Bottom Tab Bar ==========
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingBottom: 8,
+    paddingTop: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 3,
+  },
+  tabLabelActive: {
+    color: '#1E3A5F',
+    fontWeight: '600',
   },
 });

@@ -1,30 +1,29 @@
 // MOBILE-APP/frontEnd/app/employer/EmployerMyJobs.tsx
+
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  FlatList,
   ActivityIndicator,
-  RefreshControl, 
-  Alert,
+  RefreshControl,
+  Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getEmployerJobs } from '../../src/api';
-import axios from 'axios';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { getEmployerJobs, deleteJob } from '../../src/api'; // ✅ استخدمي deleteJob من api.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://10.0.2.2:3000";
-
-export default function EmployerMyJobs() {
-  const router = useRouter();
+const EmployerMyJobs = () => {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('all');
+
+  const router = useRouter();
 
   const fetchJobs = async () => {
     try {
@@ -52,20 +51,22 @@ export default function EmployerMyJobs() {
     fetchJobs();
   };
 
+  // ✅ دالة الحذف باستخدام الـ API الموجودة
   const handleDelete = (jobId: string) => {
     Alert.alert("Delete Job", "Are you sure you want to delete this job?", [
       { text: "Cancel", style: "cancel" },
       { 
-        text: "Delete", 
+        text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
-            const token = await AsyncStorage.getItem("userToken");
-            await axios.delete(`${API_URL}/api/jobs/${jobId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            setJobs(jobs.filter(j => j.id !== jobId));
-            Alert.alert("Success", "Job deleted");
+            const res = await deleteJob(jobId); // ✅ استخدام الدالة الموجودة
+            if (res.success) {
+              Alert.alert("Success", "Job deleted successfully");
+              fetchJobs(); // ✅ إعادة تحميل القائمة
+            } else {
+              Alert.alert("Error", res.message || "Failed to delete");
+            }
           } catch (err) {
             Alert.alert("Error", "Failed to delete job");
           }
@@ -74,183 +75,224 @@ export default function EmployerMyJobs() {
     ]);
   };
 
+  // فلترة
+  const filteredJobs = jobs.filter(job => {
+    if (filter === 'all') return true;
+    return job.status?.toLowerCase() === filter;
+  });
+
+  const renderJobCard = ({ item }: any) => {
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.jobTitle}>{item.title}</Text>
+            <Text style={styles.departmentText}>{item.department}</Text>
+
+            <View style={styles.infoRow}>
+              <View style={styles.iconText}>
+                <Ionicons name="people-outline" size={14} color="#999" />
+                <Text style={styles.infoText}>
+                  {item.applicantsCount || 0} Applicants
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.applicantsBadge}>
+              <Text style={styles.applicantsCount}>
+                {item.applicantsCount || 0}
+              </Text>
+              <Text style={styles.applicantsLabel}>apps</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Progress */}
+        <View style={styles.progressContainer}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { width: `${Math.min(((item.applicantsCount || 0) / 40) * 100, 100)}%` }
+            ]} 
+          />
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={styles.outlineButton}
+            onPress={() => handleDelete(item.id)}
+          >
+            <MaterialCommunityIcons name="delete-outline" size={16} color="#ef4444" />
+            <Text style={styles.outlineButtonText}>Delete</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => router.push({ 
+              pathname: '/employer/EmployerViewApps', 
+              params: { jobId: item.id, jobTitle: item.title } 
+            })}
+          >
+            <Ionicons name="people" size={16} color="#FFF" />
+            <Text style={styles.primaryButtonText}>Applicants</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1E3A5F" />
+        <ActivityIndicator size="large" color="#0B2A4A" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
-      
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Posted Jobs</Text>
-        <View style={{ width: 24 }} />
-      </View>
-      
-      <ScrollView 
-        style={styles.body} 
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <FlatList
+        data={filteredJobs}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderJobCard}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {jobs.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="briefcase-outline" size={64} color="#CBD5E1" />
-            <Text style={styles.emptyText}>You haven't posted any jobs yet.</Text>
+        ListHeaderComponent={() => (
+          <View style={styles.header}>
+            <Text style={styles.title}>My Job Postings</Text>
+            <Text style={styles.subtitle}>Manage your jobs</Text>
+
             <TouchableOpacity 
-              style={styles.postBtn}
+              style={styles.postButton}
               onPress={() => router.push('/employer/EmployerPostJob')}
-              activeOpacity={0.8}
             >
-              <Text style={styles.postBtnText}>+ Post Your First Job</Text>
+              <Ionicons name="add" size={24} color="#FFF" />
+              <Text style={styles.postButtonText}>New Job</Text>
             </TouchableOpacity>
-          </View>
-        ) : (
-          jobs.map(job => (
-            <View key={job.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.title}>{job.title}</Text>
-                  <Text style={styles.dept}>{job.department}</Text>
-                </View>
-                <View style={[styles.statusBadge, { 
-                  backgroundColor: job.status === 'active' ? '#DCFCE7' : '#FEE2E2' 
-                }]}>
-                  <Text style={[styles.statusText, {
-                    color: job.status === 'active' ? '#065f46' : '#991b1b'
-                  }]}>
-                    {job.status || 'active'}
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {['all', 'active', 'closed'].map((s) => (
+                <TouchableOpacity 
+                  key={s}
+                  onPress={() => setFilter(s)}
+                  style={[
+                    styles.filterTab,
+                    filter === s && styles.filterTabActive
+                  ]}
+                >
+                  <Text style={[
+                    styles.filterText,
+                    filter === s && styles.filterTextActive
+                  ]}>
+                    {s}
                   </Text>
-                </View>
-              </View>
-              
-              <View style={styles.footer}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="people-outline" size={16} color="#666" />
-                  <Text style={styles.metaText}>{job.applicationsCount || 0} Applicants</Text>
-                </View>
-                
-                <View style={styles.actions}>
-                  <TouchableOpacity 
-                    style={styles.viewBtn} 
-                    onPress={() => router.push({ 
-                      pathname: '/employer/EmployerViewApps', 
-                      params: { jobId: job.id, jobTitle: job.title } 
-                    })}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.viewTxt}>View Apps</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.delBtn} 
-                    onPress={() => handleDelete(job.id)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          ))
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         )}
-        <View style={{ height: 30 }} />
-      </ScrollView>
-    </SafeAreaView>
+        ListEmptyComponent={() => (
+          <View style={{ alignItems: 'center', marginTop: 50 }}>
+            <Text>No jobs found</Text>
+          </View>
+        )}
+      />
+    </View>
   );
-}
+};
+
+export default EmployerMyJobs;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F1F5F9' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1F5F9' },
-  header: { 
-    backgroundColor: '#1E3A5F', 
-    padding: 16, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  body: { padding: 16 },
-  emptyContainer: {
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  header: { padding: 20, paddingTop: 40 },
+  title: { fontSize: 24, fontWeight: '700', color: '#0B2A4A' },
+  subtitle: { color: '#666', marginTop: 4 },
+
+  postButton: {
+    backgroundColor: '#0B2A4A',
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 20,
     justifyContent: 'center',
-    marginTop: 60,
+    alignItems: 'center'
   },
-  emptyText: { 
-    textAlign: 'center', 
-    color: '#94A3B8', 
-    marginTop: 16, 
-    fontSize: 15,
-    marginBottom: 20,
+  postButtonText: { color: '#FFF', marginLeft: 8 },
+
+  filterTab: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    marginRight: 10,
+    marginTop: 15
   },
-  postBtn: {
-    backgroundColor: '#1E3A5F',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 10,
+  filterTabActive: { backgroundColor: '#0B2A4A' },
+  filterText: { color: '#666' },
+  filterTextActive: { color: '#FFF' },
+
+  card: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    borderRadius: 15,
+    padding: 16,
+    elevation: 3,
   },
-  postBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  jobTitle: { fontSize: 18, fontWeight: '700', color: '#0B2A4A' },
+  departmentText: { color: '#666', marginVertical: 4 },
+
+  infoRow: { flexDirection: 'row', marginTop: 8 },
+  iconText: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoText: { color: '#999', fontSize: 12 },
+
+  statsContainer: { alignItems: 'flex-end' },
+  applicantsBadge: {
+    backgroundColor: '#E6F0FA',
+    padding: 8,
+    borderRadius: 10,
+    alignItems: 'center'
   },
-  card: { 
-    backgroundColor: '#fff', 
-    padding: 16, 
-    borderRadius: 14, 
-    marginBottom: 15, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.04, 
-    elevation: 2 
+  applicantsCount: { fontSize: 18, fontWeight: '800', color: '#0B2A4A' },
+  applicantsLabel: { fontSize: 10, color: '#666' },
+
+  progressContainer: {
+    height: 6,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 3,
+    marginVertical: 15,
+    overflow: 'hidden',
   },
-  cardHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-start',
-    marginBottom: 8,
+  progressFill: { height: '100%', backgroundColor: '#3B82F6' },
+
+  actionsContainer: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+
+  outlineButton: {
+    flexDirection: 'row',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    gap: 5
   },
-  title: { fontSize: 16, fontWeight: '700', color: '#1E3A5F', marginBottom: 4 },
-  dept: { fontSize: 13, color: '#666' },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  outlineButtonText: { color: '#0B2A4A' },
+
+  primaryButton: {
+    flexDirection: 'row',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#0B2A4A',
+    alignItems: 'center',
+    gap: 5
   },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  footer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginTop: 15, 
-    paddingTop: 12, 
-    borderTopWidth: 1, 
-    borderColor: '#F3F4F6' 
-  },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { fontSize: 13, color: '#666' },
-  actions: { flexDirection: 'row', gap: 10 },
-  viewBtn: { 
-    backgroundColor: '#1E3A5F', 
-    paddingHorizontal: 14, 
-    paddingVertical: 8, 
-    borderRadius: 8 
-  },
-  viewTxt: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  delBtn: { padding: 8 }
+  primaryButtonText: { color: '#FFF' },
 });

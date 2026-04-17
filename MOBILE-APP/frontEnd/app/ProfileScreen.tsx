@@ -13,12 +13,14 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserRating, updateUserProfile } from '../src/api';
+import * as ImagePicker from 'expo-image-picker';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -126,7 +128,7 @@ const ProfileScreen: React.FC = () => {
           skills: (parsed.skills || []).join(', '),
         });
 
-        // Load rating
+        // Load rating from backend
         if (parsed.uid) {
           const ratingRes = await getUserRating(parsed.uid);
           if (ratingRes.success && ratingRes.data) {
@@ -138,6 +140,46 @@ const ProfileScreen: React.FC = () => {
       console.log('Failed to load profile:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (ev) => {
+            const uri = ev.target?.result as string;
+            const updated = { ...profile, profileImage: uri };
+            setProfile(updated);
+            await AsyncStorage.setItem('userData', JSON.stringify(updated));
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        const updated = { ...profile, profileImage: uri };
+        setProfile(updated);
+        await AsyncStorage.setItem('userData', JSON.stringify(updated));
+      }
     }
   };
 
@@ -234,96 +276,81 @@ const ProfileScreen: React.FC = () => {
   const firstName = profile.name.split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
 
+  // Calculate stats (you can replace with real data from API)
+  const appliedJobs = 3;
+  const savedJobs = 2;
+  const interviewsCount = 1;
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
-      {/* Header Banner */}
-      <View style={styles.banner}>
-        <View style={styles.bannerContent}>
-          <Text style={styles.bannerTitle}>My Profile</Text>
-        </View>
-      </View>
-
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
+        {/* Blue Header with Avatar - اللون القديم #1E3A5F */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.avatarWrap} onPress={handlePickPhoto}>
+            {profile.profileImage ? (
+              <Image source={{ uri: profile.profileImage }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarInitial}>{initial}</Text>
+              </View>
+            )}
+            <View style={styles.editAvatarBtn}>
+              <Feather name="edit-2" size={11} color="#fff" />
             </View>
-            <TouchableOpacity style={styles.editAvatarBtn}>
-              <Ionicons name="camera" size={18} color="#1E3A5F" />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.profileName}>{profile.name}</Text>
-          <Text style={styles.profileEmail}>{profile.email}</Text>
-
-          {/* Rating */}
+          </TouchableOpacity>
+          <Text style={styles.headerName}>{profile.name}</Text>
+          <Text style={styles.headerDept}>{profile.department}</Text>
+          <Text style={styles.headerMeta}>{profile.year} • GPA: {profile.gpa}</Text>
+          
+          {/* Rating - من الكود الأول */}
           {ratingData && (
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={18} color="#F59E0B" />
-              <Text style={styles.ratingValue}>{ratingData.average || 0}</Text>
+            <View style={styles.ratingContainer}>
+              <Ionicons name="star" size={16} color="#F59E0B" />
+              <Text style={styles.ratingValue}>{ratingData.average?.toFixed(1) || 0}</Text>
               <Text style={styles.ratingCount}>({ratingData.total || 0} ratings)</Text>
             </View>
           )}
+        </View>
 
-          {/* Info Grid */}
-          <View style={styles.infoGrid}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoIconWrap}>
-                <Ionicons name="school" size={18} color="#1E3A5F" />
-              </View>
-              <View>
-                <Text style={styles.infoLabel}>Department</Text>
-                <Text style={styles.infoValue}>{profile.department}</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoItem}>
-              <View style={styles.infoIconWrap}>
-                <Ionicons name="calendar" size={18} color="#1E3A5F" />
-              </View>
-              <View>
-                <Text style={styles.infoLabel}>Year</Text>
-                <Text style={styles.infoValue}>{profile.year}</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoItem}>
-              <View style={styles.infoIconWrap}>
-                <Ionicons name="stats-chart" size={18} color="#1E3A5F" />
-              </View>
-              <View>
-                <Text style={styles.infoLabel}>GPA</Text>
-                <Text style={styles.infoValue}>{profile.gpa}</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoItem}>
-              <View style={styles.infoIconWrap}>
-                <Ionicons name="call" size={18} color="#1E3A5F" />
-              </View>
-              <View>
-                <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{profile.phone || 'Not set'}</Text>
-              </View>
-            </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{appliedJobs}</Text>
+            <Text style={styles.statLabel}>Applied</Text>
           </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{savedJobs}</Text>
+            <Text style={styles.statLabel}>Saved</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{interviewsCount}</Text>
+            <Text style={styles.statLabel}>Interviews</Text>
+          </View>
+        </View>
 
-          {/* About */}
-          {profile.about ? (
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutTitle}>About</Text>
+        {/* About Section */}
+        {profile.about ? (
+          <>
+            <View style={styles.sectionLabel}>
+              <Text style={styles.sectionLabelText}>ABOUT</Text>
+            </View>
+            <View style={styles.card}>
               <Text style={styles.aboutText}>{profile.about}</Text>
             </View>
-          ) : null}
+          </>
+        ) : null}
 
-          {/* Skills */}
-          {profile.skills && profile.skills.length > 0 && (
-            <View style={styles.skillsSection}>
-              <Text style={styles.skillsTitle}>Skills</Text>
+        {/* Skills Section */}
+        {profile.skills && profile.skills.length > 0 && (
+          <>
+            <View style={styles.sectionLabel}>
+              <Text style={styles.sectionLabelText}>SKILLS</Text>
+            </View>
+            <View style={styles.card}>
               <View style={styles.skillsGrid}>
                 {profile.skills.map((skill, index) => (
                   <View key={index} style={styles.skillChip}>
@@ -332,106 +359,151 @@ const ProfileScreen: React.FC = () => {
                 ))}
               </View>
             </View>
-          )}
+          </>
+        )}
+
+        {/* Contact Information */}
+        <View style={styles.sectionLabel}>
+          <Text style={styles.sectionLabelText}>CONTACT INFORMATION</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.contactRow}>
+            <View style={[styles.contactIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="mail-outline" size={18} color="#1E3A5F" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactLabel}>Email</Text>
+              <Text style={styles.contactValue}>{profile.email}</Text>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.contactRow}>
+            <View style={[styles.contactIconWrap, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="call-outline" size={18} color="#16A34A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactLabel}>Phone</Text>
+              <Text style={styles.contactValue}>{profile.phone || 'Not set'}</Text>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.contactRow}>
+            <View style={[styles.contactIconWrap, { backgroundColor: '#F5F3FF' }]}>
+              <Ionicons name="school-outline" size={18} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactLabel}>Student ID</Text>
+              <Text style={styles.contactValue}>Not set</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Actions */}
-        <View style={styles.actionsCard}>
-          <TouchableOpacity style={styles.actionRow} onPress={() => setEditVisible(true)}>
-            <Ionicons name="create-outline" size={20} color="#1E3A5F" />
-            <Text style={styles.actionLabel}>Edit Profile</Text>
+        {/* Settings */}
+        <View style={styles.sectionLabel}>
+          <Text style={styles.sectionLabelText}>SETTINGS</Text>
+        </View>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.settingRow} onPress={() => setEditVisible(true)} activeOpacity={0.7}>
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIconWrap}>
+                <Ionicons name="person-outline" size={18} color="#1E3A5F" />
+              </View>
+              <Text style={styles.settingLabel}>Edit Profile</Text>
+            </View>
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
-
           <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.actionRow} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={20} color="#1E3A5F" />
-            <Text style={styles.actionLabel}>Notifications</Text>
+          <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIconWrap}>
+                <Ionicons name="notifications-outline" size={18} color="#1E3A5F" />
+              </View>
+              <Text style={styles.settingLabel}>Notifications</Text>
+            </View>
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.actionRow} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-            <Text style={[styles.actionLabel, { color: '#DC2626' }]}>Logout</Text>
-            <View style={{ width: 18 }} />
           </TouchableOpacity>
         </View>
+
+        {/* Logout Button */}
+        {/* <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity> */}
 
         <View style={{ height: 80 }} />
       </ScrollView>
 
       {/* Edit Modal */}
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalContainer}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setEditVisible(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Profile</Text>
+                <TouchableOpacity onPress={() => setEditVisible(false)}>
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>Full Name</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editForm.name}
+                    onChangeText={(v) => setEditForm({ ...editForm, name: v })}
+                    placeholder="Enter your name"
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>Phone Number</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editForm.phone}
+                    onChangeText={(v) => setEditForm({ ...editForm, phone: v })}
+                    placeholder="+20 xxx xxx xxxx"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>About</Text>
+                  <TextInput
+                    style={[styles.modalInput, { height: 100, textAlignVertical: 'top' }]}
+                    value={editForm.about}
+                    onChangeText={(v) => setEditForm({ ...editForm, about: v })}
+                    placeholder="Tell us about yourself..."
+                    multiline
+                    numberOfLines={4}
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>Skills (comma separated)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editForm.skills}
+                    onChangeText={(v) => setEditForm({ ...editForm, skills: v })}
+                    placeholder="Python, JavaScript, Research..."
+                  />
+                  <Text style={styles.fieldHint}>Separate skills with commas</Text>
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Full Name</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={editForm.name}
-                  onChangeText={(v) => setEditForm({ ...editForm, name: v })}
-                  placeholder="Enter your name"
-                />
-              </View>
-
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Phone Number</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={editForm.phone}
-                  onChangeText={(v) => setEditForm({ ...editForm, phone: v })}
-                  placeholder="+20 xxx xxx xxxx"
-                  keyboardType="phone-pad"
-                />
-              </View>
-
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>About</Text>
-                <TextInput
-                  style={[styles.fieldInput, { height: 100, textAlignVertical: 'top' }]}
-                  value={editForm.about}
-                  onChangeText={(v) => setEditForm({ ...editForm, about: v })}
-                  placeholder="Tell us about yourself..."
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Skills (comma separated)</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={editForm.skills}
-                  onChangeText={(v) => setEditForm({ ...editForm, skills: v })}
-                  placeholder="Python, JavaScript, Research..."
-                />
-                <Text style={styles.fieldHint}>Separate skills with commas</Text>
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <BottomTabBar active={activeTab} onPress={handleTabPress} />
@@ -443,177 +515,246 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
 
-  // Banner
-  banner: {
+  // Header - اللون القديم #1E3A5F
+  header: {
     backgroundColor: '#1E3A5F',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 60,
-  },
-  bannerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingTop: 30,
+    paddingBottom: 30,
     alignItems: 'center',
   },
-  bannerTitle: { color: '#fff', fontSize: 22, fontWeight: '700' },
-
-  // Profile Card
-  profileCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    marginTop: -45,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 5,
-    marginBottom: 16,
+  avatarWrap: {
+    position: 'relative',
+    marginBottom: 14,
   },
-  avatarContainer: { position: 'relative', marginBottom: 12 },
-  avatar: {
+  avatarCircle: {
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#1E3A5F',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
-  avatarText: { fontSize: 36, fontWeight: '800', color: '#fff' },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  avatarInitial: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#1E3A5F',
+  },
   editAvatarBtn: {
     position: 'absolute',
     bottom: 2,
-    right: -2,
-    backgroundColor: '#fff',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    right: 2,
+    backgroundColor: '#1E3A5F',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    borderColor: '#fff',
+  },
+  headerName: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  headerDept: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  headerMeta: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  ratingValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginLeft: 4,
+  },
+  ratingCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 4,
+  },
+
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: -20,
+    borderRadius: 16,
+    padding: 16,
+    elevation: 5,
+    marginBottom: 20,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
+  },
+
+  // Section Label
+  sectionLabel: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  sectionLabelText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+  },
+
+  // Card
+  card: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
     elevation: 2,
   },
-  profileName: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  profileEmail: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
-
-  // Rating
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  ratingValue: { fontSize: 16, fontWeight: '700', color: '#1E3A5F', marginLeft: 6 },
-  ratingCount: { fontSize: 13, color: '#92400E', marginLeft: 4 },
-
-  // Info Grid
-  infoGrid: { width: '100%', marginTop: 8 },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  infoIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  infoLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
-  infoValue: { fontSize: 15, color: '#111827', fontWeight: '600' },
 
   // About
-  aboutSection: { width: '100%', marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  aboutTitle: { fontSize: 14, fontWeight: '700', color: '#1E3A5F', marginBottom: 6 },
-  aboutText: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
+  aboutText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    paddingVertical: 8,
+  },
 
   // Skills
-  skillsSection: { width: '100%', marginTop: 16 },
-  skillsTitle: { fontSize: 14, fontWeight: '700', color: '#1E3A5F', marginBottom: 10 },
-  skillsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  skillsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 8,
+  },
   skillChip: {
     backgroundColor: '#EFF6FF',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  skillText: { fontSize: 12, fontWeight: '600', color: '#1E3A5F' },
-
-  // Actions Card
-  actionsCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+  skillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E3A5F',
   },
-  actionRow: {
+
+  // Contact
+  contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 14,
+    gap: 14,
   },
-  actionLabel: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500' },
-  divider: { height: 1, backgroundColor: '#F3F4F6' },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '90%',
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  contactIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  fieldGroup: { marginBottom: 18 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6 },
-  fieldInput: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+  contactLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#111827',
   },
-  fieldHint: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
-  saveBtn: {
-    backgroundColor: '#1E3A5F',
-    borderRadius: 14,
-    height: 52,
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+
+  // Settings
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  settingIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111827',
+  },
+
+  // Logout
+  logoutBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    gap: 8,
+    marginHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF',
+    marginBottom: 20,
   },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
 
   // Tab Bar
   tabBar: {
@@ -629,9 +770,82 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     elevation: 8,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-  tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 3,
+  },
+  tabLabelActive: {
+    color: '#1E3A5F',
+    fontWeight: '600',
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalField: {
+    marginBottom: 18,
+  },
+  modalFieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#111827',
+  },
+  fieldHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  saveBtn: {
+    backgroundColor: '#1E3A5F',
+    borderRadius: 14,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
 
 export default ProfileScreen;

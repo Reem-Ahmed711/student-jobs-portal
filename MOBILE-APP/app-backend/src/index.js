@@ -51,7 +51,8 @@ const ratingRoutes = require("./Routes/ratingRoute");
 
 app.use("/api", profileRoutes);
 app.use("/api/jobs", jobRoutes);
-app.use("/api", applicationRoutes);
+// ✅ التعديل هنا: /api/applications بدل /api
+app.use("/api/applications", applicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", employerRoutes);
 app.use("/api", ratingRoutes);
