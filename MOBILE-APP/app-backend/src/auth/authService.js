@@ -1,5 +1,4 @@
-const admin = require("firebase-admin");
-require("../firebase");
+const { admin, db } = require("../firebase");
 const axios = require("axios");
 const { validateRegisterInput, validateLoginInput } = require("./validation");
 const { assignRole } = require("./roleService");
@@ -68,7 +67,7 @@ async function registerUser({
 async function loginUser({ email, password }) {
   validateLoginInput({ email, password });
 
-  const API_KEY ="AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
+  const API_KEY = "AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
 
   try {
     const response = await axios.post(

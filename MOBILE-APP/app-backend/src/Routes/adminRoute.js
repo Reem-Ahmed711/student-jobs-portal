@@ -30,7 +30,7 @@ const adminGuard = async (req, res, next) => {
   }
 };
 
-// Apply admin guard to all routes
+// ✅ تأكدي إن verifyToken و adminGuard بيتطبقوا على كل routes
 router.use(verifyToken);
 router.use(adminGuard);
 

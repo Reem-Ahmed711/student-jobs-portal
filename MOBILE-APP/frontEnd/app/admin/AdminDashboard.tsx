@@ -67,20 +67,23 @@ const AdminDashboard = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.removeItem('userToken');
-          await AsyncStorage.removeItem('userData');
-          router.replace('/login');
-        },
+ const handleLogout = async () => {
+  console.log('===== LOGOUT PRESSED =====');
+  Alert.alert('Logout', 'Are you sure you want to logout?', [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Logout',
+      style: 'destructive',
+      onPress: async () => {
+        console.log('===== CONFIRMED LOGOUT =====');
+        await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('userData');
+        console.log('===== TOKEN REMOVED =====');
+        router.replace('/login');
       },
-    ]);
-  };
+    },
+  ]);
+};
 
   if (loading) {
     return (

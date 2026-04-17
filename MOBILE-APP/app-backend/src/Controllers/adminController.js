@@ -195,6 +195,7 @@ const searchUsersController = async (req, res) => {
   }
 };
 
+// ================= EXPORTS =================
 module.exports = {
   getDashboardStats,
   getAllUsersController,

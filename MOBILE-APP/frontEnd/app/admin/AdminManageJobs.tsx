@@ -1,4 +1,3 @@
-// MOBILE-APP/frontEnd/app/admin/AdminManageJobs.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { adminGetAllJobs, adminDeleteJob, adminUpdateJobStatus } from '../../src/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+// Use the same API_URL as in api.js
+const API_URL = "http://192.168.1.8:3000";
 
 interface Job {
   id: string;
@@ -24,6 +27,8 @@ interface Job {
   applicationsCount?: number;
   employer?: { name: string; company: string };
   createdAt?: any;
+  salary?: string;
+  description?: string;
 }
 
 const AdminManageJobs: React.FC = () => {
@@ -36,13 +41,32 @@ const AdminManageJobs: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const res = await adminGetAllJobs();
-      if (res.success && res.data) {
-        setJobs(res.data);
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      
+      console.log('Fetching jobs with token:', token ? 'Token exists' : 'No token');
+      
+      const response = await axios.get(`${API_URL}/api/admin/jobs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Jobs response status:', response.status);
+      console.log('Jobs response data:', JSON.stringify(response.data, null, 2));
+      
+      if (response.data.success && response.data.data) {
+        setJobs(response.data.data);
+      } else {
+        console.log('No jobs data in response');
+        setJobs([]);
       }
-    } catch (err) {
-      console.log('Failed to fetch jobs:', err);
-      Alert.alert('Error', 'Failed to load jobs');
+    } catch (err: any) {
+      console.log('Failed to fetch jobs - Error:', err.message);
+      console.log('Error response:', err.response?.data);
+      Alert.alert('Error', `Failed to load jobs: ${err.message}`);
+      setJobs([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,22 +82,27 @@ const AdminManageJobs: React.FC = () => {
     fetchJobs();
   };
 
-  const handleDelete = (jobId: string) => {
-    Alert.alert('Delete Job', 'Are you sure you want to delete this job? All related applications will be deleted.', [
+  const handleDelete = async (jobId: string) => {
+    Alert.alert('Delete Job', 'Are you sure you want to delete this job?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           try {
-            const res = await adminDeleteJob(jobId);
-            if (res.success) {
+            const token = await AsyncStorage.getItem('userToken');
+            const response = await axios.delete(`${API_URL}/api/admin/jobs/${jobId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            
+            if (response.data.success) {
               setJobs(jobs.filter((j) => j.id !== jobId));
               Alert.alert('Success', 'Job deleted successfully');
             } else {
-              Alert.alert('Error', res.message || 'Failed to delete');
+              Alert.alert('Error', response.data.message || 'Failed to delete');
             }
           } catch (err: any) {
+            console.log('Delete error:', err.message);
             Alert.alert('Error', err.message || 'Failed to delete job');
           }
         },
@@ -89,14 +118,21 @@ const AdminManageJobs: React.FC = () => {
   const handleStatusChange = async (newStatus: string) => {
     setStatusModal(false);
     try {
-      const res = await adminUpdateJobStatus(selectedJobId, newStatus);
-      if (res.success) {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await axios.patch(
+        `${API_URL}/api/admin/jobs/${selectedJobId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
         setJobs(jobs.map((j) => (j.id === selectedJobId ? { ...j, status: newStatus } : j)));
         Alert.alert('Success', `Job status updated to ${newStatus}`);
       } else {
-        Alert.alert('Error', res.message || 'Failed to update status');
+        Alert.alert('Error', response.data.message || 'Failed to update status');
       }
     } catch (err: any) {
+      console.log('Status update error:', err.message);
       Alert.alert('Error', err.message || 'Failed to update status');
     }
   };
@@ -136,21 +172,29 @@ const AdminManageJobs: React.FC = () => {
           </View>
         ) : (
           jobs.map((job) => {
-            const statusStyle = getStatusStyle(job.status);
+            const statusStyle = getStatusStyle(job.status || 'active');
             return (
               <View key={job.id} style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={styles.cardHeaderLeft}>
                     <Text style={styles.jobTitle}>{job.title}</Text>
-                    <Text style={styles.jobDept}>{job.department}</Text>
-                    {job.employer?.name && (
-                      <Text style={styles.jobEmployer}>Posted by: {job.employer.name}</Text>
+                    <Text style={styles.jobDept}>{job.department || 'No department'}</Text>
+                    {job.salary && (
+                      <Text style={styles.jobSalary}>💰 {job.salary}</Text>
                     )}
                   </View>
                   <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-                    <Text style={[styles.badgeText, { color: statusStyle.text }]}>{(job.status || 'active').toUpperCase()}</Text>
+                    <Text style={[styles.badgeText, { color: statusStyle.text }]}>
+                      {(job.status || 'active').toUpperCase()}
+                    </Text>
                   </View>
                 </View>
+
+                {job.description && (
+                  <Text style={styles.jobDescription} numberOfLines={2}>
+                    {job.description}
+                  </Text>
+                )}
 
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
@@ -177,7 +221,6 @@ const AdminManageJobs: React.FC = () => {
         <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* Status Modal */}
       <Modal visible={statusModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setStatusModal(false)}>
           <View style={styles.modalContainer}>
@@ -211,11 +254,12 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   subtitle: { fontSize: 13, color: '#999', marginBottom: 20, paddingHorizontal: 16, paddingTop: 16 },
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 14, marginHorizontal: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   cardHeaderLeft: { flex: 1, marginRight: 8 },
-  jobTitle: { fontSize: 15, fontWeight: '700', color: '#1E3A5F', marginBottom: 3 },
-  jobDept: { fontSize: 13, color: '#666' },
-  jobEmployer: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  jobTitle: { fontSize: 16, fontWeight: '700', color: '#1E3A5F', marginBottom: 4 },
+  jobDept: { fontSize: 13, color: '#666', marginBottom: 2 },
+  jobSalary: { fontSize: 12, color: '#10b981', fontWeight: '600' },
+  jobDescription: { fontSize: 13, color: '#666', marginBottom: 10, lineHeight: 18 },
   badge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
   badgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   metaRow: { flexDirection: 'row', gap: 20, marginBottom: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f0f0f0' },

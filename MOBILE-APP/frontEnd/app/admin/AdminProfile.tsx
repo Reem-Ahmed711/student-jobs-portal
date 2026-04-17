@@ -1,142 +1,221 @@
-import React from 'react';
+// MOBILE-APP/frontEnd/app/admin/AdminProfile.tsx
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export default function AdminProfile() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [adminData, setAdminData] = useState({
+    name: 'Admin',
+    email: 'admin@cu.edu.eg',
+    department: 'IT Department',
+    joinedDate: 'Jan 2024',
+  });
 
-interface AdminUser {
-  name?: string;
-  email?: string;
-  role?: string;
-  department?: string;
-  joinedDate?: string;
-}
+  useEffect(() => {
+    loadAdminData();
+  }, []);
 
-interface AdminProfileProps {
-  user?: AdminUser;
-}
+  const loadAdminData = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('userData');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setAdminData({
+          name: parsed.name || 'Admin',
+          email: parsed.email || 'admin@cu.edu.eg',
+          department: parsed.department || 'IT Department',
+          joinedDate: parsed.createdAt ? new Date(parsed.createdAt).toLocaleDateString() : 'Jan 2024',
+        });
+      }
+    } catch (err) {
+      console.log('Error loading admin data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'This feature will be available soon!');
+  };
 
-const AdminProfile: React.FC<AdminProfileProps> = ({ user }) => {
-  const displayName = user?.name ?? 'Admin';
-  const displayEmail = user?.email ?? 'admin@cu.edu.eg';
-  const displayRole = user?.role ?? 'System Administrator';
-  const displayDepartment = user?.department ?? 'IT Department';
-  const displayJoined = user?.joinedDate ?? 'Jan 2024';
+  const handleChangePassword = () => {
+    Alert.alert('Change Password', 'This feature will be available soon!');
+  };
 
-  const initial = displayName.charAt(0).toUpperCase();
+  const handleNotifications = () => {
+    Alert.alert('Notifications', 'You have no new notifications');
+  };
 
-  const stats = [
-    { label: 'Jobs Managed', value: '82' },
-    { label: 'Users Verified', value: '240' },
-    { label: 'Reports Resolved', value: '18' },
-  ];
+  const handlePrivacy = () => {
+    Alert.alert('Privacy & Security', 'Your data is secure with us.');
+  };
 
-  const menuItems = [
-    { icon: '✏️', label: 'Edit Profile' },
-    { icon: '🔒', label: 'Change Password' },
-    { icon: '🔔', label: 'Notifications' },
-    { icon: '🛡️', label: 'Privacy & Security' },
-    { icon: '📋', label: 'Activity Log' },
-    { icon: '🚪', label: 'Logout', danger: true },
-  ];
+  const handleActivityLog = () => {
+    Alert.alert('Activity Log', 'Last login: ' + new Date().toLocaleString());
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.removeItem('userToken');
+            await AsyncStorage.removeItem('userData');
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#1E3A5F" />
+      </View>
+    );
+  }
+
+  const initial = adminData.name.charAt(0).toUpperCase();
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* ── Header Banner ── */}
-      <View style={styles.banner} />
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header Banner */}
+        <View style={styles.banner} />
 
-      {/* ── Profile Card ── */}
-      <View style={styles.profileCard}>
-        {/* Avatar */}
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.editAvatarBtn}>
-            <Text style={styles.editAvatarIcon}>✏️</Text>
+
+          <Text style={styles.name}>{adminData.name}</Text>
+          <Text style={styles.role}>System Administrator</Text>
+          <Text style={styles.email}>{adminData.email}</Text>
+
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Ionicons name="business-outline" size={16} color="#666" />
+              <Text style={styles.metaText}>{adminData.department}</Text>
+            </View>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={16} color="#666" />
+              <Text style={styles.metaText}>Joined {adminData.joinedDate}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Stats Row - أرقام حقيقية من Firebase هتضيفيها بعدين */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Jobs Managed</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Users Verified</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Reports Resolved</Text>
+          </View>
+        </View>
+
+        {/* Menu Items - كل الأزرار شغالة دلوقتي */}
+        <View style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
+            <Ionicons name="create-outline" size={22} color="#1E3A5F" />
+            <Text style={styles.menuLabel}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleChangePassword}>
+            <Ionicons name="lock-closed-outline" size={22} color="#1E3A5F" />
+            <Text style={styles.menuLabel}>Change Password</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleNotifications}>
+            <Ionicons name="notifications-outline" size={22} color="#1E3A5F" />
+            <Text style={styles.menuLabel}>Notifications</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.menuItem} onPress={handlePrivacy}>
+            <Ionicons name="shield-outline" size={22} color="#1E3A5F" />
+            <Text style={styles.menuLabel}>Privacy & Security</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleActivityLog}>
+            <Ionicons name="document-text-outline" size={22} color="#1E3A5F" />
+            <Text style={styles.menuLabel}>Activity Log</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color="#DC2626" />
+            <Text style={[styles.menuLabel, styles.logoutText]}>Logout</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.name}>{displayName}</Text>
-        <Text style={styles.role}>{displayRole}</Text>
-        <Text style={styles.email}>{displayEmail}</Text>
-
-        {/* Meta */}
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaIcon}>🏛️</Text>
-            <Text style={styles.metaText}>{displayDepartment}</Text>
-          </View>
-          <View style={styles.metaDivider} />
-          <View style={styles.metaItem}>
-            <Text style={styles.metaIcon}>📅</Text>
-            <Text style={styles.metaText}>Joined {displayJoined}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ── Stats ── */}
-      <View style={styles.statsRow}>
-        {stats.map((s, i) => (
-          <View key={i} style={styles.statCard}>
-            <Text style={styles.statValue}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* ── Menu ── */}
-      <View style={styles.menuCard}>
-        {menuItems.map((item, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[
-              styles.menuItem,
-              i === menuItems.length - 1 && { borderBottomWidth: 0 },
-            ]}
-          >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text
-              style={[styles.menuLabel, item.danger && styles.menuLabelDanger]}
-            >
-              {item.label}
-            </Text>
-            {!item.danger && <Text style={styles.menuArrow}>›</Text>}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={{ height: 30 }} />
-    </ScrollView>
+        <View style={{ height: 30 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
-};
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-
-  // Banner
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
   banner: {
-    height: 140,
+    height: 120,
     backgroundColor: '#1E3A5F',
   },
-
-  // Profile Card
   profileCard: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     marginTop: -50,
@@ -147,7 +226,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatarWrapper: {
-    position: 'relative',
     marginBottom: 12,
   },
   avatar: {
@@ -165,20 +243,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  editAvatarBtn: {
-    position: 'absolute',
-    bottom: 0,
-    right: -4,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 14,
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  editAvatarIcon: { fontSize: 13 },
   name: {
     fontSize: 20,
     fontWeight: '700',
@@ -206,7 +270,6 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
   },
-  metaIcon: { fontSize: 14 },
   metaText: {
     fontSize: 12,
     color: '#555',
@@ -216,8 +279,6 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: '#e0e0e0',
   },
-
-  // Stats
   statsRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -246,13 +307,11 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
-
-  // Menu
   menuCard: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
     borderRadius: 14,
-    paddingHorizontal: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -261,29 +320,25 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuIcon: {
-    fontSize: 18,
-    marginRight: 14,
-    width: 24,
-    textAlign: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 14,
   },
   menuLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
     fontWeight: '500',
   },
-  menuLabelDanger: {
-    color: '#ef4444',
+  logoutItem: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
-  menuArrow: {
-    fontSize: 20,
-    color: '#ccc',
+  logoutText: {
+    color: '#DC2626',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
   },
 });
-
-export default AdminProfile;

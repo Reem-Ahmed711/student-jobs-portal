@@ -1,4 +1,3 @@
-// MOBILE-APP/frontEnd/app/admin/AdminManageUsers.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -15,9 +14,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getAllUsers, adminDeleteUser, makeAdmin, removeAdmin } from '../../src/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
-// ==================== Types ====================
+// ================= API URL =================
+// استخدمي نفس الـ IP اللي عندك في api.js
+const API_URL = "http://192.168.1.8:3000";
+
+// ================= Types =================
 interface User {
   id: string;
   name: string;
@@ -35,21 +39,8 @@ interface ConfirmAction {
 
 type FilterType = 'all' | 'student' | 'employer' | 'admin';
 
-interface RoleStyle {
-  bg: string;
-  text: string;
-}
-
-// ==================== Helper Functions ====================
-const showConfirmHandler = (
-  setConfirmAction: React.Dispatch<React.SetStateAction<ConfirmAction | null>>,
-  setConfirmModal: React.Dispatch<React.SetStateAction<boolean>>
-) => (type: string, uid: string, name: string) => {
-  setConfirmAction({ type, uid, name });
-  setConfirmModal(true);
-};
-
-const getRoleStyleHandler = (role: string): RoleStyle => {
+// ================= Helper Functions =================
+const getRoleStyleHandler = (role: string) => {
   switch (role) {
     case 'student':
       return { bg: '#EFF6FF', text: '#1d4ed8' };
@@ -62,7 +53,7 @@ const getRoleStyleHandler = (role: string): RoleStyle => {
   }
 };
 
-// ==================== Main Component ====================
+// ================= Main Component =================
 const AdminManageUsers: React.FC = () => {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -73,94 +64,150 @@ const AdminManageUsers: React.FC = () => {
   const [confirmModal, setConfirmModal] = useState<boolean>(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
-  // ==================== Show Confirm ====================
-  const showConfirm = useCallback(
-    (type: string, uid: string, name: string) => {
-      setConfirmAction({ type, uid, name });
-      setConfirmModal(true);
-    },
-    []
-  );
-
-  // ==================== Fetch Users ====================
-    // ==================== Fetch Users ====================
+  // ================= Fetch Users (المعدل) =================
   const fetchUsers = useCallback(async () => {
     try {
-      // استخدم undefined بدل null
-      const roleParam = filter === 'all' ? undefined : filter;
-      const res = await getAllUsers(roleParam, 1, 100);
+      setLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!token) {
+        console.log('No token found');
+        setUsers([]);
+        return;
+      }
 
-      if (res.success && res.data) {
-        if (Array.isArray(res.data)) {
-          setUsers(res.data as User[]);
-        } else if (res.data.users && Array.isArray(res.data.users)) {
-          setUsers(res.data.users as User[]);
-        } else {
-          setUsers([]);
+      // بناء الـ URL مع الفلتر
+      let url = `${API_URL}/api/admin/users?page=1&limit=100`;
+      if (filter !== 'all') {
+        url += `&role=${filter}`;
+      }
+
+      console.log('Fetching users from:', url);
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response data structure:', Object.keys(response.data));
+
+      if (response.data && response.data.success) {
+        // التعامل مع شكل البيانات القادمة من الـ API
+        let usersList = [];
+        
+        if (response.data.data && Array.isArray(response.data.data)) {
+          usersList = response.data.data;
+        } 
+        else if (response.data.data && response.data.data.users && Array.isArray(response.data.data.users)) {
+          usersList = response.data.data.users;
         }
+        else if (Array.isArray(response.data.data)) {
+          usersList = response.data.data;
+        }
+        else {
+          console.log('Unexpected data format:', response.data);
+          usersList = [];
+        }
+
+        // تنسيق البيانات عشان تتوافق مع الـ interface
+        const formattedUsers = usersList.map((user: any) => ({
+          id: user.id || user.uid,
+          name: user.name || user.username || 'Unknown',
+          email: user.email || '',
+          role: user.role || 'student',
+          department: user.department || '',
+          createdAt: user.createdAt,
+        }));
+
+        setUsers(formattedUsers);
+        console.log(`Loaded ${formattedUsers.length} users`);
       } else {
+        console.log('API returned success=false:', response.data?.message);
         setUsers([]);
       }
-    } catch (err) {
-      console.log('Failed to fetch users:', err);
+    } catch (err: any) {
+      console.log('Failed to fetch users - Error:', err.message);
+      console.log('Error response:', err.response?.data);
+      Alert.alert('Error', `Failed to load users: ${err.message}`);
       setUsers([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [filter]);
-  
-  // ==================== Refresh ====================
+
+  // ================= Refresh =================
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchUsers();
   }, [fetchUsers]);
 
-  // ==================== Handle Confirm ====================
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // ================= Show Confirm =================
+  const showConfirm = useCallback((type: string, uid: string, name: string) => {
+    setConfirmAction({ type, uid, name });
+    setConfirmModal(true);
+  }, []);
+
+  // ================= Handle Confirm Action =================
   const handleConfirmAction = async (): Promise<void> => {
     if (!confirmAction) return;
     setConfirmModal(false);
 
-    const { type, uid }: { type: string; uid: string; name: string } = confirmAction;
+    const { type, uid } = confirmAction;
 
     try {
-      let res: { success: boolean; message?: string } | null = null;
+      const token = await AsyncStorage.getItem('userToken');
+      let response;
 
       if (type === 'delete') {
-        res = await adminDeleteUser(uid);
+        response = await axios.delete(`${API_URL}/api/admin/users/${uid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else if (type === 'makeAdmin') {
-        res = await makeAdmin(uid);
+        response = await axios.post(`${API_URL}/api/admin/users/${uid}/make-admin`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else if (type === 'removeAdmin') {
-        res = await removeAdmin(uid);
+        response = await axios.post(`${API_URL}/api/admin/users/${uid}/remove-admin`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
 
-      if (res && res.success) {
-        Alert.alert('Success', res.message || 'Action completed');
+      if (response && response.data && response.data.success) {
+        Alert.alert('Success', response.data.message || 'Action completed');
         fetchUsers();
       } else {
-        Alert.alert('Error', (res && res.message) || 'Action failed');
+        Alert.alert('Error', response?.data?.message || 'Action failed');
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Action failed';
+      console.log('Action error:', errorMessage);
       Alert.alert('Error', errorMessage);
     }
   };
 
-  // ==================== Filter Users ====================
+  // ================= Filter Users =================
   const filteredUsers: User[] = users.filter((user: User): boolean => {
     if (!searchQuery) return true;
     const query: string = searchQuery.toLowerCase();
-    const userName: string = user.name || '';
-    const userEmail: string = user.email || '';
-    return userName.toLowerCase().includes(query) || userEmail.toLowerCase().includes(query);
+    const userName: string = (user.name || '').toLowerCase();
+    const userEmail: string = (user.email || '').toLowerCase();
+    return userName.includes(query) || userEmail.includes(query);
   });
 
-  // ==================== Get Role Style ====================
-  const getRoleStyle = (role: string): RoleStyle => {
+  // ================= Get Role Style =================
+  const getRoleStyle = (role: string) => {
     return getRoleStyleHandler(role);
   };
 
-  // ==================== Render ====================
+  // ================= Render =================
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -229,7 +276,7 @@ const AdminManageUsers: React.FC = () => {
         ) : (
           /* User Cards */
           filteredUsers.map((user: User) => {
-            const roleStyle: RoleStyle = getRoleStyle(user.role || 'student');
+            const roleStyle = getRoleStyle(user.role || 'student');
             return (
               <View key={user.id} style={styles.card}>
                 {/* Card Top */}
@@ -296,7 +343,7 @@ const AdminManageUsers: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* ==================== Confirm Modal ==================== */}
+      {/* ================= Confirm Modal ================= */}
       <Modal visible={confirmModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -344,7 +391,7 @@ const AdminManageUsers: React.FC = () => {
   );
 };
 
-// ==================== Styles ====================
+// ================= Styles =================
 const styles = StyleSheet.create({
   container: {
     flex: 1,

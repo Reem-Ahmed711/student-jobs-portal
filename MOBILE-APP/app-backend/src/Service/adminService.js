@@ -1,5 +1,5 @@
-const admin = require("firebase-admin");
-const db = admin.firestore();
+// MOBILE-APP/app-backend/src/Service/adminService.js
+const { admin, db } = require("../firebase");
 
 // ================= Get Platform Statistics =================
 const getPlatformStats = async () => {
@@ -235,9 +235,7 @@ const adminDeleteJob = async (jobId, adminUid) => {
     .where("jobId", "==", jobId)
     .get();
   const batch = db.batch();
-  appsSnap.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+  appsSnap.forEach((doc) => batch.delete(doc.ref));
   batch.delete(db.collection("jobs").doc(jobId));
   await batch.commit();
 
@@ -305,7 +303,6 @@ const adminDeleteUser = async (targetUid, adminUid) => {
   const batch2 = db.batch();
   jobsSnap.forEach((jobDoc) => {
     batch2.delete(jobDoc.ref);
-    // Note: Related applications should be deleted separately if needed
   });
   if (!jobsSnap.empty) {
     await batch2.commit();
@@ -314,11 +311,14 @@ const adminDeleteUser = async (targetUid, adminUid) => {
   // Delete from Firestore
   await db.collection("users").doc(targetUid).delete();
 
-  // Delete from Firebase Auth
+  // Try to delete from Auth
   try {
     await admin.auth().deleteUser(targetUid);
   } catch (err) {
-    // User might not exist in Auth
+    console.log(
+      "User not in Auth, continuing with Firestore delete only:",
+      err.message,
+    );
   }
 
   // Log the action
@@ -536,6 +536,7 @@ const searchUsers = async (searchTerm, role = null) => {
     });
 };
 
+// ================= EXPORTS =================
 module.exports = {
   getPlatformStats,
   getAllUsers,

@@ -1,6 +1,4 @@
-const admin = require("firebase-admin");
-
-const db = admin.firestore();
+const { admin, db } = require("../firebase");
 
 // ================= Apply to Job =================
 const applyToJob = async (studentUid, jobId) => {
