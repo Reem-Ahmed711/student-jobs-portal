@@ -1,4 +1,7 @@
+// MOBILE-APP/app-backend/src/firebase.js
 const admin = require("firebase-admin");
+
+// ✅ غيّرنا اسم الملف هنا
 const serviceAccount = require("./service-account-key.json");
 
 admin.initializeApp({
@@ -7,4 +10,4 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-module.exports = { admin, db };  // أضف admin هنا
+module.exports = { admin, db };

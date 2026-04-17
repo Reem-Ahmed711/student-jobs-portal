@@ -3,7 +3,7 @@ node_modules/
 **/node_modules/
 
 # Firebase service account key
-Backend/src/config/service-account-key.json
+service-account-key.json
 
 # environment variables
 .env

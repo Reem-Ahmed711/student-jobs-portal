@@ -1,3 +1,4 @@
+// MOBILE-APP/frontEnd/app/StudentDashboard.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -5,114 +6,63 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  StatusBar
+  StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAvailableJobs, getStudentApplications, getUserRating } from '../src/api';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
+
 interface Job {
   id: string;
   title: string;
   department: string;
-  hours: string;
-  deadline: string;
-  match: number;
+  type?: string;
+  salary?: string;
+  status?: string;
 }
 
-interface ActivityItem {
+interface Application {
   id: string;
-  title: string;
-  department: string;
-  appliedDate: string;
-  status: 'Under Review' | 'Shortlisted' | 'Rejected' | 'Accepted';
+  jobId: string;
+  status: string;
+  appliedAt?: any;
 }
 
-type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
-
-// ─── Sample Data ────────────────────────────────────────────────────────────
-const recommendedJobs: Job[] = [
-  { id: '1', title: 'Research Assistant - Organic Chemistry', department: 'Chemistry Department', hours: '20 hrs/week', deadline: '3/15/2026', match: 95 },
-  { id: '2', title: 'Teaching Assistant - Physics Lab', department: 'Physics Department', hours: '15 hrs/week', deadline: '3/10/2026', match: 88 },
-  { id: '3', title: 'Lab Technician - Microbiology', department: 'Microbiology Department', hours: '30 hrs/week', deadline: '3/8/2026', match: 91 },
-];
-
-const recentActivity: ActivityItem[] = [
-  { id: '1', title: 'Teaching Assistant - Physics Lab', department: 'Physics Department', appliedDate: '2/28/2026', status: 'Under Review' },
-  { id: '2', title: 'Mathematics Tutor', department: 'Mathematics Department', appliedDate: '3/1/2026', status: 'Shortlisted' },
-];
-
-const statusConfig: Record<ActivityItem['status'], { color: string; bg: string }> = {
+const statusConfig: Record<string, { color: string; bg: string }> = {
+  pending: { color: '#D97706', bg: '#FEF3C7' },
+  under_review: { color: '#7C3AED', bg: '#EDE9FE' },
+  accepted: { color: '#16A34A', bg: '#DCFCE7' },
+  rejected: { color: '#DC2626', bg: '#FEE2E2' },
+  shortlisted: { color: '#16A34A', bg: '#DCFCE7' },
   'Under Review': { color: '#7C3AED', bg: '#EDE9FE' },
-  Shortlisted:   { color: '#16A34A', bg: '#DCFCE7' },
-  Rejected:      { color: '#DC2626', bg: '#FEE2E2' },
-  Accepted:      { color: '#2563EB', bg: '#DBEAFE' },
-};
-
-// ─── Components ────────────────────────────────────────────────────────────
-const MatchBadge: React.FC<{ percent: number }> = ({ percent }) => {
-  const color = percent >= 90 ? '#16A34A' : '#2563EB';
-  const bg    = percent >= 90 ? '#DCFCE7' : '#DBEAFE';
-  return (
-    <View style={[styles.matchBadge, { backgroundColor: bg }]}>
-      <Text style={[styles.matchText, { color }]}>{percent}% Match</Text>
-    </View>
-  );
-};
-
-const JobCard: React.FC<{ job: Job }> = ({ job }) => (
-  <View style={styles.card}>
-    <View style={styles.cardHeader}>
-      <Text style={styles.cardTitle} numberOfLines={2}>{job.title}</Text>
-      <MatchBadge percent={job.match} />
-    </View>
-    <Text style={styles.cardDept}>{job.department}</Text>
-    <View style={styles.cardMeta}>
-      <Feather name="clock" size={12} color="#9CA3AF" />
-      <Text style={styles.metaText}> {job.hours}</Text>
-      <Text style={styles.metaDot}> • </Text>
-      <Text style={styles.metaText}>Deadline: {job.deadline}</Text>
-    </View>
-  </View>
-);
-
-const ActivityCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
-  const cfg = statusConfig[item.status];
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={[styles.cardTitle, { flex: 1, marginRight: 8 }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-          <Text style={[styles.statusText, { color: cfg.color }]}>{item.status}</Text>
-        </View>
-      </View>
-      <Text style={styles.cardDept}>{item.department}</Text>
-      <Text style={styles.appliedDate}>Applied: {item.appliedDate}</Text>
-    </View>
-  );
+  Shortlisted: { color: '#16A34A', bg: '#DCFCE7' },
+  Rejected: { color: '#DC2626', bg: '#FEE2E2' },
+  Accepted: { color: '#2563EB', bg: '#DBEAFE' },
 };
 
 const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'home',         label: 'Home' },
-    { key: 'jobs',         label: 'Jobs' },
-    { key: 'applications', label: 'Applications' },
-    { key: 'profile',      label: 'Profile' },
-    { key: 'more',         label: 'More' },
+    { key: 'home', label: 'Home' },
+    { key: 'jobs', label: 'Jobs' },
+    { key: 'applications', label: 'Apps' },
+    { key: 'profile', label: 'Profile' },
+    { key: 'more', label: 'More' },
   ];
 
   const getIcon = (key: TabKey, isActive: boolean) => {
-    const color = isActive ? '#2563EB' : '#9CA3AF';
+    const color = isActive ? '#1E3A5F' : '#9CA3AF';
     switch (key) {
-      case 'home':         return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
-      case 'jobs':         return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
+      case 'home': return <Ionicons name={isActive ? 'home' : 'home-outline'} size={23} color={color} />;
+      case 'jobs': return <MaterialCommunityIcons name="briefcase-outline" size={23} color={color} />;
       case 'applications': return <Ionicons name={isActive ? 'document-text' : 'document-text-outline'} size={23} color={color} />;
-      case 'profile':      return <Ionicons name={isActive ? 'person' : 'person-outline'} size={23} color={color} />;
-      case 'more':         return <Feather name="more-horizontal" size={23} color={color} />;
+      case 'profile': return <Ionicons name={isActive ? 'person' : 'person-outline'} size={23} color={color} />;
+      case 'more': return <Feather name="more-horizontal" size={23} color={color} />;
     }
   };
 
@@ -130,78 +80,104 @@ const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> =
   );
 };
 
-// ─── Main Screen ───────────────────────────────────────────────────────────
 const StudentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const router = useRouter();
   const params = useLocalSearchParams();
+  const [loading, setLoading] = useState(true);
 
   const [user, setUser] = useState({
-    name: (params.name as string) || "Student",
-    department: (params.department as string) || "Department",
-    gpa: (params.gpa as string) || "-",
-    year: (params.year as string) || "-",
-    email: (params.email as string) || "",
+    uid: '',
+    name: 'Student',
+    department: 'Department',
+    gpa: '-',
+    year: '-',
+    email: '',
     photo: null as string | null,
   });
 
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [rating, setRating] = useState<any>(null);
+
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const stored = await AsyncStorage.getItem("userData");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setUser({
-            name: parsed.username || parsed.name || "Student",
-            department: parsed.department || "Department",
-            gpa: parsed.gpa || "-",
-            year: parsed.year || "-",
-            email: parsed.email || "",
-            photo: parsed.photo || null,
-          });
-        }
-      } catch (e) {
-        console.log("Failed to load user data:", e);
-      }
-    };
-    loadUser();
+    loadData();
   }, []);
 
-  const fullName = user?.name || "Student";
-  const firstName = fullName.split(" ")[0];
-  const dept = user.department || "Department";
-  const gpaValue = user.gpa || "-";
-  const yearValue = user.year || "-";
+  const loadData = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('userData');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUser({
+          uid: parsed.uid || '',
+          name: parsed.name || parsed.username || 'Student',
+          department: parsed.department || 'Department',
+          gpa: parsed.gpa || '-',
+          year: parsed.year || '-',
+          email: parsed.email || '',
+          photo: parsed.photo || null,
+        });
 
-  const userData = {
-    name: user.name,
-    department: user.department,
-    gpa: user.gpa,
-    year: user.year,
-    email: user.email,
+        // Load rating
+        if (parsed.uid) {
+          const ratingRes = await getUserRating(parsed.uid);
+          if (ratingRes.success && ratingRes.data) {
+            setRating(ratingRes.data);
+          }
+        }
+      }
+
+      // Load jobs and applications in parallel
+      const [jobsRes, appsRes] = await Promise.all([
+        getAvailableJobs(),
+        getStudentApplications(),
+      ]);
+
+      if (jobsRes.success) {
+        const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : jobsRes.data?.data || [];
+        setJobs(allJobs.slice(0, 3)); // Show only 3 recommended
+      }
+
+      if (appsRes.success) {
+        const allApps = Array.isArray(appsRes.data) ? appsRes.data : [];
+        setApplications(allApps.slice(0, 3)); // Show only 3 recent
+      }
+    } catch (err) {
+      console.log('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTabPress = (key: TabKey) => {
     setActiveTab(key);
-    switch (key) {
-      case 'profile':
-        router.replace({ pathname: "/ProfileScreen", params: userData });
-        break;
-      case 'jobs':
-        router.replace({ pathname: "/JobsScreen", params: userData });
-        break;
-      case 'applications':
-        router.replace({ pathname: "/ApplicationsScreen", params: userData });
-        break;
-      case 'more':
-        router.replace({ pathname: "/MoreScreen", params: userData });
-        break;
+    const userData = { name: user.name, email: user.email, department: user.department, gpa: user.gpa, year: user.year };
+    const pathMap: Record<string, string> = {
+      profile: '/ProfileScreen',
+      jobs: '/JobsScreen',
+      applications: '/ApplicationsScreen',
+      more: '/MoreScreen',
+    };
+    if (pathMap[key]) {
+      router.replace({ pathname: pathMap[key] as any, params: userData as any });
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#1E3A5F" />
+      </View>
+    );
+  }
+
+  const firstName = user.name.split(' ')[0];
+  const initial = firstName.charAt(0).toUpperCase();
+
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#2563EB" />
+      <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} bounces={true}>
         <View style={styles.header}>
@@ -209,33 +185,38 @@ const StudentDashboard: React.FC = () => {
             <Text style={styles.greeting}>Good Morning,</Text>
             <Text style={styles.headerName}>{firstName}</Text>
           </View>
-         <TouchableOpacity 
-  style={styles.bellWrap} 
-  onPress={() => router.push({ pathname: "/notifications", params: userData })}
->
-  <Ionicons name="notifications-outline" size={26} color="#fff" />
-  <View style={styles.bellBadge}>
-    <Text style={styles.bellBadgeText}>2</Text>
-  </View>
-</TouchableOpacity>
+          <TouchableOpacity
+            style={styles.bellWrap}
+            onPress={() => router.push({ pathname: '/notifications', params: { name: user.name } as any })}
+          >
+            <Ionicons name="notifications-outline" size={26} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
           {/* Profile Card */}
-          <View style={styles.profileCard}>
+          <TouchableOpacity style={styles.profileCard} onPress={() => handleTabPress('profile')}>
             <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarInitial}>{initial}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{fullName}</Text>
-              <Text style={styles.profileDept}>{dept}</Text>
+              <Text style={styles.profileName}>{user.name}</Text>
+              <Text style={styles.profileDept}>{user.department}</Text>
               <View style={styles.profileMeta}>
-                <Text style={styles.profileMetaText}>{yearValue}</Text>
+                <Text style={styles.profileMetaText}>{user.year}</Text>
                 <Text style={styles.profileMetaDot}> • </Text>
-                <Text style={styles.profileMetaText}>GPA: {gpaValue}</Text>
+                <Text style={styles.profileMetaText}>GPA: {user.gpa}</Text>
+                {rating && (
+                  <>
+                    <Text style={styles.profileMetaDot}> • </Text>
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                    <Text style={[styles.profileMetaText, { color: '#D97706' }]}>{rating.average || 0}</Text>
+                  </>
+                )}
               </View>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
@@ -243,19 +224,19 @@ const StudentDashboard: React.FC = () => {
               <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
                 <Ionicons name="document-text-outline" size={22} color="#2563EB" />
               </View>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{applications.length}</Text>
               <Text style={styles.statLabel}>Applied</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.statCard} onPress={() => handleTabPress('jobs')}>
               <View style={[styles.statIconWrap, { backgroundColor: '#F0FDF4' }]}>
                 <MaterialCommunityIcons name="briefcase-outline" size={22} color="#16A34A" />
               </View>
-              <Text style={styles.statNumber}>2</Text>
-              <Text style={styles.statLabel}>Saved Jobs</Text>
+              <Text style={styles.statNumber}>{jobs.length > 3 ? '3+' : jobs.length}</Text>
+              <Text style={styles.statLabel}>New Jobs</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Recommended */}
+          {/* Recent Jobs */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recommended for You</Text>
@@ -263,18 +244,65 @@ const StudentDashboard: React.FC = () => {
                 <Text style={styles.seeAll}>See All</Text>
               </TouchableOpacity>
             </View>
-            {recommendedJobs.map((job) => <JobCard key={job.id} job={job} />)}
+            {jobs.length > 0 ? (
+              jobs.map((job) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.card}
+                  onPress={() => {
+                    // Could navigate to job detail
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle} numberOfLines={2}>{job.title}</Text>
+                    <View style={[styles.matchBadge, { backgroundColor: '#DBEAFE' }]}>
+                      <Text style={[styles.matchText, { color: '#1E3A5F' }]}>NEW</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDept}>{job.department}</Text>
+                  <View style={styles.cardMeta}>
+                    <Feather name="trending-up" size={12} color="#9CA3AF" />
+                    <Text style={styles.metaText}> {job.salary || 'Competitive Salary'}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>No jobs available yet</Text>
+            )}
           </View>
 
-          {/* Recent Activity */}
+          {/* Recent Applications */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <Text style={styles.sectionTitle}>Recent Applications</Text>
               <TouchableOpacity onPress={() => handleTabPress('applications')}>
                 <Text style={styles.seeAll}>View All</Text>
               </TouchableOpacity>
             </View>
-            {recentActivity.map((item) => <ActivityCard key={item.id} item={item} />)}
+            {applications.length > 0 ? (
+              applications.map((app) => {
+                const cfg = statusConfig[app.status] || statusConfig.pending;
+                return (
+                  <View key={app.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.cardTitle}>Application #{app.id.slice(0, 8)}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+                        <Text style={[styles.statusText, { color: cfg.color }]}>{app.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.cardDept}>Job ID: {app.jobId.slice(0, 8)}...</Text>
+                    {app.appliedAt && (
+                      <Text style={styles.appliedDate}>
+                        Applied: {app.appliedAt?.toDate?.()?.toLocaleDateString() || new Date(app.appliedAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.emptyText}>No applications yet</Text>
+            )}
           </View>
 
           <View style={{ height: 24 }} />
@@ -288,20 +316,48 @@ const StudentDashboard: React.FC = () => {
 
 export default StudentDashboard;
 
-// ─── Styles ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#1E3A5F' }, // Main Blue
+  safe: { flex: 1, backgroundColor: '#1E3A5F' },
   scroll: { flex: 1 },
-  header: { backgroundColor: '#1E3A5F', paddingHorizontal: 22, paddingTop: 22, paddingBottom: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  header: {
+    backgroundColor: '#1E3A5F',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   greeting: { color: 'rgba(255,255,255,0.85)', fontSize: 14 },
   headerName: { color: '#fff', fontSize: 30, fontWeight: '800', marginTop: 2 },
   bellWrap: { position: 'relative', marginTop: 2 },
-  bellBadge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, width: 19, height: 19, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#1E3A5F' },
-  bellBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   content: { backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingTop: 0 },
-  profileCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginTop: -36, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.10, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#2A4A7A', justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 2, borderColor: '#E5E7EB' }, // Secondary Blue
-  avatarInitial: { fontSize: 26, fontWeight: '800', color: '#1E3A5F' }, // Main Blue
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -36,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  avatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#2A4A7A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  avatarInitial: { fontSize: 26, fontWeight: '800', color: '#1E3A5F' },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 16, fontWeight: '700', color: '#111827' },
   profileDept: { fontSize: 13, color: '#6B7280', marginTop: 3 },
@@ -309,28 +365,60 @@ const styles = StyleSheet.create({
   profileMetaText: { fontSize: 12, color: '#9CA3AF' },
   profileMetaDot: { fontSize: 12, color: '#9CA3AF' },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
   statIconWrap: { width: 42, height: 42, borderRadius: 11, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   statNumber: { fontSize: 28, fontWeight: '800', color: '#111827' },
   statLabel: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   section: { marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  seeAll: { fontSize: 13, color: '#1E3A5F', fontWeight: '600' }, // Main Blue
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  seeAll: { fontSize: 13, color: '#1E3A5F', fontWeight: '600' },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
   cardDept: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   metaText: { fontSize: 12, color: '#9CA3AF' },
-  metaDot: { fontSize: 12, color: '#D1D5DB' },
   matchBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   matchText: { fontSize: 12, fontWeight: '700' },
   statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 12, fontWeight: '600' },
   appliedDate: { fontSize: 12, color: '#9CA3AF', marginTop: 6 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingBottom: 8, paddingTop: 10, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 8 },
+  emptyText: { color: '#9CA3AF', textAlign: 'center', marginTop: 20, fontSize: 14 },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingBottom: 8,
+    paddingTop: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 8,
+  },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
-  tabLabelActive: { color: '#1E3A5F', fontWeight: '600' }, // Main Blue
+  tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
 });

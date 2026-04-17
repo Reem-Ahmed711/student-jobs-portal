@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// MOBILE-APP/frontEnd/app/ApplicationsScreen.tsx
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,67 +7,37 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Modal,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStudentApplications } from '../src/api';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
-type AppStatus = 'Under Review' | 'Shortlisted' | 'Rejected' | 'Pending';
 
 interface Application {
   id: string;
-  title: string;
-  department: string;
-  appliedDate: string;
-  updatedDate: string;
-  status: AppStatus;
-  hasInterview?: boolean;
-  interviewDate?: string;
-  interviewLocation?: string;
+  jobId: string;
+  studentUid: string;
+  status: string;
+  appliedAt?: any;
 }
 
-// ─── Data ───────────────────────────────────────────────────────────────────
-const applications: Application[] = [
-  {
-    id: '1',
-    title: 'Teaching Assistant - Physics Lab',
-    department: 'Physics Department',
-    appliedDate: 'Feb 28, 2026',
-    updatedDate: 'Mar 2',
-    status: 'Under Review',
-  },
-  {
-    id: '2',
-    title: 'Mathematics Tutor',
-    department: 'Mathematics Department',
-    appliedDate: 'Mar 1, 2026',
-    updatedDate: 'Mar 4',
-    status: 'Shortlisted',
-    hasInterview: true,
-    interviewDate: 'Mar 10, 2026 at 10:00 AM',
-    interviewLocation: 'Mathematics Building, Room 205',
-  },
-  {
-    id: '3',
-    title: 'Research Assistant - Organic Chemistry',
-    department: 'Chemistry Department',
-    appliedDate: 'Feb 25, 2026',
-    updatedDate: 'Feb 25',
-    status: 'Pending',
-  },
-];
-
-const statusConfig: Record<AppStatus, { color: string; bg: string; icon: string }> = {
+const statusConfig: Record<string, { color: string; bg: string; icon: string }> = {
+  pending: { color: '#D97706', bg: '#FEF3C7', icon: 'time-outline' },
+  under_review: { color: '#1E3A5F', bg: '#EDE9FE', icon: 'time-outline' },
+  accepted: { color: '#16A34A', bg: '#DCFCE7', icon: 'checkmark-circle' },
+  rejected: { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' },
+  shortlisted: { color: '#16A34A', bg: '#DCFCE7', icon: 'ribbon-outline' },
   'Under Review': { color: '#1E3A5F', bg: '#EDE9FE', icon: 'time-outline' },
-  Shortlisted:   { color: '#16A34A', bg: '#DCFCE7', icon: 'ribbon-outline' },
-  Rejected:      { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' },
-  Pending:       { color: '#D97706', bg: '#FEF3C7', icon: 'ellipsis-horizontal-circle-outline' },
+  Shortlisted: { color: '#16A34A', bg: '#DCFCE7', icon: 'ribbon-outline' },
+  Rejected: { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' },
+  Pending: { color: '#D97706', bg: '#FEF3C7', icon: 'time-outline' },
 };
 
-// ─── Bottom Tab Bar ─────────────────────────────────────────────────────────
 const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'home', label: 'Home' },
@@ -101,113 +72,12 @@ const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> =
   );
 };
 
-// ─── Interview Modal ─────────────────────────────────────────────────────────
-const InterviewModal: React.FC<{
-  visible: boolean;
-  app: Application | null;
-  onClose: () => void;
-}> = ({ visible, app, onClose }) => {
-  if (!app) return null;
-  return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Interview Details</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.interviewCard}>
-            <View style={styles.interviewIconWrap}>
-              <Ionicons name="calendar" size={32} color="#1E3A5F" />
-            </View>
-            <Text style={styles.interviewJobTitle}>{app.title}</Text>
-            <Text style={styles.interviewDept}>{app.department}</Text>
-          </View>
-
-          <View style={styles.interviewInfoRow}>
-            <View style={[styles.interviewInfoIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="time-outline" size={18} color="#1E3A5F" />
-            </View>
-            <View>
-              <Text style={styles.interviewInfoLabel}>Date & Time</Text>
-              <Text style={styles.interviewInfoValue}>{app.interviewDate}</Text>
-            </View>
-          </View>
-
-          <View style={styles.interviewInfoRow}>
-            <View style={[styles.interviewInfoIcon, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="location-outline" size={18} color="#16A34A" />
-            </View>
-            <View>
-              <Text style={styles.interviewInfoLabel}>Location</Text>
-              <Text style={styles.interviewInfoValue}>{app.interviewLocation}</Text>
-            </View>
-          </View>
-
-          <View style={styles.interviewTips}>
-            <Text style={styles.interviewTipsTitle}>Preparation Tips</Text>
-            {[
-              'Review your resume and cover letter',
-              'Research the department and role',
-              'Arrive 10 minutes early',
-              'Bring printed copies of your documents',
-            ].map((tip, i) => (
-              <View key={i} style={styles.tipItem}>
-                <View style={styles.tipDot} />
-                <Text style={styles.tipText}>{tip}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.85}>
-            <Text style={styles.closeBtnText}>Got it!</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// ─── Application Card ────────────────────────────────────────────────────────
-const AppCard: React.FC<{ app: Application; onViewInterview: () => void }> = ({ app, onViewInterview }) => {
-  const cfg = statusConfig[app.status];
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTopRow}>
-        <Text style={styles.cardTitle} numberOfLines={2}>{app.title}</Text>
-        <View style={[styles.statusIconWrap, { backgroundColor: cfg.bg }]}>
-          <Ionicons name={cfg.icon as any} size={18} color={cfg.color} />
-        </View>
-      </View>
-
-      <Text style={styles.cardDept}>{app.department}</Text>
-
-      <View style={[styles.statusBadge, { backgroundColor: cfg.bg, alignSelf: 'flex-start', marginBottom: 12 }]}>
-        <Text style={[styles.statusText, { color: cfg.color }]}>{app.status}</Text>
-      </View>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.dateText}>Applied: {app.appliedDate}</Text>
-        <Text style={styles.dateText}>Updated: {app.updatedDate}</Text>
-      </View>
-
-      {app.hasInterview && (
-        <TouchableOpacity style={styles.interviewBtn} onPress={onViewInterview} activeOpacity={0.85}>
-          <Text style={styles.interviewBtnText}>View Interview Details</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
 const ApplicationsScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('applications');
-  const [interviewApp, setInterviewApp] = useState<Application | null>(null);
-  const [interviewVisible, setInterviewVisible] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
 
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -220,25 +90,57 @@ const ApplicationsScreen: React.FC = () => {
     email: (params.email as string) || '',
   };
 
+  const fetchApplications = async () => {
+    try {
+      const res = await getStudentApplications();
+      if (res.success) {
+        const apps = Array.isArray(res.data) ? res.data : [];
+        setApplications(apps);
+      }
+    } catch (err) {
+      console.log('Failed to fetch applications:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplications();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchApplications();
+  };
+
+  const filteredApps = filter === 'all' ? applications : applications.filter((a) => a.status === filter);
+
   const total = applications.length;
-  const pending = applications.filter((a) => a.status === 'Pending' || a.status === 'Under Review').length;
-  const shortlisted = applications.filter((a) => a.status === 'Shortlisted').length;
+  const pending = applications.filter((a) => a.status === 'pending' || a.status === 'under_review').length;
+  const accepted = applications.filter((a) => a.status === 'accepted' || a.status === 'shortlisted').length;
+  const rejected = applications.filter((a) => a.status === 'rejected').length;
 
   const handleTabPress = (key: TabKey) => {
     setActiveTab(key);
-    switch (key) {
-      case 'home':
-        router.replace({ pathname: '/StudentDashboard', params: userData });
-        break;
-      case 'jobs':
-        router.replace({ pathname: '/JobsScreen', params: userData });
-        break;
-      case 'profile':
-        router.replace({ pathname: '/ProfileScreen', params: userData });
-        break;
-      case 'more':
-        router.replace({ pathname: '/MoreScreen', params: userData });
-        break;
+    const pathMap: Record<string, string> = {
+      home: '/StudentDashboard',
+      jobs: '/JobsScreen',
+      profile: '/ProfileScreen',
+      more: '/MoreScreen',
+    };
+    if (pathMap[key]) {
+      router.replace({ pathname: pathMap[key] as any, params: userData as any });
+    }
+  };
+
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A';
+    try {
+      const d = date?.toDate?.() || new Date(date);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return 'N/A';
     }
   };
 
@@ -246,7 +148,6 @@ const ApplicationsScreen: React.FC = () => {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Applications</Text>
         <View style={styles.statsRow}>
@@ -261,33 +162,84 @@ const ApplicationsScreen: React.FC = () => {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{shortlisted}</Text>
-            <Text style={styles.statLabel}>Shortlisted</Text>
+            <Text style={styles.statNumber}>{accepted}</Text>
+            <Text style={styles.statLabel}>Accepted</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{rejected}</Text>
+            <Text style={styles.statLabel}>Rejected</Text>
           </View>
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      {/* Filter Tabs */}
+      <View style={styles.filterRow}>
+        {['all', 'pending', 'accepted', 'rejected'].map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterTab, filter === f && styles.filterTabActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.content}>
-          {applications.map((app) => (
-            <AppCard
-              key={app.id}
-              app={app}
-              onViewInterview={() => {
-                setInterviewApp(app);
-                setInterviewVisible(true);
-              }}
-            />
-          ))}
-          <View style={{ height: 16 }} />
+          {loading ? (
+            <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#1E3A5F" />
+          ) : filteredApps.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={48} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No applications found</Text>
+              <Text style={styles.emptySubtitle}>
+                {filter === 'all' ? "You haven't applied to any jobs yet" : `No ${filter} applications`}
+              </Text>
+              <TouchableOpacity
+                style={styles.browseBtn}
+                onPress={() => handleTabPress('jobs')}
+              >
+                <Text style={styles.browseBtnText}>Browse Jobs</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            filteredApps.map((app) => {
+              const cfg = statusConfig[app.status] || statusConfig.pending;
+              return (
+                <View key={app.id} style={styles.card}>
+                  <View style={styles.cardTopRow}>
+                    <Text style={styles.cardTitle} numberOfLines={2}>
+                      Application #{app.id.slice(0, 10)}...
+                    </Text>
+                    <View style={[styles.statusIconWrap, { backgroundColor: cfg.bg }]}>
+                      <Ionicons name={cfg.icon as any} size={18} color={cfg.color} />
+                    </View>
+                  </View>
+
+                  <Text style={styles.cardDept}>Job ID: {app.jobId.slice(0, 10)}...</Text>
+
+                  <View style={[styles.statusBadge, { backgroundColor: cfg.bg, alignSelf: 'flex-start', marginBottom: 12 }]}>
+                    <Text style={[styles.statusText, { color: cfg.color }]}>{app.status.toUpperCase()}</Text>
+                  </View>
+
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.dateText}>Applied: {formatDate(app.appliedAt)}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+          <View style={{ height: 80 }} />
         </View>
       </ScrollView>
-
-      <InterviewModal
-        visible={interviewVisible}
-        app={interviewApp}
-        onClose={() => setInterviewVisible(false)}
-      />
 
       <BottomTabBar active={activeTab} onPress={handleTabPress} />
     </SafeAreaView>
@@ -296,19 +248,16 @@ const ApplicationsScreen: React.FC = () => {
 
 export default ApplicationsScreen;
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
-
   header: {
     backgroundColor: '#1E3A5F',
     paddingHorizontal: 22,
     paddingTop: 22,
-    paddingBottom: 28,
+    paddingBottom: 20,
   },
   headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 20 },
-
   statsRow: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -316,12 +265,22 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statNumber: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
+  statNumber: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
   statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.3)', marginVertical: 4 },
-
-  content: { padding: 16, paddingTop: 20 },
-
+  filterRow: {
+    flexDirection: 'row',
+    backgroundColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 4,
+    margin: 16,
+    marginBottom: 0,
+  },
+  filterTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+  filterTabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4 },
+  filterTabText: { fontSize: 12, color: '#666', fontWeight: '500' },
+  filterTabTextActive: { color: '#1E3A5F', fontWeight: '700' },
+  content: { padding: 16 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -341,26 +300,30 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
   statusIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardDept: { fontSize: 13, color: '#6B7280', marginBottom: 10 },
   statusBadge: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   statusText: { fontSize: 12, fontWeight: '600' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   dateText: { fontSize: 12, color: '#9CA3AF' },
-
-  interviewBtn: {
+  emptyState: { alignItems: 'center', marginTop: 60 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#6B7280', marginTop: 12 },
+  emptySubtitle: { fontSize: 14, color: '#9CA3AF', marginTop: 4 },
+  browseBtn: {
     backgroundColor: '#1E3A5F',
     borderRadius: 12,
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 20,
+    paddingHorizontal: 30,
   },
-  interviewBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-
-  // Tab Bar
+  browseBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -373,74 +336,4 @@ const styles = StyleSheet.create({
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
   tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-
-  interviewCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  interviewIconWrap: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 12,
-  },
-  interviewJobTitle: { fontSize: 16, fontWeight: '700', color: '#111827', textAlign: 'center' },
-  interviewDept: { fontSize: 13, color: '#6B7280', marginTop: 4, textAlign: 'center' },
-
-  interviewInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 16,
-  },
-  interviewInfoIcon: {
-    width: 42, height: 42, borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  interviewInfoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 2 },
-  interviewInfoValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
-
-  interviewTips: {
-    backgroundColor: '#F8FAFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
-  },
-  interviewTipsTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 10 },
-  tipItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#1E3A5F' },
-  tipText: { fontSize: 13, color: '#374151' },
-
-  closeBtn: {
-    backgroundColor: '#1E3A5F',
-    borderRadius: 12,
-    height: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

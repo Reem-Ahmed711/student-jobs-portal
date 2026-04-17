@@ -1,4 +1,3 @@
-
 const admin = require("firebase-admin");
 
 const verifyToken = async (req, res, next) => {
@@ -15,12 +14,14 @@ const verifyToken = async (req, res, next) => {
 
     req.user = {
       uid: decodedToken.uid,
-      email: decodedToken.email
+      email: decodedToken.email,
     };
 
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Invalid token", error: error.message });
+    return res
+      .status(401)
+      .json({ message: "Invalid token", error: error.message });
   }
 };
 
