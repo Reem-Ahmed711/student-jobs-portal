@@ -26,7 +26,7 @@ const ratingRoutes = require("./Routes/ratingRoute");
 
 app.use("/api", authRoute);
 app.use("/api", profileRoutes);
-app.use("/api", jobRoutes);
+app.use("/api/jobs", jobRoutes);
 app.use("/api", applicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", employerRoutes);
@@ -56,6 +56,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });

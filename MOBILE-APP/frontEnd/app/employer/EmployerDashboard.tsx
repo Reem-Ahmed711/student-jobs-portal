@@ -15,35 +15,42 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getEmployerDashboard } from '../../src/api';
-
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 export default function EmployerDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Employer");
+  
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const loadData = async () => {
       try {
+        setLoading(true); // ✅ أهم سطر
+
         const stored = await AsyncStorage.getItem("userData");
         if (stored) {
           const parsed = JSON.parse(stored);
           setUserName(parsed.name || "Employer");
         }
+
         const data = await getEmployerDashboard();
+        console.log("Dashboard Data:", data);
         if (data.success) {
           setStats(data.data);
         }
       } catch (err) {
         console.log('Error loading dashboard:', err);
-        Alert.alert("Error", "Failed to load dashboard data");
       } finally {
-        setLoading(false);
+        setLoading(false); // ✅ يوقف اللود
       }
     };
-    loadData();
-  }, []);
 
+    loadData();
+  }, [])
+);
   if (loading) {
     return (
       <View style={styles.center}>

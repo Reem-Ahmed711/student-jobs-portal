@@ -56,6 +56,8 @@ const getJobApplicationsWithDetailsController = async (req, res) => {
     const result = await getJobApplicationsWithDetails(req.user.uid, jobId);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+      console.log("Dashboard Error:", err); // ✅ ضيفي ده
+
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
