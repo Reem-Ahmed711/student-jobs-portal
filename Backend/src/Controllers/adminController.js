@@ -231,21 +231,6 @@ const adminUpdateApplicationStatusController = async (req, res) => {
 };
 
 
-const getAdminLogsController = async (req, res) => {
-  try {
-    const snap = await db.collection("adminLogs").get();
-
-    const logs = snap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    res.json({ success: true, data: logs });
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-};
-
 const getAllAdminsController = async (req, res) => {
   try {
     const snap = await db.collection("users")
@@ -289,6 +274,5 @@ module.exports = {
   adminGetAllApplicationsController,
   adminUpdateApplicationStatusController,
 
-  getAdminLogsController,
   getAllAdminsController,
 };
