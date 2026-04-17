@@ -10,7 +10,7 @@ const {
 
 const {
   uploadAndSaveProfileImage
-} = require("../Controllers/profileController");
+} = require("../Controllers/profileControl");
 
 const {
   getUserRole,

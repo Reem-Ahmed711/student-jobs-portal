@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   searchJobs,
   getJobDetails
-} = require("../Controller/searchController");
+} = require("../Controllers/searchController");
 router.get("/jobs", searchJobs);
 router.get("/job/:id", getJobDetails);
 

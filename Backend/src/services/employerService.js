@@ -1,98 +1,298 @@
-const { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  getDoc, 
-  addDoc 
-} = require("firebase/firestore");
+const { db } = require("../config/firebase");
+const admin = require("firebase-admin");
 
-const { db } = require("../firebase/firebaseConfig");
-const { requireEmployer } = require("../auth/roleGuard");
+// helper
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
-const getAllStudents = async (uid) => {
-  await requireEmployer(uid);
+// ── Get Employer Profile ──────────────────────────────────────────
+const getEmployerProfile = async (uid) => {
+  try {
+    const snapshot = await db.collection("users").doc(uid).get();
 
-  const q = query(
-    collection(db, "users"),
-    where("role", "==", "student")
-  );
+    if (!snapshot.exists) {
+      return { success: false, message: "Employer not found" };
+    }
 
-  const snapshot = await getDocs(q);
+    const data = snapshot.data();
 
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
-};
+    if (data.role !== "employer") {
+      return { success: false, message: "User is not an employer" };
+    }
 
-
-const getStudentProfile = async (employerUid, studentUid) => {
-  await requireEmployer(employerUid);
-
-  const userRef = doc(db, "users", studentUid);
-  const snapshot = await getDoc(userRef);
-
-  if (!snapshot.exists()) {
-    throw new Error("Student not found");
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, message: error.message };
   }
-
-  return snapshot.data();
 };
 
-const getApplicants = async (employerUid, jobId) => {
-  await requireEmployer(employerUid);
+// ── Update Employer Profile ───────────────────────────────────────
+const updateEmployerProfile = async (uid, updatedData) => {
+  try {
+    const restrictedFields = [
+      "role",
+      "uid",
+      "email",
+      "createdAt",
+      "isActive",
+      "rating",
+    ];
 
-  const q = query(
-    collection(db, "applications"),
-    where("jobId", "==", jobId)
-  );
+    restrictedFields.forEach((field) => delete updatedData[field]);
 
-  const snapshot = await getDocs(q);
+    await db.collection("users").doc(uid).update({
+      ...updatedData,
+      updatedAt: serverTimestamp(),
+    });
 
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+    return {
+      success: true,
+      message: "Employer profile updated successfully",
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
+// ── Get Employer Jobs ─────────────────────────────────────────────
+const getEmployerJobs = async (uid) => {
+  try {
+    const snapshot = await db
+      .collection("jobs")
+      .where("employerUid", "==", uid)
+      .get();
 
+    if (snapshot.empty) {
+      return { success: true, data: [], message: "No jobs found" };
+    }
 
-const addToShortlist = async (employerUid, studentUid, jobId) => {
-  await requireEmployer(employerUid);
+    const jobs = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-  await addDoc(collection(db, "shortlist"), {
-    employerUid,
-    studentUid,
-    jobId,
-    createdAt: new Date()
-  });
-
-  return { success: true };
+    return { success: true, data: jobs };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
-const getShortlist = async (employerUid) => {
-  await requireEmployer(employerUid);
+// ── Get Applications with Details ─────────────────────────────────
+const getJobApplicationsWithDetails = async (jobId, employerUid) => {
+  try {
+    const jobSnap = await db.collection("jobs").doc(jobId).get();
 
-  const q = query(
-    collection(db, "shortlist"),
-    where("employerUid", "==", employerUid)
-  );
+    if (!jobSnap.exists) {
+      return { success: false, message: "Job not found" };
+    }
 
-  const snapshot = await getDocs(q);
+    if (jobSnap.data().employerUid !== employerUid) {
+      return {
+        success: false,
+        message: "Unauthorized: This job doesn't belong to you",
+      };
+    }
 
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+    const appsSnap = await db
+      .collection("applications")
+      .where("jobId", "==", jobId)
+      .get();
+
+    if (appsSnap.empty) {
+      return { success: true, data: [], message: "No applications yet" };
+    }
+
+    const applications = await Promise.all(
+      appsSnap.docs.map(async (appDoc) => {
+        const appData = appDoc.data();
+
+        const studentSnap = await db
+          .collection("users")
+          .doc(appData.studentUid)
+          .get();
+
+        const studentData = studentSnap.exists
+          ? studentSnap.data()
+          : {};
+
+        return {
+          applicationId: appDoc.id,
+          status: appData.status,
+          appliedAt: appData.appliedAt,
+          student: {
+            uid: appData.studentUid,
+            name: studentData.name,
+            email: studentData.email,
+            university: studentData.university,
+            major: studentData.major,
+            profileImage: studentData.profileImage,
+            cv: studentData.cv,
+            skills: studentData.skills,
+            gpa: studentData.gpa,
+          },
+        };
+      })
+    );
+
+    return { success: true, data: applications };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
+// ── Accept Application ────────────────────────────────────────────
+const acceptApplication = async (applicationId, employerUid) => {
+  try {
+    const appRef = db.collection("applications").doc(applicationId);
+    const appSnap = await appRef.get();
+
+    if (!appSnap.exists) {
+      return { success: false, message: "Application not found" };
+    }
+
+    const appData = appSnap.data();
+
+    const jobSnap = await db.collection("jobs").doc(appData.jobId).get();
+
+    if (!jobSnap.exists || jobSnap.data().employerUid !== employerUid) {
+      return { success: false, message: "Unauthorized action" };
+    }
+
+    if (appData.status !== "pending") {
+      return {
+        success: false,
+        message: `Application is already ${appData.status}`,
+      };
+    }
+
+    await appRef.update({
+      status: "accepted",
+      reviewedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: "Application accepted successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Reject Application ────────────────────────────────────────────
+const rejectApplication = async (applicationId, employerUid) => {
+  try {
+    const appRef = db.collection("applications").doc(applicationId);
+    const appSnap = await appRef.get();
+
+    if (!appSnap.exists) {
+      return { success: false, message: "Application not found" };
+    }
+
+    const appData = appSnap.data();
+
+    const jobSnap = await db.collection("jobs").doc(appData.jobId).get();
+
+    if (!jobSnap.exists || jobSnap.data().employerUid !== employerUid) {
+      return { success: false, message: "Unauthorized action" };
+    }
+
+    if (appData.status !== "pending") {
+      return {
+        success: false,
+        message: `Application is already ${appData.status}`,
+      };
+    }
+
+    await appRef.update({
+      status: "rejected",
+      reviewedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: "Application rejected successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Employer Stats ────────────────────────────────────────────────
+const getEmployerStats = async (uid) => {
+  try {
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("employerUid", "==", uid)
+      .get();
+
+    const jobIds = jobsSnap.docs.map((d) => d.id);
+
+    if (jobIds.length === 0) {
+      return {
+        success: true,
+        data: {
+          totalJobs: 0,
+          totalApplications: 0,
+          pending: 0,
+          accepted: 0,
+          rejected: 0,
+        },
+      };
+    }
+
+    const appsSnap = await db.collection("applications").get();
+
+    let pending = 0,
+      accepted = 0,
+      rejected = 0;
+
+    appsSnap.forEach((doc) => {
+      const data = doc.data();
+      if (!jobIds.includes(data.jobId)) return;
+
+      if (data.status === "pending") pending++;
+      if (data.status === "accepted") accepted++;
+      if (data.status === "rejected") rejected++;
+    });
+
+    return {
+      success: true,
+      data: {
+        totalJobs: jobsSnap.size,
+        totalApplications: pending + accepted + rejected,
+        pending,
+        accepted,
+        rejected,
+      },
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Dashboard ─────────────────────────────────────────────────────
+const getEmployerDashboard = async (uid) => {
+  try {
+    const [profile, jobs, stats] = await Promise.all([
+      getEmployerProfile(uid),
+      getEmployerJobs(uid),
+      getEmployerStats(uid),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        profile: profile.data || null,
+        jobs: jobs.data || [],
+        stats: stats.data || {},
+      },
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
 
 module.exports = {
-  getAllStudents,
-  getStudentProfile,
-  getApplicants,
-  addToShortlist,
-  getShortlist
+  getEmployerProfile,
+  updateEmployerProfile,
+  getEmployerJobs,
+  getJobApplicationsWithDetails,
+  acceptApplication,
+  rejectApplication,
+  getEmployerStats,
+  getEmployerDashboard,
 };

@@ -1,5 +1,5 @@
-const { doc, setDoc, getDoc, updateDoc, serverTimestamp } = require("firebase/firestore");
-const { db } = require("../firebase/firebaseConfig");
+const { doc, setDoc, getDoc, updateDoc, serverTimestamp } = require("firebase-admin");
+const { db } = require("../config/firebase");
 
 const createProfile = async (uid, profileData) => {
   try {

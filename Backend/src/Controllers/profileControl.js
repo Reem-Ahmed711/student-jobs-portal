@@ -1,5 +1,5 @@
-const { uploadProfileImage } = require("../storage/storageService"); 
-const { updateProfile } = require("./profileService"); 
+const { uploadProfileImage } = require("../services/storageService"); 
+const { updateProfile } = require("../services/profileService"); 
 
 const uploadAndSaveProfileImage = async (uid, file) => {
   try {

@@ -10,17 +10,26 @@ app.use("/api/auth", require("./routes/authRoutes"));
 
 const applicationRoutes = require("./routes/jobsRoutes");
 const interactionRoutes = require("./routes/interactionRoutes");
-const cvRoutes = require("./routes/cvRoutes");
+//const cvRoutes = require("./routes/cvRoutes");
 const searchroutes = require("./routes/searchRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const employerRoutes = require("./routes/employerRoutes");
+const ratingRoutes = require("./routes/ratingRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
-app.use("/api/profile", profileRoutes);
+app.use("/api/ratings", ratingRoutes);
 app.use("/api/employer", employerRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/profile", profileRoutes);
+
 app.use("/api", applicationRoutes);
 app.use("/api", interactionRoutes);
-app.use("/api", cvRoutes);
+//app.use("/api", cvRoutes);
 app.use("/api", searchroutes);
+
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

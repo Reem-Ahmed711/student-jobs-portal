@@ -14,6 +14,8 @@ const verifyTokenMiddleware = require("../middleware/verifyToken");
 
 router.post("/register", async (req, res) => {
   try {
+     //console.log(req.body);
+     console.log(admin.apps.length);
     const result = await registerUser(req.body);
     res.status(201).json(result);
   } catch (error) {

@@ -1,55 +1,227 @@
+const { db } = require("../config/firebase");
+const admin = require("firebase-admin");
 
-const { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, query } = require("firebase/firestore");
-const { db } = require("../firebase/firebaseConfig");
-const { requireAdmin } = require("../auth/roleGuard");
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
+// ── Helpers ───────────────────────────────────────────────────────
+const getUserByUid = async (uid) => {
+  const snap = await db.collection("users").doc(uid).get();
+  return snap.exists ? { id: snap.id, ...snap.data() } : null;
+};
 
-const getUserProfile = async (adminUid, targetUid) => {
-  await requireAdmin(adminUid); // نتأكد إن الشخص admin
-  const userRef = doc(db, "users", targetUid);
-  const snapshot = await getDoc(userRef);
+const getUsersByRole = async (role) => {
+  const snap = await db.collection("users").where("role", "==", role).get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
 
-  if (!snapshot.exists()) {
-    return { success: false, message: "User not found" };
+// ════════════════════════════════════════════════════════
+//  EMPLOYER MANAGEMENT
+// ════════════════════════════════════════════════════════
+
+const getAllEmployers = async () => {
+  try {
+    const employers = await getUsersByRole("employer");
+    return { success: true, data: employers };
+  } catch (error) {
+    return { success: false, message: error.message };
   }
-
-  return { success: true, data: snapshot.data() };
 };
 
-const updateUserProfile = async (adminUid, targetUid, updatedData) => {
-  await requireAdmin(adminUid);
-
-  const userRef = doc(db, "users", targetUid);
-  await updateDoc(userRef, { ...updatedData });
-
-  return { success: true, message: "Profile updated successfully" };
+const getEmployerByIdAsAdmin = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Employer not found" };
+    if (user.role !== "employer")
+      return { success: false, message: "User is not an employer" };
+    return { success: true, data: user };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
-const deleteUser = async (adminUid, targetUid) => {
-  await requireAdmin(adminUid);
+const updateEmployerAsAdmin = async (targetUid, updatedData) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Employer not found" };
+    if (user.role !== "employer")
+      return { success: false, message: "User is not an employer" };
 
-  const userRef = doc(db, "users", targetUid);
-  await deleteDoc(userRef);
+    const restricted = ["uid", "createdAt"];
+    restricted.forEach((f) => delete updatedData[f]);
 
-  return { success: true, message: "User deleted successfully" };
+    await db.collection("users").doc(targetUid).update({
+      ...updatedData,
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: "Employer updated successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
+const deleteEmployerAsAdmin = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Employer not found" };
+    if (user.role !== "employer")
+      return { success: false, message: "User is not an employer" };
 
-const getAllUsers = async (adminUid) => {
-  await requireAdmin(adminUid);
+    await db.collection("users").doc(targetUid).delete();
+    return { success: true, message: "Employer deleted successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
 
-  const q = query(collection(db, "users"));
-  const snapshot = await getDocs(q);
+const toggleEmployerStatus = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Employer not found" };
+    if (user.role !== "employer")
+      return { success: false, message: "User is not an employer" };
 
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+    const newStatus = !user.isActive;
+    await db.collection("users").doc(targetUid).update({
+      isActive: newStatus,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      message: `Employer ${newStatus ? "activated" : "deactivated"} successfully`,
+      isActive: newStatus,
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ════════════════════════════════════════════════════════
+//  STUDENT MANAGEMENT
+// ════════════════════════════════════════════════════════
+
+const getAllStudents = async () => {
+  try {
+    const students = await getUsersByRole("student");
+    return { success: true, data: students };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+const getStudentByIdAsAdmin = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Student not found" };
+    if (user.role !== "student")
+      return { success: false, message: "User is not a student" };
+    return { success: true, data: user };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+const updateStudentAsAdmin = async (targetUid, updatedData) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Student not found" };
+    if (user.role !== "student")
+      return { success: false, message: "User is not a student" };
+
+    const restricted = ["uid", "createdAt"];
+    restricted.forEach((f) => delete updatedData[f]);
+
+    await db.collection("users").doc(targetUid).update({
+      ...updatedData,
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: "Student updated successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+const deleteStudentAsAdmin = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Student not found" };
+    if (user.role !== "student")
+      return { success: false, message: "User is not a student" };
+
+    await db.collection("users").doc(targetUid).delete();
+    return { success: true, message: "Student deleted successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+const toggleStudentStatus = async (targetUid) => {
+  try {
+    const user = await getUserByUid(targetUid);
+    if (!user) return { success: false, message: "Student not found" };
+    if (user.role !== "student")
+      return { success: false, message: "User is not a student" };
+
+    const newStatus = !user.isActive;
+    await db.collection("users").doc(targetUid).update({
+      isActive: newStatus,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      message: `Student ${newStatus ? "activated" : "deactivated"} successfully`,
+      isActive: newStatus,
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ════════════════════════════════════════════════════════
+//  PLATFORM STATS
+// ════════════════════════════════════════════════════════
+
+const getPlatformStats = async () => {
+  try {
+    const [employers, students] = await Promise.all([
+      getUsersByRole("employer"),
+      getUsersByRole("student"),
+    ]);
+
+    const [jobsSnap, appsSnap] = await Promise.all([
+      db.collection("jobs").get(),
+      db.collection("applications").get(),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        totalEmployers: employers.length,
+        activeEmployers: employers.filter((e) => e.isActive).length,
+        totalStudents: students.length,
+        activeStudents: students.filter((s) => s.isActive).length,
+        totalJobs: jobsSnap.size,
+        totalApplications: appsSnap.size,
+      },
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
 module.exports = {
-  getUserProfile,
-  updateUserProfile,
-  deleteUser,
-  getAllUsers
+  getAllEmployers,
+  getEmployerByIdAsAdmin,
+  updateEmployerAsAdmin,
+  deleteEmployerAsAdmin,
+  toggleEmployerStatus,
+  getAllStudents,
+  getStudentByIdAsAdmin,
+  updateStudentAsAdmin,
+  deleteStudentAsAdmin,
+  toggleStudentStatus,
+  getPlatformStats,
 };

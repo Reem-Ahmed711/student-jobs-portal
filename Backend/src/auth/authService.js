@@ -1,5 +1,4 @@
-const admin = require("firebase-admin");
-require("../config/firebase");
+const { admin, db } = require("../config/firebase");
 
 const { validateRegisterInput, validateLoginInput } = require("./validation");
 const { assignRole } = require("./roleService");
@@ -39,8 +38,7 @@ async function registerUser({
     github: "",
   };
 
-  const userDocRef = admin.firestore().collection("users").doc(userRecord.uid);
-  await userDocRef.set(userData);
+  await db.collection("users").doc(userRecord.uid).set(userData);
 
   await assignRole(userRecord.uid, role);
 
@@ -57,163 +55,160 @@ async function loginUser({ email, password }) {
   validateLoginInput({ email, password });
 
   const API_KEY = "AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
+
   try {
     const response = await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
-      { email, password, returnSecureToken: true },
+      {
+        email,
+        password,
+        returnSecureToken: true,
+      }
     );
 
     const { localId, idToken } = response.data;
 
-    const userDoc = await admin
-      .firestore()
-      .collection("users")
-      .doc(localId)
-      .get();
+    const userDoc = await db.collection("users").doc(localId).get();
     if (!userDoc.exists) throw new Error("User not found");
 
-    const userData = userDoc.data();
-    return { uid: localId, ...userData, token: idToken };
+    return {
+      uid: localId,
+      ...userDoc.data(),
+      token: idToken,
+    };
   } catch (err) {
     throw new Error(
-      "Login failed: " + (err.response?.data?.error?.message || err.message),
+      "Login failed: " +
+        (err.response?.data?.error?.message || err.message)
     );
   }
 }
 
 async function googleLogin(idToken) {
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { uid, email, name, picture } = decodedToken;
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+  const { uid, email, name, picture } = decodedToken;
 
-    const userDoc = await admin.firestore().collection("users").doc(uid).get();
+  const userRef = db.collection("users").doc(uid);
+  const userDoc = await userRef.get();
 
-    if (!userDoc.exists) {
-      const userData = {
-        name: name || email.split("@")[0],
-        email,
-        role: "student",
-        createdAt: new Date().toISOString(),
-        department: "",
-        year: "",
-        gpa: "",
-        skills: [],
-        profileImage: picture || "",
-        phone: "",
-        about: "",
-        linkedin: "",
-        github: "",
-      };
+  if (!userDoc.exists) {
+    const userData = {
+      name: name || email.split("@")[0],
+      email,
+      role: "student",
+      createdAt: new Date().toISOString(),
+      department: "",
+      year: "",
+      gpa: "",
+      skills: [],
+      profileImage: picture || "",
+      phone: "",
+      about: "",
+      linkedin: "",
+      github: "",
+    };
 
-      await admin.firestore().collection("users").doc(uid).set(userData);
-      await assignRole(uid, "student");
+    await userRef.set(userData);
+    await assignRole(uid, "student");
 
-      return { uid, ...userData, token: idToken };
-    }
-
-    const userData = userDoc.data();
     return { uid, ...userData, token: idToken };
-  } catch (error) {
-    throw new Error("Google login failed: " + error.message);
   }
+
+  return { uid, ...userDoc.data(), token: idToken };
 }
 
 async function linkedinLogin(accessToken, profileData) {
+  const { email, name, id } = profileData;
+
+  let userRecord;
+
   try {
-    const { email, name, id } = profileData;
-
-    let userRecord;
-    try {
-      userRecord = await admin.auth().getUserByEmail(email);
-    } catch {
-      userRecord = await admin.auth().createUser({
-        email,
-        displayName: name,
-        uid: id,
-      });
-    }
-
-    const uid = userRecord.uid;
-    const userDoc = await admin.firestore().collection("users").doc(uid).get();
-
-    if (!userDoc.exists) {
-      const userData = {
-        name: name || email.split("@")[0],
-        email,
-        role: "student",
-        createdAt: new Date().toISOString(),
-        department: "",
-        year: "",
-        gpa: "",
-        skills: [],
-        profileImage: "",
-        phone: "",
-        about: "",
-        linkedin: "",
-        github: "",
-      };
-
-      await admin.firestore().collection("users").doc(uid).set(userData);
-      await assignRole(uid, "student");
-
-      return { uid, ...userData };
-    }
-
-    const userData = userDoc.data();
-    return { uid, ...userData };
-  } catch (error) {
-    throw new Error("LinkedIn login failed: " + error.message);
+    userRecord = await admin.auth().getUserByEmail(email);
+  } catch {
+    userRecord = await admin.auth().createUser({
+      email,
+      displayName: name,
+      uid: id,
+    });
   }
+
+  const uid = userRecord.uid;
+  const userRef = db.collection("users").doc(uid);
+  const userDoc = await userRef.get();
+
+  if (!userDoc.exists) {
+    const userData = {
+      name: name || email.split("@")[0],
+      email,
+      role: "student",
+      createdAt: new Date().toISOString(),
+      department: "",
+      year: "",
+      gpa: "",
+      skills: [],
+      profileImage: "",
+      phone: "",
+      about: "",
+      linkedin: "",
+      github: "",
+    };
+
+    await userRef.set(userData);
+    await assignRole(uid, "student");
+
+    return { uid, ...userData };
+  }
+
+  return { uid, ...userDoc.data() };
 }
 
 async function forgotPassword(email) {
-  try {
-    const link = await admin.auth().generatePasswordResetLink(email);
-    console.log(`Password reset link for ${email}:`, link);
-    return {
-      success: true,
-      message: "Password reset link generated",
-      link: link,
-    };
-  } catch (error) {
-    throw new Error("Failed to generate reset link: " + error.message);
-  }
+  const link = await admin.auth().generatePasswordResetLink(email);
+
+  console.log(`Password reset link for ${email}:`, link);
+
+  return {
+    success: true,
+    message: "Password reset link generated",
+    link,
+  };
 }
 
-async function resetPassword(oobCode, newPassword) {
-  try {
-    return { success: true, message: "Password reset successfully" };
-  } catch (error) {
-    throw new Error("Failed to reset password: " + error.message);
-  }
+async function resetPassword() {
+  return {
+    success: true,
+    message: "Password reset handled by Firebase client SDK",
+  };
 }
 
 async function verifyToken(idToken) {
-  const decodedToken = await admin.auth().verifyIdToken(idToken);
-  const uid = decodedToken.uid;
+  const decoded = await admin.auth().verifyIdToken(idToken);
 
-  const userDoc = await admin.firestore().collection("users").doc(uid).get();
+  const userDoc = await db.collection("users").doc(decoded.uid).get();
   if (!userDoc.exists) throw new Error("User not found");
 
-  const userData = userDoc.data();
-  return { uid, ...userData };
+  return {
+    uid: decoded.uid,
+    ...userDoc.data(),
+  };
 }
 
 async function updateUserProfile(uid, profileData) {
-  try {
-    const userRef = admin.firestore().collection("users").doc(uid);
-    await userRef.update({
-      ...profileData,
-      updatedAt: new Date().toISOString(),
-    });
+  const userRef = db.collection("users").doc(uid);
 
-    const updated = await userRef.get();
-    return { success: true, data: updated.data() };
-  } catch (error) {
-    throw new Error("Failed to update profile: " + error.message);
-  }
+  await userRef.update({
+    ...profileData,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const updated = await userRef.get();
+
+  return {
+    success: true,
+    data: updated.data(),
+  };
 }
-//updata
+
 module.exports = {
   registerUser,
   loginUser,

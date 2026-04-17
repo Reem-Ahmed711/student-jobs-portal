@@ -1,80 +1,111 @@
 const {
-  getAllStudents,
-  getStudentProfile,
-  getApplicants,
-  addToShortlist,
-  getShortlist
+  getEmployerProfile,
+  updateEmployerProfile,
+  getEmployerJobs,
+  getJobApplicationsWithDetails,
+  acceptApplication,
+  rejectApplication,
+  getEmployerStats,
+  getEmployerDashboard,
 } = require("../services/employerService");
 
-
-
-const getAllStudentsController = async (req, res) => {
+const getEmployerProfileController = async (req, res) => {
   try {
-    const data = await getAllStudents(req.user.uid);
-    res.status(200).json(data);
+    const result = await getEmployerProfile(req.user.uid);
+    return res.status(result.success ? 200 : 404).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-const getStudentProfileController = async (req, res) => {
+const updateEmployerProfileController = async (req, res) => {
   try {
-    const data = await getStudentProfile(
-      req.user.uid,
-      req.params.studentId
-    );
-    res.status(200).json(data);
+    const result = await updateEmployerProfile(req.user.uid, req.body);
+    return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// جلب المتقدمين لوظيفة
-const getApplicantsController = async (req, res) => {
+const getEmployerJobsController = async (req, res) => {
   try {
-    const data = await getApplicants(
-      req.user.uid,
-      req.params.jobId
-    );
-    res.status(200).json(data);
+    const result = await getEmployerJobs(req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// إضافة shortlist
-const addToShortlistController = async (req, res) => {
+const getJobApplicationsWithDetailsController = async (req, res) => {
   try {
-    const { studentUid, jobId } = req.body;
+    const { jobId } = req.params;
 
-    const result = await addToShortlist(
-      req.user.uid,
-      studentUid,
-      jobId
-    );
+    if (!jobId) {
+      return res.status(400).json({ message: "jobId is required" });
+    }
 
-    res.status(200).json(result);
+    const result = await getJobApplicationsWithDetails(jobId, req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-const getShortlistController = async (req, res) => {
+const acceptApplicationController = async (req, res) => {
   try {
-    const data = await getShortlist(req.user.uid);
-    res.status(200).json(data);
+    const { applicationId } = req.params;
+
+    if (!applicationId) {
+      return res.status(400).json({ message: "applicationId is required" });
+    }
+
+    const result = await acceptApplication(applicationId, req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+const rejectApplicationController = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+
+    if (!applicationId) {
+      return res.status(400).json({ message: "applicationId is required" });
+    }
+
+    const result = await rejectApplication(applicationId, req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getEmployerStatsController = async (req, res) => {
+  try {
+    const result = await getEmployerStats(req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getEmployerDashboardController = async (req, res) => {
+  try {
+    const result = await getEmployerDashboard(req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
-  getAllStudentsController,
-  getStudentProfileController,
-  getApplicantsController,
-  addToShortlistController,
-  getShortlistController
+  getEmployerProfileController,
+  updateEmployerProfileController,
+  getEmployerJobsController,
+  getJobApplicationsWithDetailsController,
+  acceptApplicationController,
+  rejectApplicationController,
+  getEmployerStatsController,
+  getEmployerDashboardController,
 };
