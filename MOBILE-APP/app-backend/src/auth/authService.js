@@ -68,7 +68,7 @@ async function registerUser({
 async function loginUser({ email, password }) {
   validateLoginInput({ email, password });
 
-  const API_KEY = process.env.FIREBASE_API_KEY;
+  const API_KEY ="AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
 
   try {
     const response = await axios.post(
