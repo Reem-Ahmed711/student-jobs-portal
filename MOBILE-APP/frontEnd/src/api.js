@@ -351,6 +351,85 @@ export const removeAdmin = async (uid) => {
     };
   }
 };
+// ================= SAVED JOBS =================
+
+// ================= SAVED JOBS =================
+export const saveJob = async (jobId) => {
+  try {
+    const res = await api.post("/api/saved-jobs", { jobId });
+    return { success: true, data: res.data };
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const unsaveJob = async (jobId) => {
+  try {
+    const res = await api.delete(`/api/saved-jobs/${jobId}`);
+    return { success: true, data: res.data };
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const getSavedJobs = async () => {
+  try {
+    const res = await api.get("/api/saved-jobs");
+    return { success: true, data: res.data };
+  } catch (err) {
+    return { success: false, data: [], message: err.message };
+  }
+};
+
+// ================= COMMENTS (جديد) =================
+export const addComment = async (jobId, comment) => {
+  try {
+    const res = await api.post("/api/comment", { jobId, comment });
+    console.log("✅ Comment added:", res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error("❌ Add comment error:", err.response?.status, err.response?.data);
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message || "Failed to add comment",
+    };
+  }
+};
+
+export const getComments = async (jobId) => {
+  try {
+    const res = await api.get(`/api/comments/${jobId}`);
+    console.log(`📝 Got comments for job ${jobId}:`, res.data);
+    // التعامل مع هيكل الرد من الـ Backend
+    const comments = res.data.comments || res.data || [];
+    return { success: true, comments };
+  } catch (err) {
+    console.error("❌ Get comments error:", err.response?.status, err.response?.data);
+    return { 
+      success: false, 
+      comments: [],
+      message: err?.response?.data?.message || err.message 
+    };
+  }
+};
+
+export const deleteComment = async (commentId) => {
+  try {
+    const res = await api.delete(`/api/comments/${commentId}`);
+    return { success: true, data: res.data };
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
 
 // ================= EXPORT DEFAULT =================
 export default api;

@@ -24,7 +24,7 @@ import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
 const DRAWER_WIDTH = 260;
-const API_URL = 'http://10.17.158.249:3000';
+const API_URL = 'http://10.163.82.249:3000';
 
 // ─── Nav Items ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -75,12 +75,20 @@ const NAV_ITEMS = [
 // ✅ دالة تحديث حالة الطلب
 const updateApplicationStatus = async (applicationId: string, newStatus: string, onRefresh: () => void) => {
   try {
+    console.log("✅ Button pressed - ID:", applicationId, "Status:", newStatus);
+    
     const token = await AsyncStorage.getItem('userToken');
+    console.log("📦 Token exists:", !!token);
+    console.log("📡 Sending request to:", `${API_URL}/api/applications/${applicationId}/status`);
+    console.log("📦 Request body:", { status: newStatus });
+    
     const response = await axios.put(
       `${API_URL}/api/applications/${applicationId}/status`,
       { status: newStatus },
       { headers: { Authorization: `Bearer ${token}` } }
     );
+    
+    console.log("✅ Response received:", response.data);
     
     if (response.data.success) {
       Alert.alert('Success', `Application ${newStatus}`);
@@ -89,8 +97,20 @@ const updateApplicationStatus = async (applicationId: string, newStatus: string,
       Alert.alert('Error', response.data.message || 'Failed to update');
     }
   } catch (error: any) {
-    console.log('Error updating status:', error);
-    Alert.alert('Error', error.response?.data?.message || 'Failed to update status');
+    console.log("❌ ===== ERROR CAUGHT =====");
+    console.log("❌ Error message:", error.message);
+    console.log("❌ Response status:", error.response?.status);
+    console.log("❌ Response data:", error.response?.data);
+    console.log("❌ Error config:", error.config);
+    
+    let errorMessage = 'Failed to update status';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    Alert.alert('Error', errorMessage);
   }
 };
 

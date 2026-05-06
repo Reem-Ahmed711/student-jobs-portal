@@ -49,15 +49,26 @@ const getStudentApplicationsController = async (req, res) => {
 };
 
 // ✅ Controller جديد لقبول/رفض الطلبات
+// ✅ Controller جديد لقبول/رفض الطلبات
 const updateApplicationStatusController = async (req, res) => {
   try {
+    console.log("===== UPDATE STATUS CALLED =====");
+    console.log("📝 applicationId:", req.params.applicationId);
+    console.log("📝 status:", req.body.status);
+    console.log("👤 user.uid:", req.user?.uid);
+    
     await requireEmployer(req.user.uid);
+    console.log("✅ Employer verified");
+    
     const { applicationId } = req.params;
     const { status } = req.body;
     
     const result = await updateApplicationStatus(req.user.uid, applicationId, status);
+    console.log("✅ Result:", result);
+    
     res.status(200).json(result);
   } catch (err) {
+    console.log("❌ Error caught:", err.message);
     const statusCode = err.message.includes("Access denied") ? 403 : 500;
     res.status(statusCode).json({ success: false, message: err.message });
   }

@@ -59,6 +59,55 @@ export default function MoreScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('more');
 
+  // دالة جلب بيانات المستخدم
+  const getUserData = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('userData');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      return {};
+    } catch (error) {
+      console.log('Error loading user data:', error);
+      return {};
+    }
+  };
+
+  // دالة الانتقال إلى صفحة Saved Jobs
+  const goToSavedJobs = async () => {
+    try {
+      const userData = await getUserData();
+      const params = {
+        name: userData.name || 'Student',
+        email: userData.email || '',
+        department: userData.department || '',
+        gpa: userData.gpa || '',
+        year: userData.year || '',
+        profileImage: userData.profileImage || null,
+      };
+      router.push({ pathname: '/SavedJobsScreen', params: params as any });
+    } catch (error) {
+      console.log('Error navigating to saved jobs:', error);
+      Alert.alert('Error', 'Unable to open saved jobs');
+    }
+  };
+
+  const goToDocuments = () => {
+    Alert.alert('My Documents', 'This feature will be available soon!');
+  };
+
+  const goToHelpCenter = () => {
+    Alert.alert('Help Center', 'Contact us at: support@cu.edu.eg');
+  };
+
+  const goToAbout = () => {
+    Alert.alert('About', 'Student Jobs Portal v1.0.0\nCairo University');
+  };
+
+  const goToSettings = () => {
+    Alert.alert('Settings', 'App settings coming soon!');
+  };
+
   // Simple logout function
   const handleLogout = () => {
     Alert.alert(
@@ -119,27 +168,6 @@ export default function MoreScreen() {
     };
     
     loadUserData();
-  };
-
-  // Navigation functions
-  const goToSavedJobs = () => {
-    Alert.alert('Saved Jobs', 'This feature will be available soon!');
-  };
-
-  const goToDocuments = () => {
-    Alert.alert('My Documents', 'This feature will be available soon!');
-  };
-
-  const goToHelpCenter = () => {
-    Alert.alert('Help Center', 'Contact us at: support@cu.edu.eg');
-  };
-
-  const goToAbout = () => {
-    Alert.alert('About', 'Student Jobs Portal v1.0.0\nCairo University');
-  };
-
-  const goToSettings = () => {
-    Alert.alert('Settings', 'App settings coming soon!');
   };
 
   return (
