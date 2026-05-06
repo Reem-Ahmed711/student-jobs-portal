@@ -22,8 +22,10 @@ const getDashboardStats = async (req, res) => {
   try {
     await requireAdmin(req.user.uid);
     const stats = await getPlatformStats();
+    console.log("📊 STATS RESULT:", JSON.stringify(stats)); 
     res.status(200).json({ success: true, data: stats });
   } catch (err) {
+     console.log("❌ STATS ERROR:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }

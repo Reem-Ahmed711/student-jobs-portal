@@ -1,4 +1,6 @@
 // MOBILE-APP/frontEnd/app/admin/AdminDashboard.tsx
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -37,29 +39,32 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [adminName, setAdminName] = useState('Admin');
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
-
-  useEffect(() => {
+  
+useFocusEffect(
+  useCallback(() => {
     const fetchData = async () => {
       try {
+        // ✅ مش هيعرض loading لو في data موجودة
+        if (!stats) setLoading(true);
+        
         const stored = await AsyncStorage.getItem('userData');
         if (stored) {
           const parsed = JSON.parse(stored);
           setAdminName(parsed.name || 'Admin');
         }
-
         const res = await getAdminStats();
         if (res.success && res.data) {
           setStats(res.data);
         }
       } catch (err) {
         console.log('Failed to load stats:', err);
-        Alert.alert('Error', 'Failed to load dashboard stats');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [])
+);
 
   const toggleSidebar = () => {
     const toValue = isSidebarOpen ? -SIDEBAR_WIDTH : 0;
@@ -226,17 +231,19 @@ const AdminDashboard = () => {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>📊 Jobs by Department</Text>
-            {stats?.jobsByDepartment && Object.keys(stats.jobsByDepartment).length > 0 ? (
-              Object.entries(stats.jobsByDepartment).map(([dept, count]: [string, any], i) => (
-                <View key={i} style={styles.listItem}>
-                  <View>
-                    <Text style={styles.itemName}>{dept}</Text>
-                  </View>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{count} Jobs</Text>
-                  </View>
-                </View>
-              ))
+          {stats?.jobsByDepartment && Object.keys(stats.jobsByDepartment).length > 0 ? (
+  Object.entries(stats.jobsByDepartment)
+    .filter(([dept]) => dept !== 'not defined ')
+    .map(([dept, count]: [string, any], i) => (
+      <View key={i} style={styles.listItem}>
+        <View>
+          <Text style={styles.itemName}>{dept}</Text>
+        </View>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count} Jobs</Text>
+        </View>
+      </View>
+    ))
             ) : (
               <Text style={{ color: '#999', textAlign: 'center', padding: 10 }}>No data yet</Text>
             )}

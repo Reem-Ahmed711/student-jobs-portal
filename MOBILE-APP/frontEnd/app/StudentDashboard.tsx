@@ -32,6 +32,8 @@ interface Application {
   jobId: string;
   status: string;
   appliedAt?: any;
+   jobTitle?: string;      // ✅ أضف
+  jobDepartment?: string;
 }
 
 const statusConfig: Record<string, { color: string; bg: string }> = {
@@ -286,15 +288,18 @@ const StudentDashboard: React.FC = () => {
                 return (
                   <View key={app.id} style={styles.card}>
                     <View style={styles.cardHeader}>
-                      <Text style={styles.cardTitle}>Application #{app.id.slice(0, 8)}</Text>
+                     <Text style={styles.cardTitle}>{app.jobTitle || `Application #${app.id.slice(0, 8)}`}</Text>
                       <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                         <Text style={[styles.statusText, { color: cfg.color }]}>{app.status}</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardDept}>Job ID: {app.jobId.slice(0, 8)}...</Text>
+                  <Text style={styles.cardDept}>{app.jobDepartment || `Job ID: ${app.jobId?.slice(0, 8)}...`}</Text>
                     {app.appliedAt && (
                       <Text style={styles.appliedDate}>
-                        Applied: {app.appliedAt?.toDate?.()?.toLocaleDateString() || new Date(app.appliedAt).toLocaleDateString()}
+                        Applied: {app.appliedAt?.toDate?.()?.toLocaleDateString() 
+  || (app.appliedAt?._seconds 
+      ? new Date(app.appliedAt._seconds * 1000).toLocaleDateString() 
+      : null)}
                       </Text>
                     )}
                   </View>

@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // Use the same API_URL as in api.js
-const API_URL = "http://192.168.1.8:3000";
+const API_URL = "http://10.163.82.249:3000";
 
 interface Job {
   id: string;
