@@ -46,16 +46,22 @@ const JobCard = ({ job, onApply, onSave, isSaved: initialSaved = false }) => {
   const handleApply = async () => {
     setApplyLoading(true);
     try {
-      await applyForJob({ jobId: job.id });
-      alert('Application submitted successfully!');
+      console.log('Applying for job ID:', job.id);
+      const response = await applyForJob({ jobId: job.id });
+      console.log('Apply response:', response.data);
       
-      if (onApply) {
-        onApply(job.id);
+      if (response.data?.success || response.status === 201) {
+        alert('Application submitted successfully!');
+        if (onApply) {
+          onApply(job.id);
+        }
+      } else {
+        alert(response.data?.error || 'Failed to apply');
       }
-
     } catch (error) {
       console.error('Failed to apply for job:', error);
-      alert('Failed to apply. Please try again.');
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to apply. Please try again.';
+      alert(errorMsg);
     } finally {
       setApplyLoading(false);
     }
@@ -236,19 +242,6 @@ const JobCard = ({ job, onApply, onSave, isSaved: initialSaved = false }) => {
           </button>
         </div>
       </div>
-
-      {job.description && (
-        <p style={{
-          marginTop: '1rem',
-          paddingTop: '1rem',
-          borderTop: '1px solid #e5e7eb',
-          color: '#666',
-          fontSize: '0.9rem',
-          lineHeight: '1.5'
-        }}>
-          {job.description}
-        </p>
-      )}
     </div>
   );
 };
