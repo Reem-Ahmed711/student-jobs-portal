@@ -48,7 +48,7 @@ export default function AdminProfile() {
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'This feature will be available soon!');
+   router.push('/admin/EditProfileScreen');
   };
 
   const handleChangePassword = () => {

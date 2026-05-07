@@ -20,10 +20,13 @@ const { requireAdmin } = require("../auth/roleGuard");
 // ================= Get Admin Dashboard Stats =================
 const getDashboardStats = async (req, res) => {
   try {
+    console.log("🟢 getDashboardStats called by user:", req.user?.uid);
     await requireAdmin(req.user.uid);
     const stats = await getPlatformStats();
+    console.log("✅ Dashboard stats sent successfully");
     res.status(200).json({ success: true, data: stats });
   } catch (err) {
+    console.error("🔴 Error in getDashboardStats:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -32,11 +35,13 @@ const getDashboardStats = async (req, res) => {
 // ================= Get All Users =================
 const getAllUsersController = async (req, res) => {
   try {
+    console.log("🟢 getAllUsersController called");
     await requireAdmin(req.user.uid);
     const { role, page = 1, limit = 20 } = req.query;
     const result = await getAllUsers(role, parseInt(page), parseInt(limit));
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in getAllUsersController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -45,11 +50,13 @@ const getAllUsersController = async (req, res) => {
 // ================= Make User Admin =================
 const makeAdminController = async (req, res) => {
   try {
+    console.log("🟢 makeAdminController called for user:", req.params.uid);
     await requireAdmin(req.user.uid);
     const { uid } = req.params;
     const result = await makeAdmin(uid, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in makeAdminController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -58,11 +65,13 @@ const makeAdminController = async (req, res) => {
 // ================= Remove Admin Role =================
 const removeAdminController = async (req, res) => {
   try {
+    console.log("🟢 removeAdminController called for user:", req.params.uid);
     await requireAdmin(req.user.uid);
     const { uid } = req.params;
     const result = await removeAdmin(uid, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in removeAdminController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -71,11 +80,18 @@ const removeAdminController = async (req, res) => {
 // ================= Admin Delete Job =================
 const adminDeleteJobController = async (req, res) => {
   try {
+    console.log("🟢 adminDeleteJobController called for job:", req.params.jobId);
     await requireAdmin(req.user.uid);
     const { jobId } = req.params;
+    
+    if (!jobId) {
+      return res.status(400).json({ success: false, message: "Job ID is required" });
+    }
+    
     const result = await adminDeleteJob(jobId, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in adminDeleteJobController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -84,24 +100,39 @@ const adminDeleteJobController = async (req, res) => {
 // ================= Admin Delete User =================
 const adminDeleteUserController = async (req, res) => {
   try {
+    console.log("🟢 adminDeleteUserController called for user:", req.params.uid);
     await requireAdmin(req.user.uid);
     const { uid } = req.params;
+    
+    if (!uid) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+    
     const result = await adminDeleteUser(uid, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in adminDeleteUserController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
 };
 
-// ================= Admin Get All Jobs =================
+// ================= Admin Get All Jobs (المعدل) =================
 const adminGetAllJobsController = async (req, res) => {
   try {
+    console.log("🟢 adminGetAllJobsController called");
+    console.log("📝 Query params:", req.query);
+    console.log("👤 Admin user:", req.user?.uid);
+    
     await requireAdmin(req.user.uid);
     const { department, status } = req.query;
     const result = await adminGetAllJobs({ department, status });
+    
+    console.log(`✅ Returning ${result.length} jobs`);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in adminGetAllJobsController:", err.message);
+    console.error("Stack trace:", err.stack);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -110,12 +141,24 @@ const adminGetAllJobsController = async (req, res) => {
 // ================= Admin Update Job Status =================
 const adminUpdateJobStatusController = async (req, res) => {
   try {
+    console.log("🟢 adminUpdateJobStatusController called for job:", req.params.jobId);
+    console.log("📝 New status:", req.body.status);
+    
     await requireAdmin(req.user.uid);
     const { jobId } = req.params;
     const { status } = req.body;
+    
+    if (!jobId) {
+      return res.status(400).json({ success: false, message: "Job ID is required" });
+    }
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+    
     const result = await adminUpdateJobStatus(jobId, status, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in adminUpdateJobStatusController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -124,11 +167,13 @@ const adminUpdateJobStatusController = async (req, res) => {
 // ================= Admin Get All Applications =================
 const adminGetAllApplicationsController = async (req, res) => {
   try {
+    console.log("🟢 adminGetAllApplicationsController called");
     await requireAdmin(req.user.uid);
     const { status } = req.query;
     const result = await adminGetAllApplications({ status });
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in adminGetAllApplicationsController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -137,6 +182,7 @@ const adminGetAllApplicationsController = async (req, res) => {
 // ================= Admin Update Application Status =================
 const adminUpdateApplicationStatusController = async (req, res) => {
   try {
+    console.log("🟢 adminUpdateApplicationStatusController called");
     await requireAdmin(req.user.uid);
     const { applicationId } = req.params;
     const { status } = req.body;
@@ -147,6 +193,7 @@ const adminUpdateApplicationStatusController = async (req, res) => {
     );
     res.status(200).json(result);
   } catch (err) {
+    console.error("🔴 Error in adminUpdateApplicationStatusController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -155,10 +202,12 @@ const adminUpdateApplicationStatusController = async (req, res) => {
 // ================= Get All Admins =================
 const getAllAdminsController = async (req, res) => {
   try {
+    console.log("🟢 getAllAdminsController called");
     await requireAdmin(req.user.uid);
     const result = await getAllAdmins();
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in getAllAdminsController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -167,11 +216,13 @@ const getAllAdminsController = async (req, res) => {
 // ================= Get Admin Logs =================
 const getAdminLogsController = async (req, res) => {
   try {
+    console.log("🟢 getAdminLogsController called");
     await requireAdmin(req.user.uid);
     const { limit = 50 } = req.query;
     const result = await getAdminLogs(parseInt(limit));
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in getAdminLogsController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -180,6 +231,7 @@ const getAdminLogsController = async (req, res) => {
 // ================= Search Users =================
 const searchUsersController = async (req, res) => {
   try {
+    console.log("🟢 searchUsersController called with query:", req.query.q);
     await requireAdmin(req.user.uid);
     const { q, role } = req.query;
     if (!q) {
@@ -190,6 +242,7 @@ const searchUsersController = async (req, res) => {
     const result = await searchUsers(q, role);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    console.error("🔴 Error in searchUsersController:", err.message);
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }

@@ -1,5 +1,5 @@
-// MOBILE-APP/frontEnd/app/admin/AdminDashboard.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Animated,
   StatusBar,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -20,6 +21,9 @@ import { getAdminStats } from '../../src/api';
 
 const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.75;
+const CACHE_KEY = 'admin_dashboard_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+
 const COLORS = {
   primary: '#1E3A5F',
   secondary: '#f8fafc',
@@ -33,32 +37,123 @@ const COLORS = {
 const AdminDashboard = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [adminName, setAdminName] = useState('Admin');
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('userData');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setAdminName(parsed.name || 'Admin');
+  // ✅ دالة لجلب البيانات من cache أولاً
+  const loadCachedData = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const isExpired = Date.now() - timestamp > CACHE_DURATION;
+        
+        if (!isExpired && data) {
+          console.log('✅ Using cached dashboard data');
+          setStats(data);
+          return true;
         }
-
-        const res = await getAdminStats();
-        if (res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (err) {
-        console.log('Failed to load stats:', err);
-        Alert.alert('Error', 'Failed to load dashboard stats');
-      } finally {
-        setLoading(false);
       }
+      return false;
+    } catch (err) {
+      console.log('Cache read error:', err);
+      return false;
+    }
+  };
+
+  // ✅ دالة لحفظ البيانات في cache
+  const saveToCache = async (data: any) => {
+    try {
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
+        data,
+        timestamp: Date.now(),
+      }));
+      console.log('✅ Dashboard data cached');
+    } catch (err) {
+      console.log('Cache save error:', err);
+    }
+  };
+
+  // ✅ دالة جلب البيانات الأساسية
+  const fetchDashboardData = async (showLoading = true, isRefresh = false) => {
+    try {
+      if (showLoading && !stats) setLoading(true);
+      
+      // جلب بيانات اليوزر والتوكن بالتوازي
+      const [stored, token] = await Promise.all([
+        AsyncStorage.getItem('userData'),
+        AsyncStorage.getItem('userToken'),
+      ]);
+      
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setAdminName(parsed.name || 'Admin');
+      }
+      
+      if (!token) {
+        console.log('No token found, redirecting to login');
+        router.replace('/login');
+        return;
+      }
+      
+      // جلب الإحصائيات
+      const res = await getAdminStats();
+      
+      if (res.success && res.data) {
+        setStats(res.data);
+        await saveToCache(res.data);
+      } else {
+        // لو فشل الجلب، استخدم cache قديم
+        const hasCache = await loadCachedData();
+        if (!hasCache) {
+          Alert.alert('Notice', 'Unable to load latest data, showing cached data');
+        }
+      }
+    } catch (err) {
+      console.log('Failed to load stats:', err);
+      // محاولة استخدام cache عند الخطأ
+      const hasCache = await loadCachedData();
+      if (!hasCache) {
+        Alert.alert('Error', 'Failed to load dashboard data');
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // ✅ تحميل البيانات عند أول مرة
+  useEffect(() => {
+    const init = async () => {
+      // جلب من cache أولاً عشان تظهر بسرعة
+      const hasCache = await loadCachedData();
+      if (hasCache) {
+        setLoading(false); // إخفاء loading لو في cache
+      }
+      // جلب بيانات جديدة في الخلفية
+      fetchDashboardData(false);
     };
-    fetchData();
+    init();
+  }, []);
+
+  // ✅ تحديث البيانات عند التركيز على الصفحة (من غير loading)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 Dashboard focused - refreshing in background');
+      fetchDashboardData(false);
+      return () => {
+        console.log('📱 Dashboard unfocused');
+      };
+    }, [])
+  );
+
+  // ✅ سحب للأسفل للتحديث
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDashboardData(true, true);
   }, []);
 
   const toggleSidebar = () => {
@@ -67,25 +162,22 @@ const AdminDashboard = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
- const handleLogout = async () => {
-  console.log('===== LOGOUT PRESSED =====');
-  Alert.alert('Logout', 'Are you sure you want to logout?', [
-    { text: 'Cancel', style: 'cancel' },
-    {
-      text: 'Logout',
-      style: 'destructive',
-      onPress: async () => {
-        console.log('===== CONFIRMED LOGOUT =====');
-        await AsyncStorage.removeItem('userToken');
-        await AsyncStorage.removeItem('userData');
-        console.log('===== TOKEN REMOVED =====');
-        router.replace('/login');
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.multiRemove(['userToken', 'userData', CACHE_KEY]);
+          router.replace('/login');
+        },
       },
-    },
-  ]);
-};
+    ]);
+  };
 
-  if (loading) {
+  // ✅ Skeleton Loader (أخف من الـ Spinner)
+  if (loading && !stats) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -148,7 +240,12 @@ const AdminDashboard = () => {
         </TouchableOpacity>
       </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+        }
+      >
         <View style={styles.topHeader}>
           <View style={styles.headerRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -162,6 +259,7 @@ const AdminDashboard = () => {
         </View>
 
         <View style={styles.body}>
+          {/* Stats Cards */}
           <View style={styles.statsGrid}>
             <StatBox label="Total Students" value={stats?.totalStudents || 0} icon="school" color="#3b82f6" />
             <StatBox label="Total Employers" value={stats?.totalEmployers || 0} icon="business-center" color={COLORS.accent} />
@@ -175,6 +273,7 @@ const AdminDashboard = () => {
             <StatBox label="Recent Registrations" value={stats?.recentRegistrations || 0} icon="person-add" color="#f97316" />
           </View>
 
+          {/* Application Status */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>🥧 Application Status</Text>
             <View style={styles.statusRow}>
@@ -224,32 +323,32 @@ const AdminDashboard = () => {
             </View>
           </View>
 
+          {/* Jobs by Department */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>📊 Jobs by Department</Text>
             {stats?.jobsByDepartment && Object.keys(stats.jobsByDepartment).length > 0 ? (
-              Object.entries(stats.jobsByDepartment).map(([dept, count]: [string, any], i) => (
-                <View key={i} style={styles.listItem}>
-                  <View>
+              Object.entries(stats.jobsByDepartment)
+                .filter(([dept]) => dept !== 'not defined')
+                .map(([dept, count]: [string, any], i) => (
+                  <View key={i} style={styles.listItem}>
                     <Text style={styles.itemName}>{dept}</Text>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{count} Jobs</Text>
+                    </View>
                   </View>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{count} Jobs</Text>
-                  </View>
-                </View>
-              ))
+                ))
             ) : (
               <Text style={{ color: '#999', textAlign: 'center', padding: 10 }}>No data yet</Text>
             )}
           </View>
 
+          {/* Students by Department */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>👨‍🎓 Students by Department</Text>
             {stats?.studentsByDepartment && Object.keys(stats.studentsByDepartment).length > 0 ? (
               Object.entries(stats.studentsByDepartment).map(([dept, count]: [string, any], i) => (
                 <View key={i} style={styles.listItem}>
-                  <View>
-                    <Text style={styles.itemName}>{dept}</Text>
-                  </View>
+                  <Text style={styles.itemName}>{dept}</Text>
                   <View style={[styles.badge, { backgroundColor: '#EFF6FF' }]}>
                     <Text style={[styles.badgeText, { color: '#1E3A5F' }]}>{count} Students</Text>
                   </View>
@@ -260,14 +359,13 @@ const AdminDashboard = () => {
             )}
           </View>
 
+          {/* Employers by Industry */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>🏢 Employers by Industry</Text>
             {stats?.employersByIndustry && Object.keys(stats.employersByIndustry).length > 0 ? (
               Object.entries(stats.employersByIndustry).map(([industry, count]: [string, any], i) => (
                 <View key={i} style={styles.listItem}>
-                  <View>
-                    <Text style={styles.itemName}>{industry}</Text>
-                  </View>
+                  <Text style={styles.itemName}>{industry}</Text>
                   <View style={[styles.badge, { backgroundColor: '#F0FDF4' }]}>
                     <Text style={[styles.badgeText, { color: '#065F46' }]}>{count}</Text>
                   </View>

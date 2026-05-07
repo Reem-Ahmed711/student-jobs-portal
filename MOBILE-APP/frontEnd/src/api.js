@@ -1,4 +1,6 @@
+// @ts-nocheck
 // MOBILE-APP/frontEnd/src/api.js
+
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -6,8 +8,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Emulator Android
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
-const API_URL = "http://192.168.1.14:3000";
 
+const API_URL = "http://10.163.82.249:3000";
+console.log(" API URL:", API_URL);
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -346,6 +349,94 @@ export const removeAdmin = async (uid) => {
   try {
     const res = await api.post(`/api/admin/users/${uid}/remove-admin`);
     return res.data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+// ================= SAVED JOBS =================
+
+// ================= SAVED JOBS =================
+export const saveJob = async (jobId) => {
+  try {
+    const res = await api.post("/api/saved-jobs", { jobId });
+    return { success: true, data: res.data };
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const unsaveJob = async (jobId) => {
+  try {
+    const res = await api.delete(`/api/saved-jobs/${jobId}`);
+    return { success: true, data: res.data };
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const getSavedJobs = async () => {
+  try {
+    const res = await api.get("/api/saved-jobs");
+    return { success: true, data: res.data };
+  } catch (err) {
+    return { success: false, data: [], message: err.message };
+  }
+};
+
+// ================= COMMENTS (جديد) =================
+export const addComment = async (jobId, comment) => {
+  try {
+    const res = await api.post("/api/comment", { jobId, comment });
+    console.log("✅ Comment added:", res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error(
+      "❌ Add comment error:",
+      err.response?.status,
+      err.response?.data,
+    );
+    return {
+      success: false,
+      message:
+        err?.response?.data?.message || err.message || "Failed to add comment",
+    };
+  }
+};
+
+export const getComments = async (jobId) => {
+  try {
+    const res = await api.get(`/api/comments/${jobId}`);
+    console.log(`📝 Got comments for job ${jobId}:`, res.data);
+    // التعامل مع هيكل الرد من الـ Backend
+    const comments = res.data.comments || res.data || [];
+    return { success: true, comments };
+  } catch (err) {
+    console.error(
+      "❌ Get comments error:",
+      err.response?.status,
+      err.response?.data,
+    );
+    return {
+      success: false,
+      comments: [],
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const deleteComment = async (commentId) => {
+  try {
+    const res = await api.delete(`/api/comments/${commentId}`);
+    return { success: true, data: res.data };
   } catch (err) {
     return {
       success: false,

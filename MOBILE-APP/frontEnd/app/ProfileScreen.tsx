@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,6 +22,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserRating, updateUserProfile } from '../src/api';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -35,6 +39,8 @@ interface ProfileData {
   skills: string[];
   about: string;
   profileImage: string;
+  studentId: string;
+  cv: string | null;
 }
 
 const BottomTabBar: React.FC<{ active: TabKey; onPress: (k: TabKey) => void }> = ({ active, onPress }) => {
@@ -79,6 +85,7 @@ const ProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ratingData, setRatingData] = useState<any>(null);
+  const [uploadingCV, setUploadingCV] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({
     uid: '',
@@ -91,6 +98,8 @@ const ProfileScreen: React.FC = () => {
     skills: [],
     about: '',
     profileImage: '',
+    studentId: '',
+    cv: null,
   });
 
   const [editForm, setEditForm] = useState({
@@ -98,6 +107,10 @@ const ProfileScreen: React.FC = () => {
     phone: '',
     about: '',
     skills: '',
+    studentId: '',
+    cv: null as string | null,
+    gpa: '',
+    year: '',
   });
 
   useEffect(() => {
@@ -120,12 +133,18 @@ const ProfileScreen: React.FC = () => {
           skills: parsed.skills || [],
           about: parsed.about || '',
           profileImage: parsed.profileImage || '',
+          studentId: parsed.studentId || '',
+          cv: parsed.cv || null,
         });
         setEditForm({
           name: parsed.name || '',
           phone: parsed.phone || '',
           about: parsed.about || '',
           skills: (parsed.skills || []).join(', '),
+          studentId: parsed.studentId || '',
+          cv: parsed.cv || null,
+          gpa: parsed.gpa || '',
+          year: parsed.year || '',
         });
 
         // Load rating from backend
@@ -143,43 +162,159 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handlePickPhoto = async () => {
+ // أضف هذا الجزء في ProfileScreen.tsx في دالة handlePickPhoto
+const handlePickPhoto = async () => {
+  if (Platform.OS === 'web') {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const uri = ev.target?.result as string;
+          const updated = { ...profile, profileImage: uri };
+          setProfile(updated);
+          // حفظ البيانات مع الصورة في AsyncStorage
+          const userData = await AsyncStorage.getItem('userData');
+          if (userData) {
+            const parsed = JSON.parse(userData);
+            const updatedUserData = { ...parsed, profileImage: uri };
+            await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+          }
+          Alert.alert('Success', 'Profile picture updated');
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  } else {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant permission to access your photos');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      const updated = { ...profile, profileImage: uri };
+      setProfile(updated);
+      
+      // حفظ البيانات مع الصورة في AsyncStorage
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        const updatedUserData = { ...parsed, profileImage: uri };
+        await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      }
+      Alert.alert('Success', 'Profile picture updated');
+    }
+  }
+};
+
+  // دالة رفع الـ CV - نسخة مبسطة بدون FileSystem
+  const handleUploadCV = async () => {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/*';
+      input.accept = '.pdf,.doc,.docx';
       input.onchange = async (e: any) => {
         const file = e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = async (ev) => {
-            const uri = ev.target?.result as string;
-            const updated = { ...profile, profileImage: uri };
-            setProfile(updated);
-            await AsyncStorage.setItem('userData', JSON.stringify(updated));
-          };
-          reader.readAsDataURL(file);
+          try {
+            // على الويب، نستخدم URL.createObjectURL لإنشاء رابط مؤقت
+            const tempUrl = URL.createObjectURL(file);
+            setEditForm({ ...editForm, cv: tempUrl });
+            Alert.alert('Success', 'CV selected successfully');
+          } catch (error) {
+            Alert.alert('Error', 'Failed to upload CV');
+          }
         }
       };
       input.click();
     } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access your photos');
-        return;
+      try {
+        setUploadingCV(true);
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+          copyToCacheDirectory: true,
+        });
+
+        if (result.assets && result.assets[0]) {
+          const asset = result.assets[0];
+          // حفظ الرابط كما هو
+          setEditForm({ ...editForm, cv: asset.uri });
+          Alert.alert('Success', 'CV selected successfully');
+        }
+      } catch (err) {
+        console.log('Error picking CV:', err);
+        Alert.alert('Error', 'Failed to select CV');
+      } finally {
+        setUploadingCV(false);
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-      if (!result.canceled && result.assets[0]) {
-        const uri = result.assets[0].uri;
-        const updated = { ...profile, profileImage: uri };
-        setProfile(updated);
-        await AsyncStorage.setItem('userData', JSON.stringify(updated));
+    }
+  };
+
+  // دالة مبسطة لفتح الـ CV
+  const openCV = async () => {
+    if (!profile.cv) {
+      Alert.alert("No CV", "You haven't uploaded a CV yet. You can add one in Edit Profile.");
+      return;
+    }
+
+    try {
+      const cvUrl = profile.cv;
+      
+      // التحقق من نوع الرابط
+      if (cvUrl.startsWith('http://') || cvUrl.startsWith('https://')) {
+        // رابط سيرفر - محاولة الفتح في المتصفح
+        const supported = await Linking.canOpenURL(cvUrl);
+        if (supported) {
+          await Linking.openURL(cvUrl);
+        } else {
+          Alert.alert('Error', 'Cannot open this CV link');
+        }
+      } 
+      else if (cvUrl.startsWith('file://') || cvUrl.includes('file://')) {
+        // ملف محلي على الجهاز
+        if (Platform.OS === 'web') {
+          Alert.alert('Info', 'Local files cannot be opened on web. Please upload to server first.');
+        } else {
+          // على الموبايل، نحاول المشاركة
+          const isSharingAvailable = await Sharing.isAvailableAsync();
+          if (isSharingAvailable) {
+            await Sharing.shareAsync(cvUrl);
+          } else {
+            Alert.alert('Error', 'Cannot open this file');
+          }
+        }
       }
+      else if (cvUrl.startsWith('blob:')) {
+        // رابط blob على الويب
+        if (Platform.OS === 'web') {
+          window.open(cvUrl, '_blank');
+        } else {
+          Alert.alert('Error', 'Invalid CV format for mobile');
+        }
+      }
+      else {
+        // محاولة معالجة الرابط كمسار عادي
+        const supported = await Linking.canOpenURL(cvUrl);
+        if (supported) {
+          await Linking.openURL(cvUrl);
+        } else {
+          Alert.alert('Error', 'Invalid CV link format. Please re-upload your CV.');
+        }
+      }
+    } catch (error) {
+      console.log('Error opening CV:', error);
+      Alert.alert('Error', 'Could not open CV. Please try re-uploading the file.');
     }
   };
 
@@ -195,12 +330,21 @@ const ProfileScreen: React.FC = () => {
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
-      const res = await updateUserProfile(profile.uid, {
+      const updateData: any = {
         name: editForm.name.trim(),
         phone: editForm.phone.trim(),
         about: editForm.about.trim(),
         skills: skillsArray,
-      });
+        studentId: editForm.studentId.trim(),
+        gpa: editForm.gpa.trim(),
+        year: editForm.year.trim(),
+      };
+
+      if (editForm.cv && editForm.cv !== profile.cv) {
+        updateData.cv = editForm.cv;
+      }
+
+      const res = await updateUserProfile(profile.uid, updateData);
 
       if (res.success) {
         const updatedProfile = {
@@ -209,10 +353,13 @@ const ProfileScreen: React.FC = () => {
           phone: editForm.phone.trim(),
           about: editForm.about.trim(),
           skills: skillsArray,
+          studentId: editForm.studentId.trim(),
+          cv: editForm.cv || profile.cv,
+          gpa: editForm.gpa.trim(),
+          year: editForm.year.trim(),
         };
         setProfile(updatedProfile);
 
-        // Update local storage
         await AsyncStorage.setItem('userData', JSON.stringify({
           ...updatedProfile,
           username: updatedProfile.name,
@@ -276,7 +423,6 @@ const ProfileScreen: React.FC = () => {
   const firstName = profile.name.split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
 
-  // Calculate stats (you can replace with real data from API)
   const appliedJobs = 3;
   const savedJobs = 2;
   const interviewsCount = 1;
@@ -286,7 +432,7 @@ const ProfileScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Blue Header with Avatar - اللون القديم #1E3A5F */}
+        {/* Header with Avatar - GPA and Year are already shown here */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.avatarWrap} onPress={handlePickPhoto}>
             {profile.profileImage ? (
@@ -304,7 +450,6 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.headerDept}>{profile.department}</Text>
           <Text style={styles.headerMeta}>{profile.year} • GPA: {profile.gpa}</Text>
           
-          {/* Rating - من الكود الأول */}
           {ratingData && (
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color="#F59E0B" />
@@ -362,6 +507,36 @@ const ProfileScreen: React.FC = () => {
           </>
         )}
 
+        {/* CV Section */}
+        <View style={styles.sectionLabel}>
+          <Text style={styles.sectionLabelText}>CV / RESUME</Text>
+        </View>
+        <View style={styles.card}>
+          {profile.cv ? (
+            <TouchableOpacity style={styles.cvRow} onPress={openCV}>
+              <View style={[styles.contactIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="document-text-outline" size={18} color="#DC2626" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.contactLabel}>My CV</Text>
+                <Text style={styles.contactValue} numberOfLines={1}>View / Download CV</Text>
+              </View>
+              <Feather name="external-link" size={18} color="#6B7280" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cvRow} onPress={() => setEditVisible(true)}>
+              <View style={[styles.contactIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="cloud-upload-outline" size={18} color="#1E3A5F" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.contactLabel}>No CV Uploaded</Text>
+                <Text style={styles.contactValue}>Tap to add your CV</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Contact Information */}
         <View style={styles.sectionLabel}>
           <Text style={styles.sectionLabelText}>CONTACT INFORMATION</Text>
@@ -389,11 +564,11 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.divider} />
           <View style={styles.contactRow}>
             <View style={[styles.contactIconWrap, { backgroundColor: '#F5F3FF' }]}>
-              <Ionicons name="school-outline" size={18} color="#7C3AED" />
+              <Ionicons name="card-outline" size={18} color="#7C3AED" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.contactLabel}>Student ID</Text>
-              <Text style={styles.contactValue}>Not set</Text>
+              <Text style={styles.contactValue}>{profile.studentId || 'Not set'}</Text>
             </View>
           </View>
         </View>
@@ -424,12 +599,6 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
-        {/* <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity> */}
-
         <View style={{ height: 80 }} />
       </ScrollView>
 
@@ -449,6 +618,7 @@ const ProfileScreen: React.FC = () => {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {/* Basic Information */}
                 <View style={styles.modalField}>
                   <Text style={styles.modalFieldLabel}>Full Name</Text>
                   <TextInput
@@ -457,6 +627,30 @@ const ProfileScreen: React.FC = () => {
                     onChangeText={(v) => setEditForm({ ...editForm, name: v })}
                     placeholder="Enter your name"
                   />
+                </View>
+
+                {/* GPA and Year in same row */}
+                <View style={styles.rowFields}>
+                  <View style={[styles.modalField, { flex: 1, marginRight: 10 }]}>
+                    <Text style={styles.modalFieldLabel}>GPA</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editForm.gpa}
+                      onChangeText={(v) => setEditForm({ ...editForm, gpa: v })}
+                      placeholder="e.g., 3.5"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={[styles.modalField, { flex: 1 }]}>
+                    <Text style={styles.modalFieldLabel}>Academic Year</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editForm.year}
+                      onChangeText={(v) => setEditForm({ ...editForm, year: v })}
+                      placeholder="e.g., Senior, Junior"
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.modalField}>
@@ -468,6 +662,37 @@ const ProfileScreen: React.FC = () => {
                     placeholder="+20 xxx xxx xxxx"
                     keyboardType="phone-pad"
                   />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>Student ID</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editForm.studentId}
+                    onChangeText={(v) => setEditForm({ ...editForm, studentId: v })}
+                    placeholder="Enter your Student ID"
+                  />
+                </View>
+
+                {/* CV Upload */}
+                <View style={styles.modalField}>
+                  <Text style={styles.modalFieldLabel}>CV / Resume</Text>
+                  <TouchableOpacity 
+                    style={styles.uploadCVButton} 
+                    onPress={handleUploadCV}
+                    disabled={uploadingCV}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={20} color="#1E3A5F" />
+                    <Text style={styles.uploadCVText}>
+                      {uploadingCV ? 'Uploading...' : (editForm.cv ? 'Change CV' : 'Upload CV (PDF, DOC)')}
+                    </Text>
+                  </TouchableOpacity>
+                  {editForm.cv && (
+                    <Text style={styles.cvFileName} numberOfLines={1}>
+                      ✓ CV file selected
+                    </Text>
+                  )}
+                  <Text style={styles.fieldHint}>Supported formats: PDF, DOC, DOCX</Text>
                 </View>
 
                 <View style={styles.modalField}>
@@ -515,7 +740,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
 
-  // Header - اللون القديم #1E3A5F
+  // Header
   header: {
     backgroundColor: '#1E3A5F',
     paddingTop: 30,
@@ -677,6 +902,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#1E3A5F',
+  },
+  
+  // CV Row
+  cvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
 
   // Contact
@@ -845,6 +1077,33 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  uploadCVButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  uploadCVText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E3A5F',
+  },
+  cvFileName: {
+    fontSize: 12,
+    color: '#10B981',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  rowFields: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });
 

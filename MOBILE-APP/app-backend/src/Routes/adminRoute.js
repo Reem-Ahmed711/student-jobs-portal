@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middleware/verifyToken");
 const { requireAdmin } = require("../auth/roleGuard");
-
+const { admin, db } = require("../firebase"); 
 const {
   getDashboardStats,
   getAllUsersController,
@@ -61,5 +61,23 @@ router.get("/logs", getAdminLogsController);
 
 // Search
 router.get("/search/users", searchUsersController);
+router.put("/profile", async (req, res) => {
+  try {
+    const { name, department, phone } = req.body;
+    const userId = req.user.uid;
+    
+    await db.collection("users").doc(userId).update({
+      name: name,
+      department: department,
+      phone: phone || "",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    res.json({ success: true, message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Profile update error:", error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

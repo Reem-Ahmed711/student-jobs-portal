@@ -97,7 +97,7 @@ const ApplicationsScreen: React.FC = () => {
   const fetchJobDetails = async (jobId: string) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-    const API_URL = "http://192.168.1.14:3000";
+      const API_URL = 'http://10.17.158.249:3000';
       const res = await axios.get(`${API_URL}/api/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
