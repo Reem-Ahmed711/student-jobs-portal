@@ -2,6 +2,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import Layout from './components/Layout';
+
+// Import pages
 import Login from './pages/login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -25,50 +29,59 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminManageUsers from './pages/admin/AdminManageUsers';
 import AdminManageJobs from './pages/admin/AdminManageJobs';
 import AdminProfile from './pages/admin/AdminProfile';
+import AdminReports from './pages/admin/AdminReports';
 import NotFound from './pages/NotFound';
+
 import './styles/main.css';
+
+// Wrapper component to wrap pages with Layout
+const PageWrapper = ({ children }) => <Layout>{children}</Layout>;
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          
-          {/* Student Routes */}
-          <Route path="/student-dashboard" element={<StudentDashboard />} />
-          <Route path="/student-applications" element={<StudentApplications />} />
-          <Route path="/student-saved-jobs" element={<StudentSavedJobs />} />
-          <Route path="/student-skills-cv" element={<StudentSkillsCV />} />
-          <Route path="/student-settings" element={<StudentSettings />} />
-          <Route path="/student-notifications" element={<StudentNotifications />} />
-          <Route path="/student-profile" element={<StudentProfile />} />
-          <Route path="/available-jobs" element={<AvailableJobs />} />
-          
-          {/* Employer Routes */}
-          <Route path="/employer-dashboard" element={<EmployerDashboard />} />
-          <Route path="/employer-post-job" element={<EmployerPostJob />} />
-          <Route path="/employer-my-jobs" element={<EmployerMyJobs />} />
-          <Route path="/employer-applicants" element={<EmployerApplicants />} />
-          <Route path="/employer-shortlisted" element={<EmployerShortlisted />} />
-          <Route path="/employer-ai-matching" element={<EmployerAIMatching />} />
-          <Route path="/employer-hiring-history" element={<EmployerHiringHistory />} />
-          <Route path="/employer-settings" element={<EmployerSettings />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          <Route path="/admin-manage-users" element={<AdminManageUsers />} />
-          <Route path="/admin-manage-jobs" element={<AdminManageJobs />} />
-          <Route path="/admin-profile" element={<AdminProfile />} />
-          
-          {/* 404 Route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public routes (no layout) */}
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            
+            {/* Student routes (with layout) */}
+            <Route path="/student-dashboard" element={<PageWrapper><StudentDashboard /></PageWrapper>} />
+            <Route path="/student-applications" element={<PageWrapper><StudentApplications /></PageWrapper>} />
+            <Route path="/student-saved-jobs" element={<PageWrapper><StudentSavedJobs /></PageWrapper>} />
+            <Route path="/student-skills-cv" element={<PageWrapper><StudentSkillsCV /></PageWrapper>} />
+            <Route path="/student-settings" element={<PageWrapper><StudentSettings /></PageWrapper>} />
+            <Route path="/student-notifications" element={<PageWrapper><StudentNotifications /></PageWrapper>} />
+            <Route path="/student-profile" element={<PageWrapper><StudentProfile /></PageWrapper>} />
+            <Route path="/available-jobs" element={<PageWrapper><AvailableJobs /></PageWrapper>} />
+            
+            {/* Employer routes (with layout) */}
+            <Route path="/employer-dashboard" element={<PageWrapper><EmployerDashboard /></PageWrapper>} />
+            <Route path="/employer-post-job" element={<PageWrapper><EmployerPostJob /></PageWrapper>} />
+            <Route path="/employer-my-jobs" element={<PageWrapper><EmployerMyJobs /></PageWrapper>} />
+            <Route path="/employer-applicants" element={<PageWrapper><EmployerApplicants /></PageWrapper>} />
+            <Route path="/employer-shortlisted" element={<PageWrapper><EmployerShortlisted /></PageWrapper>} />
+            <Route path="/employer-ai-matching" element={<PageWrapper><EmployerAIMatching /></PageWrapper>} />
+            <Route path="/employer-hiring-history" element={<PageWrapper><EmployerHiringHistory /></PageWrapper>} />
+            <Route path="/employer-settings" element={<PageWrapper><EmployerSettings /></PageWrapper>} />
+            
+            {/* Admin routes (with layout) */}
+            <Route path="/admin-dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
+            <Route path="/admin-manage-users" element={<PageWrapper><AdminManageUsers /></PageWrapper>} />
+            <Route path="/admin-manage-jobs" element={<PageWrapper><AdminManageJobs /></PageWrapper>} />
+            <Route path="/admin-profile" element={<PageWrapper><AdminProfile /></PageWrapper>} />
+            <Route path="/admin-reports" element={<PageWrapper><AdminReports /></PageWrapper>} />
+            
+            {/* 404 */}
+            <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
