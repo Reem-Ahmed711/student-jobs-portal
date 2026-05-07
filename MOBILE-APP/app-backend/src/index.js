@@ -53,7 +53,9 @@ const savedJobRoutes = require("./Routes/savedJobRoute");
 const notificationRoutes = require("./Routes/notificationRoute");
 const aiRoutes = require("./Routes/aiRoute");
 const studentRoutes = require("./Routes/studentRoute");
+const cvRoutes = require("./Routes/cvRoute");
 
+app.use("/api/cv", cvRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes);
