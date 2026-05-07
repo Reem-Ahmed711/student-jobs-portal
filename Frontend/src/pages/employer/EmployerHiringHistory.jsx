@@ -15,7 +15,7 @@ const EmployerHiringHistory = () => {
   const hires = [
     {
       id: 1,
-      name: 'Fatma Ahmed',
+      name: 'Reem Ahmed',
       position: 'Teaching Assistant - Physics',
       hiredDate: 'Feb 15, 2026',
       department: 'Physics',
@@ -25,14 +25,45 @@ const EmployerHiringHistory = () => {
     },
     {
       id: 2,
-      name: 'Mohamed Ali',
+      name: 'Dina Ebrahim',
       position: 'Research Assistant - Chemistry',
       hiredDate: 'Feb 10, 2026',
       department: 'Chemistry',
       matchScore: 88,
       timeToHire: 21,
       status: 'Active'
+    },
+     {
+      id: 3,
+      name: 'Sara Mahmoud',
+      position: 'Lab Technician - Biology',
+      hiredDate: 'Feb 10, 2026',
+      department: 'Biology',
+      matchScore: 78,
+      timeToHire: 31,
+      status: 'Active'
+    },
+     {
+      id: 4,
+      name: 'Fatma Abdelmotagaly',
+      position: 'Research Assistant - Computer Science',
+      hiredDate: 'Feb 10, 2026',
+      department: 'Computer Science',
+      matchScore: 98,
+      timeToHire: 25,
+      status: 'Active'
+    },
+       {
+      id: 5,
+      name: 'Sameh Ahmed',
+      position: 'Teaching Assistant - Mathematics',
+      hiredDate: 'Feb 10, 2026',
+      department: 'Mathematics',
+      matchScore: 68,
+      timeToHire: 31,
+      status: 'Active'
     }
+
   ];
 
   const StatCard = ({ number, label, icon }) => (
