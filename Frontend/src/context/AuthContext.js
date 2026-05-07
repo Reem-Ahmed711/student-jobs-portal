@@ -23,10 +23,14 @@ export const AuthProvider = ({ children }) => {
       
       if (token) {
         try {
-          const { data } = await apiGetProfile();
-          // Use saved role if available, otherwise from API
-          const role = savedRole || data.role || 'student';
-          setUser({ ...data, role });
+          const response = await apiGetProfile();
+          // Handle different response structures
+          let userData = response.data;
+          if (response.data?.data) userData = response.data.data;
+          if (response.data?.user) userData = response.data.user;
+          
+          const role = savedRole || userData.role || 'student';
+          setUser({ ...userData, role });
           console.log('✅ User loaded, role:', role);
         } catch (err) {
           console.error('❌ Failed to load user:', err);
@@ -42,27 +46,29 @@ export const AuthProvider = ({ children }) => {
   const login = async (formData) => {
     try {
       setError(null);
-      const { data } = await apiLogin(formData);
-      console.log('✅ Login API response:', data);
+      const response = await apiLogin(formData);
+      let userData = response.data;
+      if (response.data?.data) userData = response.data.data;
       
-      // Determine role based on email
-      let userRole = data.role;
-      if (data.email?.includes('admin')) {
-        userRole = 'admin';
-      } else if (data.email?.includes('@cu.edu.eg')) {
-        userRole = 'employer';
-      } else if (!userRole || userRole === 'student') {
-        userRole = 'student';
+      let userRole = userData.role;
+      if (!userRole) {
+        if (userData.email?.includes('admin')) {
+          userRole = 'admin';
+        } else if (userData.email?.includes('@cu.edu.eg')) {
+          userRole = 'employer';
+        } else {
+          userRole = 'student';
+        }
       }
       
-      const userData = { ...data, role: userRole };
+      const finalUserData = { ...userData, role: userRole };
       console.log('👤 User role set to:', userRole);
       
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('token', userData.token || response.data.token);
       localStorage.setItem('userRole', userRole);
-      setUser(userData);
+      setUser(finalUserData);
       
-      return { success: true, user: userData };
+      return { success: true, user: finalUserData };
     } catch (err) {
       console.error('❌ Login failed:', err);
       const errorMessage = err.response?.data?.error || 
@@ -78,34 +84,17 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       console.log('📝 Sending registration data:', formData);
       
-      const payload = {
-        name: formData.fullName || formData.name,
-        email: formData.email || formData.officialEmail,
-        password: formData.password || formData.empPassword,
-        role: formData.role || (formData.institutionName ? 'employer' : 'student'),
-        department: formData.department || formData.empDepartment,
-        year: formData.academicYear,
-        gpa: formData.gpa,
-        skills: formData.skills || [],
-        phone: formData.phone || '',
-        institution: formData.institutionName,
-        position: formData.position
-      };
-
-      const { data } = await apiRegister(payload);
-      console.log('✅ Registration successful:', data);
+      const response = await apiRegister(formData);
+      let userData = response.data;
+      if (response.data?.data) userData = response.data.data;
       
-      let userRole = data.role;
-      if (data.email?.includes('admin')) userRole = 'admin';
-      else if (data.email?.includes('@cu.edu.eg')) userRole = 'employer';
+      const finalUserData = { ...userData, role: userData.role || 'student' };
       
-      const userData = { ...data, role: userRole };
+      localStorage.setItem('token', userData.token || response.data.token);
+      localStorage.setItem('userRole', finalUserData.role);
+      setUser(finalUserData);
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', userRole);
-      setUser(userData);
-      
-      return { success: true, user: userData };
+      return { success: true, user: finalUserData };
     } catch (err) {
       console.error('❌ Registration failed:', err);
       const errorMessage = err.response?.data?.error || 
@@ -119,8 +108,8 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       setError(null);
-      const { data } = await apiForgotPassword(email);
-      return { success: true, message: data.message, link: data.link };
+      const response = await apiForgotPassword(email);
+      return { success: true, message: response.data.message, link: response.data.link };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 
                           err.response?.data?.message || 
@@ -130,15 +119,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = async (updatedData) => {
+    try {
+      setUser(prev => ({ ...prev, ...updatedData }));
+      localStorage.setItem('user', JSON.stringify({ ...user, ...updatedData }));
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
   const value = {
     user,
     setUser,
+    updateUser,
     loading,
     error,
     login,
