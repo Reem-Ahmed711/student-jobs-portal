@@ -1,20 +1,11 @@
+const { admin, db } = require("../config/firebase");
 
-const admin = require("firebase-admin");
+async function assignRole(uid, role) {
+  await admin.auth().setCustomUserClaims(uid, { role });
 
-async function assignRole(uid, role = "student") {
-  try {
-   
-    
-    await admin.auth().setCustomUserClaims(uid, { role });
-
-    const userRef = admin.firestore().collection("users").doc(uid);
-    await userRef.update({ role });
-    
-    return { success: true, message: `Role '${role}' assigned to user ${uid}` };
-  } catch (err) {
-    throw new Error("Failed to assign role: " + err.message);
-  }
+  return { uid, role };
 }
+
 
 
 async function getUserRole(uid) {

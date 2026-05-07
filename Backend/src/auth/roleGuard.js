@@ -1,5 +1,5 @@
 // MOBILE-APP/app-backend/src/auth/roleGuard.js
-const admin = require("firebase-admin");
+const { admin, db } = require("../config/firebase");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@university.edu";
 

@@ -122,12 +122,26 @@ const makeAdminController = async (req, res) => {
   try {
     const uid = req.params.uid;
 
-    await db.collection("users").doc(uid).update({ role: "admin" });
-    await admin.auth().setCustomUserClaims(uid, { role: "admin" });
+    await db.collection("users").doc(uid).update({
+      role: "admin",
+    });
 
-    res.json({ success: true, message: "User promoted to admin" });
+    const user = await admin.auth().getUser(uid);
+
+    await admin.auth().setCustomUserClaims(uid, {
+      ...user.customClaims,
+      role: "admin",
+    });
+
+    res.json({
+      success: true,
+      message: "User promoted to admin",
+    });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 
@@ -135,12 +149,26 @@ const removeAdminController = async (req, res) => {
   try {
     const uid = req.params.uid;
 
-    await db.collection("users").doc(uid).update({ role: "student" });
-    await admin.auth().setCustomUserClaims(uid, { role: "student" });
+    await db.collection("users").doc(uid).update({
+      role: "student",
+    });
 
-    res.json({ success: true, message: "Admin role removed" });
+    const user = await admin.auth().getUser(uid);
+
+    await admin.auth().setCustomUserClaims(uid, {
+      ...user.customClaims,
+      role: "student",
+    });
+
+    res.json({
+      success: true,
+      message: "Admin role removed",
+    });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 
@@ -187,14 +215,29 @@ const adminUpdateJobStatusController = async (req, res) => {
     const { jobId } = req.params;
     const { status } = req.body;
 
+    const allowedStatuses = ["active", "closed", "pending"];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
     await db.collection("jobs").doc(jobId).update({
       status,
       updatedAt: new Date().toISOString(),
     });
 
-    res.json({ success: true, message: "Job status updated" });
+    res.json({
+      success: true,
+      message: "Job status updated",
+    });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 
@@ -219,14 +262,34 @@ const adminUpdateApplicationStatusController = async (req, res) => {
     const { appId } = req.params;
     const { status } = req.body;
 
+    const allowedStatuses = [
+      "pending",
+      "accepted",
+      "rejected",
+      "reviewing",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid application status",
+      });
+    }
+
     await db.collection("applications").doc(appId).update({
       status,
       updatedAt: new Date().toISOString(),
     });
 
-    res.json({ success: true, message: "Application updated" });
+    res.json({
+      success: true,
+      message: "Application updated",
+    });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 

@@ -1,6 +1,6 @@
-const admin = require("firebase-admin");
+const { admin } = require("../config/firebase");
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -9,16 +9,19 @@ const verifyToken = (req, res, next) => {
 
   const token = authHeader.split("Bearer ")[1];
 
-  admin
-    .auth()
-    .verifyIdToken(token)
-    .then((decoded) => {
-      req.user = decoded;
-      next();
-    })
-    .catch(() => {
-      return res.status(401).json({ message: "Invalid token" });
-    });
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email,
+      role: decoded.role || "student",
+    };
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
 };
 
 module.exports = verifyToken;

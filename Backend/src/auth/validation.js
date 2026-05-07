@@ -29,7 +29,7 @@ function validateRegisterInput({
     throw new Error("Year must be a number");
   }
 
-  
+  // تم تعديل الرقم من 4 إلى 5
   if (gpa && (isNaN(Number(gpa)) || Number(gpa) < 0 || Number(gpa) > 5)) {
     throw new Error("GPA must be between 0 and 5");
   }

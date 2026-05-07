@@ -63,14 +63,30 @@ const updateEmployerAsAdmin = async (targetUid, updatedData) => {
 const deleteEmployerAsAdmin = async (targetUid) => {
   try {
     const user = await getUserByUid(targetUid);
-    if (!user) return { success: false, message: "Employer not found" };
-    if (user.role !== "employer")
-      return { success: false, message: "User is not an employer" };
 
+    if (!user) {
+      return { success: false, message: "Employer not found" };
+    }
+
+    if (user.role !== "employer") {
+      return { success: false, message: "User is not an employer" };
+    }
+
+    // حذف من Firebase Authentication
+    await admin.auth().deleteUser(targetUid);
+
+    // حذف من Firestore
     await db.collection("users").doc(targetUid).delete();
-    return { success: true, message: "Employer deleted successfully" };
+
+    return {
+      success: true,
+      message: "Employer deleted successfully",
+    };
   } catch (error) {
-    return { success: false, message: error.message };
+    return {
+      success: false,
+      message: error.message,
+    };
   }
 };
 
@@ -81,7 +97,7 @@ const toggleEmployerStatus = async (targetUid) => {
     if (user.role !== "employer")
       return { success: false, message: "User is not an employer" };
 
-    const newStatus = !user.isActive;
+const newStatus = !(user.isActive ?? true);
     await db.collection("users").doc(targetUid).update({
       isActive: newStatus,
       updatedAt: serverTimestamp(),
@@ -146,17 +162,32 @@ const updateStudentAsAdmin = async (targetUid, updatedData) => {
 const deleteStudentAsAdmin = async (targetUid) => {
   try {
     const user = await getUserByUid(targetUid);
-    if (!user) return { success: false, message: "Student not found" };
-    if (user.role !== "student")
-      return { success: false, message: "User is not a student" };
 
+    if (!user) {
+      return { success: false, message: "Student not found" };
+    }
+
+    if (user.role !== "student") {
+      return { success: false, message: "User is not a student" };
+    }
+
+    // حذف من Firebase Authentication
+    await admin.auth().deleteUser(targetUid);
+
+    // حذف من Firestore
     await db.collection("users").doc(targetUid).delete();
-    return { success: true, message: "Student deleted successfully" };
+
+    return {
+      success: true,
+      message: "Student deleted successfully",
+    };
   } catch (error) {
-    return { success: false, message: error.message };
+    return {
+      success: false,
+      message: error.message,
+    };
   }
 };
-
 const toggleStudentStatus = async (targetUid) => {
   try {
     const user = await getUserByUid(targetUid);
@@ -164,7 +195,7 @@ const toggleStudentStatus = async (targetUid) => {
     if (user.role !== "student")
       return { success: false, message: "User is not a student" };
 
-    const newStatus = !user.isActive;
+    const newStatus = !(user.isActive ?? true);
     await db.collection("users").doc(targetUid).update({
       isActive: newStatus,
       updatedAt: serverTimestamp(),
