@@ -19,7 +19,7 @@ import axios from 'axios';
 
 // ================= API URL =================
 // استخدمي نفس الـ IP اللي عندك في api.js
-const API_URL = "http://192.168.1.8:3000";
+const API_URL = "http://192.168.1.14:3000";
 
 // ================= Types =================
 interface User {

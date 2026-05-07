@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Emulator Android
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
-const API_URL = "http://192.168.1.8:3000";
+const API_URL = "http://192.168.1.14:3000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -141,12 +141,16 @@ export const getJobApplicants = async (jobId) => {
     return { success: true, data: res.data };
   } catch (err) {
     // عشان تشوفي الخطأ الحقيقي
-    console.log("🔴 getJobApplicants ERROR:", err.response?.status, err.response?.data);
-    return { 
-      success: false, 
+    console.log(
+      "🔴 getJobApplicants ERROR:",
+      err.response?.status,
+      err.response?.data,
+    );
+    return {
+      success: false,
       data: [],
       status: err.response?.status,
-      message: err.response?.data?.message || err.message
+      message: err.response?.data?.message || err.message,
     };
   }
 };

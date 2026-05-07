@@ -44,11 +44,15 @@ app.post("/api/login", async (req, res) => {
 // ================= ROUTES =================
 const profileRoutes = require("./Routes/profile");
 const jobRoutes = require("./Routes/jobRoute");
+const imageRoutes = require("./Routes/imageRoute");
 const applicationRoutes = require("./Routes/applicationRoute");
 const adminRoutes = require("./Routes/adminRoute");
 const employerRoutes = require("./Routes/employerRoute");
 const ratingRoutes = require("./Routes/ratingRoute");
+const savedJobRoutes = require("./Routes/savedJobRoute");
 
+app.use("/api/saved-jobs", savedJobRoutes);
+app.use("/api/images", imageRoutes);
 app.use("/api", profileRoutes);
 app.use("/api/jobs", jobRoutes);
 // ✅ التعديل هنا: /api/applications بدل /api
