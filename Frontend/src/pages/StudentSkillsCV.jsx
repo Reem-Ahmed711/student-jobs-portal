@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { mockSkills } from '../utils/mockData';
+import cvParser from '../services/cvParser';
+const { extractCVData } = cvParser;
 
 const StudentSkillsCV = () => {
   const { user } = useAuth();
