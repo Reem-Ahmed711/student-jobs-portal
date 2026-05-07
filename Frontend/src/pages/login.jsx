@@ -589,7 +589,7 @@ const Login = () => {
               )}
             </button>
           </form>
-
+              
           {/* Sign up link */}
           <p style={{
             textAlign: 'center',
@@ -641,6 +641,7 @@ const Login = () => {
       </div>
     </div>
   );
+  
 };
 
 export default Login;
