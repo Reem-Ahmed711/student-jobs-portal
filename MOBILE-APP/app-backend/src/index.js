@@ -50,7 +50,11 @@ const adminRoutes = require("./Routes/adminRoute");
 const employerRoutes = require("./Routes/employerRoute");
 const ratingRoutes = require("./Routes/ratingRoute");
 const savedJobRoutes = require("./Routes/savedJobRoute");
+const notificationRoutes = require("./Routes/notificationRoute");
+const aiRoutes = require("./Routes/aiRoute");
 
+app.use("/api/ai", aiRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/saved-jobs", savedJobRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api", profileRoutes);
