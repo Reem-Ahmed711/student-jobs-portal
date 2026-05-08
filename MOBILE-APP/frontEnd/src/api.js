@@ -435,6 +435,27 @@ export const isJobSaved = async (jobId) => {
     return { success: false, data: { saved: false } };
   }
 };
+// ================= COUNTS FOR PROFILE =================
+
+export const getSavedJobsCount = async () => {
+  try {
+    const res = await api.get("/api/saved-jobs/count");
+    return { success: true, count: res.data.count || 0 };
+  } catch (err) {
+    console.error("❌ Get saved jobs count error:", err);
+    return { success: false, count: 0 };
+  }
+};
+
+export const getAppliedJobsCount = async () => {
+  try {
+    const res = await api.get("/api/applications/student/count");
+    return { success: true, count: res.data.count || 0 };
+  } catch (err) {
+    console.error("❌ Get applied jobs count error:", err);
+    return { success: false, count: 0 };
+  }
+};
 
 // ================= COMMENTS =================
 export const addComment = async (jobId, comment) => {
@@ -546,5 +567,66 @@ export const getAITips = async () => {
   }
 };
 
+// ================= NOTIFICATIONS =================
+
+export const registerPushToken = async (pushToken) => {
+  try {
+    const res = await api.post("/api/notifications/register-token", { pushToken });
+    return res.data;
+  } catch (err) {
+    console.error("❌ Register push token error:", err);
+    return { success: false, message: err.message };
+  }
+};
+
+export const getNotifications = async (limit = 50) => {
+  try {
+    const res = await api.get(`/api/notifications?limit=${limit}`);
+    return res.data;
+  } catch (err) {
+    console.error("❌ Get notifications error:", err);
+    return { success: false, notifications: [] };
+  }
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    const res = await api.put(`/api/notifications/${notificationId}/read`);
+    return res.data;
+  } catch (err) {
+    console.error("❌ Mark as read error:", err);
+    return { success: false };
+  }
+};
+
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const res = await api.put("/api/notifications/read-all");
+    return res.data;
+  } catch (err) {
+    console.error("❌ Mark all as read error:", err);
+    return { success: false };
+  }
+};
+
+export const getUnreadNotificationsCount = async () => {
+  try {
+    const res = await api.get("/api/notifications/unread/count");
+    return res.data;
+  } catch (err) {
+    console.error("❌ Get unread count error:", err);
+    return { success: false, count: 0 };
+  }
+};
+
+export const sendTestNotification = async (title, body, type = "general") => {
+  try {
+    const res = await api.post("/api/notifications/test", { title, body, type });
+    return res.data;
+  } catch (err) {
+    console.error("❌ Send test notification error:", err);
+    return { success: false };
+  }
+};
 // ================= EXPORT DEFAULT =================
 export default api;

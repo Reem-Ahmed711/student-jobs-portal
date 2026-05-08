@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserRating, updateStudentProfile, fetchStudentProfile, uploadProfileImage } from '../src/api';
+import { getUserRating, updateStudentProfile, fetchStudentProfile, uploadProfileImage, getSavedJobsCount, getAppliedJobsCount } from '../src/api';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
@@ -85,6 +85,10 @@ const ProfileScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [ratingData, setRatingData] = useState<any>(null);
   const [uploadingCV, setUploadingCV] = useState(false);
+  
+  // ✅ State for counts
+  const [appliedJobs, setAppliedJobs] = useState(0);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
 
   const [profile, setProfile] = useState<ProfileData>({
     uid: '',
@@ -112,8 +116,24 @@ const ProfileScreen: React.FC = () => {
     year: '',
   });
 
+  // ✅ Load counts from Firebase
+  const loadCounts = async () => {
+    try {
+      const [appliedRes, savedRes] = await Promise.all([
+        getAppliedJobsCount(),
+        getSavedJobsCount()
+      ]);
+      setAppliedJobs(appliedRes.count || 0);
+      setSavedJobsCount(savedRes.count || 0);
+      console.log("📊 Counts loaded - Applied:", appliedRes.count, "Saved:", savedRes.count);
+    } catch (err) {
+      console.log("Error loading counts:", err);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
+    loadCounts();
   }, []);
 
   const loadProfile = async () => {
@@ -211,40 +231,41 @@ const ProfileScreen: React.FC = () => {
       await uploadAndSaveImage(base64);
     }
   };
+const uploadAndSaveImage = async (base64Image: string) => {
+  setSaving(true);
+  try {
+    const res = await uploadProfileImage(base64Image);
 
-  const uploadAndSaveImage = async (base64Image: string) => {
-    setSaving(true);
-    try {
-      const res = await uploadProfileImage(base64Image);
+    if (res.success && res.data?.url) {
+      const imageUrl = res.data.url;
+      console.log("✅ Image URL from Cloudinary:", imageUrl);
 
-      if (res.success && res.data?.url) {
-        const imageUrl = res.data.url;
-        console.log("✅ Image URL from Cloudinary:", imageUrl);
+      setProfile(prev => ({ ...prev, profileImage: imageUrl }));
 
-        // 1. Update state
-        setProfile(prev => ({ ...prev, profileImage: imageUrl }));
-        console.log("🖼️ Updated profileImage in state:", imageUrl);
-
-        // 2. Update AsyncStorage immediately
-        const userData = await AsyncStorage.getItem('userData');
-        if (userData) {
-          const parsed = JSON.parse(userData);
-          parsed.profileImage = imageUrl;
-          await AsyncStorage.setItem('userData', JSON.stringify(parsed));
-          console.log("💾 Saved to AsyncStorage:", parsed.profileImage);
-        }
-
-        Alert.alert('Success', 'Profile picture updated!');
+      // 🔥 أهم حاجة: تحديث AsyncStorage بالصورة الجديدة
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        parsed.profileImage = imageUrl;  // ✅ تحديث الصورة
+        await AsyncStorage.setItem('userData', JSON.stringify(parsed));
+        console.log("✅ تم حفظ الصورة في AsyncStorage:", imageUrl);
       } else {
-        Alert.alert('Error', res.message || 'Failed to upload image');
+        // لو مفيش data، اعمل data جديدة
+        const newUserData = { profileImage: imageUrl };
+        await AsyncStorage.setItem('userData', JSON.stringify(newUserData));
       }
-    } catch (err) {
-      console.error("Upload error:", err);
-      Alert.alert('Error', 'Failed to upload profile picture');
-    } finally {
-      setSaving(false);
+
+      Alert.alert('Success', 'Profile picture updated!');
+    } else {
+      Alert.alert('Error', res.message || 'Failed to upload image');
     }
-  };
+  } catch (err) {
+    console.error("Upload error:", err);
+    Alert.alert('Error', 'Failed to upload profile picture');
+  } finally {
+    setSaving(false);
+  }
+};
 
   const handleUploadCV = async () => {
     if (Platform.OS === 'web') {
@@ -361,7 +382,6 @@ const ProfileScreen: React.FC = () => {
       const res = await updateStudentProfile(updateData);
 
       if (res.success) {
-        // ✅ Fetch fresh data from backend after update
         const freshData = await fetchStudentProfile();
         
         if (freshData.success && freshData.data) {
@@ -373,10 +393,8 @@ const ProfileScreen: React.FC = () => {
           };
           setProfile(updatedProfile);
           
-          // ✅ Update AsyncStorage with fresh data
           await AsyncStorage.setItem('userData', JSON.stringify(updatedProfile));
           
-          // ✅ Update editForm with fresh data
           setEditForm({
             name: updatedProfile.name,
             phone: updatedProfile.phone,
@@ -447,16 +465,12 @@ const ProfileScreen: React.FC = () => {
   const firstName = profile.name.split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
 
-  const appliedJobs = 3;
-  const savedJobs = 2;
-  const interviewsCount = 1;
-
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header with Avatar - GPA and Year are already shown here */}
+        {/* Header with Avatar */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.avatarWrap} onPress={handlePickPhoto}>
             {profile.profileImage ? (
@@ -483,7 +497,7 @@ const ProfileScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Stats Row */}
+        {/* Stats Row - Only Applied & Saved (removed Interviews) */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{appliedJobs}</Text>
@@ -491,13 +505,8 @@ const ProfileScreen: React.FC = () => {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{savedJobs}</Text>
+            <Text style={styles.statNumber}>{savedJobsCount}</Text>
             <Text style={styles.statLabel}>Saved</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{interviewsCount}</Text>
-            <Text style={styles.statLabel}>Interviews</Text>
           </View>
         </View>
 
@@ -597,7 +606,7 @@ const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Settings */}
+        {/* Settings - Removed Logout */}
         <View style={styles.sectionLabel}>
           <Text style={styles.sectionLabelText}>SETTINGS</Text>
         </View>
@@ -618,16 +627,6 @@ const ProfileScreen: React.FC = () => {
                 <Ionicons name="notifications-outline" size={18} color="#1E3A5F" />
               </View>
               <Text style={styles.settingLabel}>Notifications</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.settingRow} onPress={handleLogout} activeOpacity={0.7}>
-            <View style={styles.settingLeft}>
-              <View style={[styles.settingIconWrap, { backgroundColor: '#FEF2F2' }]}>
-                <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-              </View>
-              <Text style={[styles.settingLabel, { color: '#DC2626' }]}>Logout</Text>
             </View>
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
@@ -652,7 +651,6 @@ const ProfileScreen: React.FC = () => {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {/* Basic Information */}
                 <View style={styles.modalField}>
                   <Text style={styles.modalFieldLabel}>Full Name</Text>
                   <TextInput
@@ -663,7 +661,6 @@ const ProfileScreen: React.FC = () => {
                   />
                 </View>
 
-                {/* GPA and Year in same row */}
                 <View style={styles.rowFields}>
                   <View style={[styles.modalField, { flex: 1, marginRight: 10 }]}>
                     <Text style={styles.modalFieldLabel}>GPA (0-5)</Text>
@@ -708,7 +705,6 @@ const ProfileScreen: React.FC = () => {
                   />
                 </View>
 
-                {/* CV Upload */}
                 <View style={styles.modalField}>
                   <Text style={styles.modalFieldLabel}>CV / Resume</Text>
                   <TouchableOpacity 
@@ -774,7 +770,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F1F5F9' },
   scroll: { flex: 1 },
 
-  // Header
   header: {
     backgroundColor: '#1E3A5F',
     paddingTop: 30,
@@ -856,7 +851,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Stats Row
   statsRow: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -887,7 +881,6 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
 
-  // Section Label
   sectionLabel: {
     paddingHorizontal: 20,
     marginBottom: 8,
@@ -900,7 +893,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Card
   card: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
@@ -911,7 +903,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  // About
   aboutText: {
     fontSize: 14,
     color: '#4B5563',
@@ -919,7 +910,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
-  // Skills
   skillsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -938,14 +928,12 @@ const styles = StyleSheet.create({
     color: '#1E3A5F',
   },
   
-  // CV Row
   cvRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
   },
 
-  // Contact
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -970,13 +958,11 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
-  // Divider
   divider: {
     height: 1,
     backgroundColor: '#F3F4F6',
   },
 
-  // Settings
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1002,7 +988,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
-  // Tab Bar
   tabBar: {
     position: 'absolute',
     bottom: 0,
@@ -1031,7 +1016,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

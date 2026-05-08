@@ -7,6 +7,7 @@ const {
   unsaveJobController,
   getSavedJobsController,
   isJobSavedController,
+  getSavedJobsCountController, // ✅ أضيفي هذا السطر
 } = require("../Controllers/savedJobController");
 
 router.use(verifyToken);
@@ -16,6 +17,8 @@ router.post("/save", saveJobController);
 router.delete("/unsave/:jobId", unsaveJobController);
 
 router.get("/", getSavedJobsController);
+
+router.get("/count", getSavedJobsCountController);
 
 router.get("/check/:jobId", isJobSavedController);
 

@@ -6,6 +6,7 @@ const {
   isJobSaved,
 } = require("../Service/savedJobService");
 const { requireStudent } = require("../auth/roleGuard");
+const { db } = require("../firebase"); // ✅ أضيفي هذا السطر
 
 // حفظ وظيفة
 const saveJobController = async (req, res) => {
@@ -56,9 +57,29 @@ const isJobSavedController = async (req, res) => {
   }
 };
 
+// ✅ جلب عدد الوظائف المحفوظة (للبروفايل)
+const getSavedJobsCountController = async (req, res) => {
+  try {
+    await requireStudent(req.user.uid);
+    const snapshot = await db
+      .collection("savedJobs")
+      .where("studentUid", "==", req.user.uid)
+      .get();
+    
+    res.status(200).json({ 
+      success: true, 
+      count: snapshot.size 
+    });
+  } catch (err) {
+    console.error("Error getting saved jobs count:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   saveJobController,
   unsaveJobController,
   getSavedJobsController,
   isJobSavedController,
+  getSavedJobsCountController, // ✅ هذا السطر موجود
 };
