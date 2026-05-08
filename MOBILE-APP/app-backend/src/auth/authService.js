@@ -103,8 +103,56 @@ async function loginUser({ email, password }) {
     );
   }
 }
+// أضيفي هذا الكود في آخر ملف authService.js قبل module.exports
+
+// ================= Forgot Password =================
+async function forgotPassword({ email }) {
+  try {
+    const API_KEY = "AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
+
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
+      {
+        email: email,
+        requestType: "PASSWORD_RESET",
+      },
+    );
+
+    return {
+      success: true,
+      message: "Password reset email sent successfully",
+    };
+  } catch (err) {
+    const errorMessage = err.response?.data?.error?.message || err.message;
+    throw new Error(errorMessage);
+  }
+}
+
+async function resetPassword({ oobCode, newPassword }) {
+  try {
+    const API_KEY = "AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
+
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${API_KEY}`,
+      {
+        oobCode: oobCode,
+        newPassword: newPassword,
+      },
+    );
+
+    return {
+      success: true,
+      message: "Password reset successfully",
+    };
+  } catch (err) {
+    const errorMessage = err.response?.data?.error?.message || err.message;
+    throw new Error(errorMessage);
+  }
+}
 
 module.exports = {
   registerUser,
   loginUser,
+  forgotPassword,
+  resetPassword,
 };

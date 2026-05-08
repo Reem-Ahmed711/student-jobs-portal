@@ -1,14 +1,18 @@
 // D:\student-jobs-portal\Frontend\src\services\api.js
-import axios from 'axios';
+import axios from "axios";
 
+<<<<<<< HEAD
 
 
 const API_BASE_URL = 'http://localhost:5000/api';
+=======
+const API_BASE_URL = "http://localhost:5000/api";
+>>>>>>> cf3de02d150fc9f9a1d54d880aad32349d304b57
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 10000,
 });
@@ -16,13 +20,13 @@ const apiClient = axios.create({
 // Add token to all requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Handle 401 errors
@@ -30,43 +34,43 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // ==================== AUTH ====================
 export const login = async (formData) => {
-  const response = await apiClient.post('/auth/login', formData);
+  const response = await apiClient.post("/auth/login", formData);
   return response;
 };
 
 export const register = async (formData) => {
-  const response = await apiClient.post('/auth/register', formData);
+  const response = await apiClient.post("/auth/register", formData);
   return response;
 };
 
 export const forgotPassword = async (email) => {
-  const response = await apiClient.post('/auth/forgot-password', { email });
+  const response = await apiClient.post("/auth/forgot-password", { email });
   return response;
 };
 
 export const getProfile = async () => {
-  const response = await apiClient.get('/profile');
+  const response = await apiClient.get("/profile");
   return response;
 };
 
 export const updateProfile = async (profileData) => {
-  const response = await apiClient.put('/profile', profileData);
+  const response = await apiClient.put("/profile", profileData);
   return response;
 };
 
 // ==================== JOBS ====================
 export const getAllJobs = async () => {
-  const response = await apiClient.get('/jobs');
+  const response = await apiClient.get("/jobs");
   return response;
 };
 
@@ -76,7 +80,7 @@ export const getJobById = async (jobId) => {
 };
 
 export const createJob = async (jobData) => {
-  const response = await apiClient.post('/jobs', jobData);
+  const response = await apiClient.post("/jobs", jobData);
   return response;
 };
 
@@ -92,12 +96,12 @@ export const deleteJob = async (jobId) => {
 
 // ==================== APPLICATIONS ====================
 export const applyForJob = async (applicationData) => {
-  const response = await apiClient.post('/apply', applicationData);
+  const response = await apiClient.post("/apply", applicationData);
   return response;
 };
 
 export const getUserApplications = async () => {
-  const response = await apiClient.get('/applications/my-applications');
+  const response = await apiClient.get("/applications/my-applications");
   return response;
 };
 
@@ -117,18 +121,20 @@ export const rejectApplication = async (applicationId) => {
 };
 
 export const confirmInterview = async (applicationId) => {
-  const response = await apiClient.post(`/applications/${applicationId}/confirm`);
+  const response = await apiClient.post(
+    `/applications/${applicationId}/confirm`,
+  );
   return response;
 };
 
 // ==================== SAVED JOBS ====================
 export const getSavedJobs = async () => {
-  const response = await apiClient.get('/saved-jobs');
+  const response = await apiClient.get("/saved-jobs");
   return response;
 };
 
 export const saveJob = async (jobId) => {
-  const response = await apiClient.post('/saved-jobs', { jobId });
+  const response = await apiClient.post("/saved-jobs", { jobId });
   return response;
 };
 
@@ -139,23 +145,23 @@ export const unsaveJob = async (jobId) => {
 
 // ==================== RECOMMENDATIONS & STATS ====================
 export const getRecommendedJobs = async () => {
-  const response = await apiClient.get('/recommendations');
+  const response = await apiClient.get("/recommendations");
   return response;
 };
 
 export const getStudentStats = async () => {
-  const response = await apiClient.get('/stats/student');
+  const response = await apiClient.get("/stats/student");
   return response;
 };
 
 // ==================== EMPLOYER ====================
 export const getEmployerStats = async () => {
-  const response = await apiClient.get('/employer/stats');
+  const response = await apiClient.get("/employer/stats");
   return response;
 };
 
 export const getEmployerJobs = async () => {
-  const response = await apiClient.get('/employer/jobs');
+  const response = await apiClient.get("/employer/jobs");
   return response;
 };
 
@@ -186,34 +192,38 @@ export const getJobApplicants = async (jobId) => {
 // ==================== CV & AI ====================
 export const uploadCV = async (file) => {
   const formData = new FormData();
-  formData.append('cv', file);
-  const response = await apiClient.post('/extract-cv', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+  formData.append("cv", file);
+  const response = await apiClient.post("/extract-cv", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return response;
 };
 
 export const uploadProfileImage = async (file) => {
   const formData = new FormData();
-  formData.append('image', file);
-  const response = await apiClient.post('/profile/upload-image', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+  formData.append("image", file);
+  const response = await apiClient.post("/profile/upload-image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return response;
 };
 
 export const deleteProfileImage = async () => {
-  const response = await apiClient.delete('/profile/upload-image');
+  const response = await apiClient.delete("/profile/upload-image");
   return response;
 };
 
 export const getAIMatches = async (jobId, options = {}) => {
-  const response = await apiClient.post('/ai/match', { jobId, ...options });
+  const response = await apiClient.post("/ai/match", { jobId, ...options });
   return response;
 };
 
 export const addRating = async (targetUid, rating, comment) => {
-  const response = await apiClient.post('/ratings', { targetUid, rating, comment });
+  const response = await apiClient.post("/ratings", {
+    targetUid,
+    rating,
+    comment,
+  });
   return response;
 };
 
@@ -226,7 +236,7 @@ export const getRatings = async (targetUid) => {
 
 // ---- Employers ----
 export const getAllEmployers = async () => {
-  const response = await apiClient.get('/admin/employers');
+  const response = await apiClient.get("/admin/employers");
   return response;
 };
 
@@ -246,13 +256,15 @@ export const deleteEmployer = async (uid) => {
 };
 
 export const toggleEmployerStatus = async (uid) => {
-  const response = await apiClient.patch(`/admin/employers/${uid}/toggle-status`);
+  const response = await apiClient.patch(
+    `/admin/employers/${uid}/toggle-status`,
+  );
   return response;
 };
 
 // ---- Students ----
 export const getAllStudents = async () => {
-  const response = await apiClient.get('/admin/students');
+  const response = await apiClient.get("/admin/students");
   return response;
 };
 
@@ -272,13 +284,15 @@ export const deleteStudent = async (uid) => {
 };
 
 export const toggleStudentStatus = async (uid) => {
-  const response = await apiClient.patch(`/admin/students/${uid}/toggle-status`);
+  const response = await apiClient.patch(
+    `/admin/students/${uid}/toggle-status`,
+  );
   return response;
 };
 
 // ---- Admins ----
 export const getAllAdmins = async () => {
-  const response = await apiClient.get('/admin/admins');
+  const response = await apiClient.get("/admin/admins");
   return response;
 };
 
@@ -300,7 +314,7 @@ export const adminDeleteUser = async (uid) => {
 
 // ---- Admin Jobs Management ----
 export const adminGetAllJobs = async () => {
-  const response = await apiClient.get('/admin/jobs');
+  const response = await apiClient.get("/admin/jobs");
   return response;
 };
 
@@ -310,51 +324,46 @@ export const adminDeleteJob = async (jobId) => {
 };
 
 export const adminUpdateJobStatus = async (jobId, status) => {
-  const response = await apiClient.patch(`/admin/jobs/${jobId}/status`, { status });
+  const response = await apiClient.patch(`/admin/jobs/${jobId}/status`, {
+    status,
+  });
   return response;
 };
 
 // ---- Admin Applications Management ----
 export const adminGetAllApplications = async () => {
-  const response = await apiClient.get('/admin/applications');
+  const response = await apiClient.get("/admin/applications");
   return response;
 };
 
 export const adminUpdateApplicationStatus = async (appId, status) => {
-  const response = await apiClient.patch(`/admin/applications/${appId}/status`, { status });
+  const response = await apiClient.patch(
+    `/admin/applications/${appId}/status`,
+    { status },
+  );
   return response;
 };
 
 // ---- Platform Stats ----
 export const getPlatformStats = async () => {
-  const response = await apiClient.get('/admin/stats');
+  const response = await apiClient.get("/admin/stats");
   return response;
 };
 
-// ---- Legacy/Compatibility (للتوافق مع الكود القديم) ----
 export const getAllUsers = async () => {
-  // تجميع كل المستخدمين من الأدوار المختلفة
   try {
-    const [employers, students, admins] = await Promise.all([
-      getAllEmployers(),
-      getAllStudents(),
-      getAllAdmins()
-    ]);
-    
-    const allUsers = [
-      ...(employers.data?.data || employers.data || []).map(u => ({ ...u, role: 'employer' })),
-      ...(students.data?.data || students.data || []).map(u => ({ ...u, role: 'student' })),
-      ...(admins.data?.data || admins.data || []).map(u => ({ ...u, role: 'admin' }))
-    ];
-    
-    return { data: allUsers };
+    const response = await apiClient.get("/admin/users");
+    // ✅ التأكد من إرجاع مصفوفة
+    const usersArray = response.data?.data || response.data || [];
+    return { data: Array.isArray(usersArray) ? usersArray : [] };
   } catch (error) {
-    throw error;
+    console.error("Error fetching all users:", error);
+    return { data: [] };
   }
 };
 
 export const updateUserRole = async (userId, role) => {
-  if (role === 'admin') {
+  if (role === "admin") {
     return makeAdmin(userId);
   } else {
     return removeAdmin(userId);
@@ -369,5 +378,27 @@ export const getAdminStats = async () => {
   return getPlatformStats();
 };
 
+<<<<<<< HEAD
 
 export default apiClient;
+=======
+// ==================== REPORTS ====================
+export const getAllReports = async () => {
+  const response = await apiClient.get("/admin/reports");
+  return response;
+};
+
+export const updateReportStatus = async (reportId, status) => {
+  const response = await apiClient.patch(`/admin/reports/${reportId}/status`, {
+    status,
+  });
+  return response;
+};
+
+export const deleteReport = async (reportId) => {
+  const response = await apiClient.delete(`/admin/reports/${reportId}`);
+  return response;
+};
+
+export default apiClient;
+>>>>>>> cf3de02d150fc9f9a1d54d880aad32349d304b57
