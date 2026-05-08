@@ -1,3 +1,4 @@
+// D:\student-jobs-portal\Backend\src\middleware\verifyToken.js
 const { admin } = require("../config/firebase");
 
 const verifyToken = async (req, res, next) => {
@@ -11,7 +12,9 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-
+    
+    console.log("Decoded token UID:", decoded.uid); // للتأكد
+    
     req.user = {
       uid: decoded.uid,
       email: decoded.email,
@@ -20,6 +23,7 @@ const verifyToken = async (req, res, next) => {
 
     next();
   } catch (err) {
+    console.error("Token verification error:", err);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

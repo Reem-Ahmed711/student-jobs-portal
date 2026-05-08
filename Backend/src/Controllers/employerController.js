@@ -65,7 +65,14 @@ const acceptApplicationController = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
+const createJobController = async (req, res) => {
+  try {
+    const result = await createJob(req.user.uid, req.body);
+    return res.status(result.success ? 201 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 const rejectApplicationController = async (req, res) => {
   try {
     const { applicationId } = req.params;
@@ -108,4 +115,5 @@ module.exports = {
   rejectApplicationController,
   getEmployerStatsController,
   getEmployerDashboardController,
+    createJobController,
 };

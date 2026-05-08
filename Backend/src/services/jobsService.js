@@ -12,6 +12,9 @@ exports.createJob = async (jobData) => {
   try {
     const newJob = {
       ...jobData,
+      employerUid: jobData.employerUid, // مهم! لازم employerUid يكون موجود
+      status: jobData.status || "pending",
+      approved: false,
       createdAt: new Date().toISOString(),
     };
 
@@ -21,7 +24,6 @@ exports.createJob = async (jobData) => {
     throw new Error("Failed to create job: " + error.message);
   }
 };
-
 exports.findAllJobs = async () => {
   try {
     const snapshot = await db.collection(JOBS_COLLECTION).get();

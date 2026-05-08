@@ -295,7 +295,70 @@ const getEmployerDashboard = async (uid) => {
     return { success: false, message: error.message };
   }
 };
+// ── Create New Job ────────────────────────────────────────────────
+const createJob = async (uid, jobData) => {
+  try {
+    const {
+      title,
+      department,
+      type,
+      deadline,
+      description,
+      responsibilities,
+      requirements,
+      skills,
+      hours,
+      duration,
+      compensationType,
+      salaryMin,
+      salaryMax,
+      benefits
+    } = jobData;
 
+    // التحقق من الحقول المطلوبة
+    if (!title || !description || !deadline) {
+      return { success: false, message: "Missing required fields: title, description, deadline" };
+    }
+
+    const jobRef = db.collection("jobs").doc();
+    const jobId = jobRef.id;
+
+    const newJob = {
+      id: jobId,
+      employerUid: uid,
+      title,
+      department: department || "General",
+      type: type || "Part-Time",
+      deadline: admin.firestore.Timestamp.fromDate(new Date(deadline)),
+      description,
+      responsibilities: responsibilities || [],
+      requirements: requirements || [],
+      skills: skills || [],
+      hours: hours || 15,
+      duration: duration || "One Semester",
+      compensationType: compensationType || "Paid",
+      salaryMin: salaryMin || null,
+      salaryMax: salaryMax || null,
+      benefits: benefits || [],
+      status: "pending", // pending, active, closed
+      approved: false,
+      applicantsCount: 0,
+      views: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await jobRef.set(newJob);
+
+    return {
+      success: true,
+      message: "Job created successfully",
+      data: { id: jobId, ...newJob }
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
 module.exports = {
   getEmployerProfile,
   updateEmployerProfile,
@@ -305,4 +368,5 @@ module.exports = {
   rejectApplication,
   getEmployerStats,
   getEmployerDashboard,
+  createJob
 };
