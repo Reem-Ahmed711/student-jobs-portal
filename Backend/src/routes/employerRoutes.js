@@ -17,7 +17,7 @@ const {
 
 
 router.use(verifyToken, verifyRole("employer"));
-router.post("/jobs", createJobController);
+//router.post("/jobs", createJobController);
 router.get("/profile",        getEmployerProfileController);
 router.put("/profile",        updateEmployerProfileController);
 router.get("/jobs",           getEmployerJobsController);
