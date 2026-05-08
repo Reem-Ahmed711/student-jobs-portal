@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("./config/firebase");
+require("dotenv").config();
 
 app.use(cors());
 app.use(express.json());
@@ -26,7 +27,7 @@ app.use("/api", applicationRoutes);
 app.use("/api", interactionRoutes);
 app.use("/api", cvRoutes);
 app.use("/api", searchroutes);
-
+app.use("/api/ai", require("./routes/aiRoutes"));
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
