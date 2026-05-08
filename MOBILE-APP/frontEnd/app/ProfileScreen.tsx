@@ -20,10 +20,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserRating, updateUserProfile } from '../src/api';
+import { getUserRating, updateStudentProfile, fetchStudentProfile, uploadProfileImage } from '../src/api';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
@@ -119,40 +118,70 @@ const ProfileScreen: React.FC = () => {
 
   const loadProfile = async () => {
     try {
-      const stored = await AsyncStorage.getItem('userData');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setProfile({
-          uid: parsed.uid || '',
-          name: parsed.name || 'Student',
-          email: parsed.email || '',
-          department: parsed.department || 'Not set',
-          gpa: parsed.gpa || '-',
-          year: parsed.year || '-',
-          phone: parsed.phone || '',
-          skills: parsed.skills || [],
-          about: parsed.about || '',
-          profileImage: parsed.profileImage || '',
-          studentId: parsed.studentId || '',
-          cv: parsed.cv || null,
-        });
-        setEditForm({
-          name: parsed.name || '',
-          phone: parsed.phone || '',
-          about: parsed.about || '',
-          skills: (parsed.skills || []).join(', '),
-          studentId: parsed.studentId || '',
-          cv: parsed.cv || null,
-          gpa: parsed.gpa || '',
-          year: parsed.year || '',
-        });
+      // ✅ First: fetch from backend
+      let backendData = null;
+      try {
+        const freshData = await fetchStudentProfile();
+        if (freshData.success && freshData.data) {
+          backendData = freshData.data;
+        }
+      } catch (err) {
+        console.log('Backend fetch error:', err);
+      }
 
-        // Load rating from backend
-        if (parsed.uid) {
-          const ratingRes = await getUserRating(parsed.uid);
-          if (ratingRes.success && ratingRes.data) {
-            setRatingData(ratingRes.data);
-          }
+      // ✅ Second: fetch from AsyncStorage as backup
+      const stored = await AsyncStorage.getItem('userData');
+      let localData = null;
+      if (stored) {
+        localData = JSON.parse(stored);
+      }
+
+      // ✅ Third: merge data (backend takes priority)
+      const finalData = backendData || localData || {};
+
+      console.log("🔍 finalData.profileImage:", finalData.profileImage);
+      console.log("🔍 finalData.name:", finalData.name);
+
+      setProfile({
+        uid: finalData.uid || '',
+        name: finalData.name || 'Student',
+        email: finalData.email || '',
+        department: finalData.department || 'Not set',
+        gpa: finalData.gpa?.toString() || '-',
+        year: finalData.year?.toString() || '-',
+        phone: finalData.phone || '',
+        skills: finalData.skills || [],
+        about: finalData.about || '',
+        profileImage: finalData.profileImage || '',
+        studentId: finalData.studentId || '',
+        cv: finalData.cv || null,
+      });
+
+      setEditForm({
+        name: finalData.name || '',
+        phone: finalData.phone || '',
+        about: finalData.about || '',
+        skills: (finalData.skills || []).join(', '),
+        studentId: finalData.studentId || '',
+        cv: finalData.cv || null,
+        gpa: finalData.gpa?.toString() || '',
+        year: finalData.year?.toString() || '',
+      });
+
+      // ✅ Update AsyncStorage with latest backend data
+      if (backendData) {
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          ...localData,
+          ...backendData,
+        }));
+      }
+
+      // ✅ Load ratings
+      const uid = finalData.uid || localData?.uid;
+      if (uid) {
+        const ratingRes = await getUserRating(uid);
+        if (ratingRes.success && ratingRes.data) {
+          setRatingData(ratingRes.data);
         }
       }
     } catch (err) {
@@ -162,63 +191,61 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
- // أضف هذا الجزء في ProfileScreen.tsx في دالة handlePickPhoto
-const handlePickPhoto = async () => {
-  if (Platform.OS === 'web') {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const uri = ev.target?.result as string;
-          const updated = { ...profile, profileImage: uri };
-          setProfile(updated);
-          // حفظ البيانات مع الصورة في AsyncStorage
-          const userData = await AsyncStorage.getItem('userData');
-          if (userData) {
-            const parsed = JSON.parse(userData);
-            const updatedUserData = { ...parsed, profileImage: uri };
-            await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-          }
-          Alert.alert('Success', 'Profile picture updated');
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  } else {
+  const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please grant permission to access your photos');
       return;
     }
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
+    
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      const updated = { ...profile, profileImage: uri };
-      setProfile(updated);
-      
-      // حفظ البيانات مع الصورة في AsyncStorage
-      const userData = await AsyncStorage.getItem('userData');
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        const updatedUserData = { ...parsed, profileImage: uri };
-        await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-      }
-      Alert.alert('Success', 'Profile picture updated');
+      const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      await uploadAndSaveImage(base64);
     }
-  }
-};
+  };
 
-  // دالة رفع الـ CV - نسخة مبسطة بدون FileSystem
+  const uploadAndSaveImage = async (base64Image: string) => {
+    setSaving(true);
+    try {
+      const res = await uploadProfileImage(base64Image);
+
+      if (res.success && res.data?.url) {
+        const imageUrl = res.data.url;
+        console.log("✅ Image URL from Cloudinary:", imageUrl);
+
+        // 1. Update state
+        setProfile(prev => ({ ...prev, profileImage: imageUrl }));
+        console.log("🖼️ Updated profileImage in state:", imageUrl);
+
+        // 2. Update AsyncStorage immediately
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          parsed.profileImage = imageUrl;
+          await AsyncStorage.setItem('userData', JSON.stringify(parsed));
+          console.log("💾 Saved to AsyncStorage:", parsed.profileImage);
+        }
+
+        Alert.alert('Success', 'Profile picture updated!');
+      } else {
+        Alert.alert('Error', res.message || 'Failed to upload image');
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      Alert.alert('Error', 'Failed to upload profile picture');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUploadCV = async () => {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
@@ -228,7 +255,6 @@ const handlePickPhoto = async () => {
         const file = e.target.files[0];
         if (file) {
           try {
-            // على الويب، نستخدم URL.createObjectURL لإنشاء رابط مؤقت
             const tempUrl = URL.createObjectURL(file);
             setEditForm({ ...editForm, cv: tempUrl });
             Alert.alert('Success', 'CV selected successfully');
@@ -248,7 +274,6 @@ const handlePickPhoto = async () => {
 
         if (result.assets && result.assets[0]) {
           const asset = result.assets[0];
-          // حفظ الرابط كما هو
           setEditForm({ ...editForm, cv: asset.uri });
           Alert.alert('Success', 'CV selected successfully');
         }
@@ -261,7 +286,6 @@ const handlePickPhoto = async () => {
     }
   };
 
-  // دالة مبسطة لفتح الـ CV
   const openCV = async () => {
     if (!profile.cv) {
       Alert.alert("No CV", "You haven't uploaded a CV yet. You can add one in Edit Profile.");
@@ -270,23 +294,17 @@ const handlePickPhoto = async () => {
 
     try {
       const cvUrl = profile.cv;
-      
-      // التحقق من نوع الرابط
       if (cvUrl.startsWith('http://') || cvUrl.startsWith('https://')) {
-        // رابط سيرفر - محاولة الفتح في المتصفح
         const supported = await Linking.canOpenURL(cvUrl);
         if (supported) {
           await Linking.openURL(cvUrl);
         } else {
           Alert.alert('Error', 'Cannot open this CV link');
         }
-      } 
-      else if (cvUrl.startsWith('file://') || cvUrl.includes('file://')) {
-        // ملف محلي على الجهاز
+      } else if (cvUrl.startsWith('file://') || cvUrl.includes('file://')) {
         if (Platform.OS === 'web') {
           Alert.alert('Info', 'Local files cannot be opened on web. Please upload to server first.');
         } else {
-          // على الموبايل، نحاول المشاركة
           const isSharingAvailable = await Sharing.isAvailableAsync();
           if (isSharingAvailable) {
             await Sharing.shareAsync(cvUrl);
@@ -294,17 +312,13 @@ const handlePickPhoto = async () => {
             Alert.alert('Error', 'Cannot open this file');
           }
         }
-      }
-      else if (cvUrl.startsWith('blob:')) {
-        // رابط blob على الويب
+      } else if (cvUrl.startsWith('blob:')) {
         if (Platform.OS === 'web') {
           window.open(cvUrl, '_blank');
         } else {
           Alert.alert('Error', 'Invalid CV format for mobile');
         }
-      }
-      else {
-        // محاولة معالجة الرابط كمسار عادي
+      } else {
         const supported = await Linking.canOpenURL(cvUrl);
         if (supported) {
           await Linking.openURL(cvUrl);
@@ -344,26 +358,36 @@ const handlePickPhoto = async () => {
         updateData.cv = editForm.cv;
       }
 
-      const res = await updateUserProfile(profile.uid, updateData);
+      const res = await updateStudentProfile(updateData);
 
       if (res.success) {
-        const updatedProfile = {
-          ...profile,
-          name: editForm.name.trim(),
-          phone: editForm.phone.trim(),
-          about: editForm.about.trim(),
-          skills: skillsArray,
-          studentId: editForm.studentId.trim(),
-          cv: editForm.cv || profile.cv,
-          gpa: editForm.gpa.trim(),
-          year: editForm.year.trim(),
-        };
-        setProfile(updatedProfile);
-
-        await AsyncStorage.setItem('userData', JSON.stringify({
-          ...updatedProfile,
-          username: updatedProfile.name,
-        }));
+        // ✅ Fetch fresh data from backend after update
+        const freshData = await fetchStudentProfile();
+        
+        if (freshData.success && freshData.data) {
+          const updatedProfile = {
+            ...profile,
+            ...freshData.data,
+            gpa: freshData.data.gpa?.toString() || editForm.gpa,
+            year: freshData.data.year?.toString() || editForm.year,
+          };
+          setProfile(updatedProfile);
+          
+          // ✅ Update AsyncStorage with fresh data
+          await AsyncStorage.setItem('userData', JSON.stringify(updatedProfile));
+          
+          // ✅ Update editForm with fresh data
+          setEditForm({
+            name: updatedProfile.name,
+            phone: updatedProfile.phone,
+            about: updatedProfile.about,
+            skills: (updatedProfile.skills || []).join(', '),
+            studentId: updatedProfile.studentId || '',
+            cv: updatedProfile.cv,
+            gpa: updatedProfile.gpa,
+            year: updatedProfile.year,
+          });
+        }
 
         Alert.alert('Success', 'Profile updated successfully');
         setEditVisible(false);
@@ -588,12 +612,22 @@ const handlePickPhoto = async () => {
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.settingRow} onPress={() => router.push('/notifications')} activeOpacity={0.7}>
             <View style={styles.settingLeft}>
               <View style={styles.settingIconWrap}>
                 <Ionicons name="notifications-outline" size={18} color="#1E3A5F" />
               </View>
               <Text style={styles.settingLabel}>Notifications</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.settingRow} onPress={handleLogout} activeOpacity={0.7}>
+            <View style={styles.settingLeft}>
+              <View style={[styles.settingIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+              </View>
+              <Text style={[styles.settingLabel, { color: '#DC2626' }]}>Logout</Text>
             </View>
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
@@ -632,7 +666,7 @@ const handlePickPhoto = async () => {
                 {/* GPA and Year in same row */}
                 <View style={styles.rowFields}>
                   <View style={[styles.modalField, { flex: 1, marginRight: 10 }]}>
-                    <Text style={styles.modalFieldLabel}>GPA</Text>
+                    <Text style={styles.modalFieldLabel}>GPA (0-5)</Text>
                     <TextInput
                       style={styles.modalInput}
                       value={editForm.gpa}
@@ -648,7 +682,7 @@ const handlePickPhoto = async () => {
                       style={styles.modalInput}
                       value={editForm.year}
                       onChangeText={(v) => setEditForm({ ...editForm, year: v })}
-                      placeholder="e.g., Senior, Junior"
+                      placeholder="e.g., 1,2,3,4,Graduate"
                     />
                   </View>
                 </View>
@@ -966,26 +1000,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#111827',
-  },
-
-  // Logout
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF',
-    marginBottom: 20,
-  },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#DC2626',
   },
 
   // Tab Bar

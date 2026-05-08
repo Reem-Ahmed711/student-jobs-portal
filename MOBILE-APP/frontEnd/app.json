@@ -42,7 +42,8 @@
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      "@react-native-firebase/auth"
     ],
     "experiments": {
       "typedRoutes": true,

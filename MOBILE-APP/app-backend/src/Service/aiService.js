@@ -3,9 +3,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { admin, db } = require("../firebase");
 
 // تهيئة Gemini
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY || "YOUR_API_KEY",
-);
+const genAI = new GoogleGenerativeAI("AIzaSyAS11CRqpXPZHhN3UhPXXlu4cEk4jW3VTs"); // حطي المفتاح الجديد هنا
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // ================= 1. توصية وظائف للطالب =================

@@ -1,4 +1,4 @@
-// MOBILE-APP/frontEnd/app/StudentDashboard.tsx
+// MOBILE-APP/frontEnd/app/StudentDashboard.tsx (كامل مع إضافات AI)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableJobs, getStudentApplications, getUserRating } from '../src/api';
+import { getAvailableJobs, getStudentApplications, getUserRating, getAITips, getAIRecommendations } from '../src/api';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -78,7 +78,6 @@ const SkeletonLoader: React.FC = () => {
 
   return (
     <View style={styles.content}>
-      {/* Skeleton Profile Card */}
       <View style={[styles.profileCard, { padding: 16 }]}>
         <SkeletonItem style={{ width: 64, height: 64, borderRadius: 32, marginRight: 14 }} />
         <View style={{ flex: 1 }}>
@@ -88,7 +87,6 @@ const SkeletonLoader: React.FC = () => {
         </View>
       </View>
 
-      {/* Skeleton Stats Row */}
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { padding: 16 }]}>
           <SkeletonItem style={{ width: 42, height: 42, borderRadius: 11, marginBottom: 12 }} />
@@ -102,7 +100,6 @@ const SkeletonLoader: React.FC = () => {
         </View>
       </View>
 
-      {/* Skeleton Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <SkeletonItem style={{ width: 150, height: 20 }} />
@@ -161,6 +158,11 @@ const StudentDashboard: React.FC = () => {
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
+  // AI States
+  const [aiTips, setAiTips] = useState<{ tip: string } | null>(null);
+  const [aiRecommendationsCount, setAiRecommendationsCount] = useState(0);
+  const [loadingAI, setLoadingAI] = useState(false);
+
   const [user, setUser] = useState({
     uid: '',
     name: 'Student',
@@ -174,6 +176,28 @@ const StudentDashboard: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [rating, setRating] = useState<any>(null);
+
+  // جلب بيانات الـ AI
+  const loadAIData = async () => {
+    setLoadingAI(true);
+    try {
+      const [tipsRes, recsRes] = await Promise.all([
+        getAITips(),
+        getAIRecommendations()
+      ]);
+      
+      if (tipsRes.success && tipsRes.data) {
+        setAiTips(tipsRes.data);
+      }
+      if (recsRes.success && recsRes.data) {
+        setAiRecommendationsCount(recsRes.data.length);
+      }
+    } catch (err) {
+      console.log("AI load error:", err);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
 
   // تحميل البيانات المخزنة محلياً فوراً
   const loadCachedData = async () => {
@@ -192,7 +216,6 @@ const StudentDashboard: React.FC = () => {
         });
       }
 
-      // تحميل الوظائف والتطبيقات المخزنة
       const cachedJobs = await AsyncStorage.getItem('cachedJobs');
       if (cachedJobs) {
         setJobs(JSON.parse(cachedJobs).slice(0, 3));
@@ -206,6 +229,16 @@ const StudentDashboard: React.FC = () => {
       const cachedRating = await AsyncStorage.getItem('cachedRating');
       if (cachedRating) {
         setRating(JSON.parse(cachedRating));
+      }
+
+      // Load cached AI tips
+      const cachedAiTips = await AsyncStorage.getItem('cachedAiTips');
+      if (cachedAiTips) {
+        setAiTips(JSON.parse(cachedAiTips));
+      }
+      const cachedAiCount = await AsyncStorage.getItem('cachedAiCount');
+      if (cachedAiCount) {
+        setAiRecommendationsCount(parseInt(cachedAiCount, 10));
       }
     } catch (err) {
       console.log('Failed to load cached data:', err);
@@ -229,12 +262,16 @@ const StudentDashboard: React.FC = () => {
       }
       promises.push(getAvailableJobs());
       promises.push(getStudentApplications());
+      promises.push(getAITips());
+      promises.push(getAIRecommendations());
       
       const results = await Promise.all(promises);
       
       let ratingRes = null;
       let jobsRes = null;
       let appsRes = null;
+      let tipsRes = null;
+      let recsRes = null;
       
       let idx = 0;
       if (uid) {
@@ -242,8 +279,9 @@ const StudentDashboard: React.FC = () => {
       }
       jobsRes = results[idx++];
       appsRes = results[idx++];
+      tipsRes = results[idx++];
+      recsRes = results[idx++];
 
-      // تحديث الـ state وتخزين البيانات محلياً
       if (ratingRes && ratingRes.success && ratingRes.data) {
         setRating(ratingRes.data);
         await AsyncStorage.setItem('cachedRating', JSON.stringify(ratingRes.data));
@@ -260,6 +298,16 @@ const StudentDashboard: React.FC = () => {
         setApplications(allApps.slice(0, 3));
         await AsyncStorage.setItem('cachedApplications', JSON.stringify(allApps));
       }
+
+      if (tipsRes && tipsRes.success && tipsRes.data) {
+        setAiTips(tipsRes.data);
+        await AsyncStorage.setItem('cachedAiTips', JSON.stringify(tipsRes.data));
+      }
+
+      if (recsRes && recsRes.success && recsRes.data) {
+        setAiRecommendationsCount(recsRes.data.length);
+        await AsyncStorage.setItem('cachedAiCount', String(recsRes.data.length));
+      }
     } catch (err) {
       console.log('Failed to fetch fresh data:', err);
     }
@@ -269,13 +317,11 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       setShowSkeleton(true);
-      // أولاً: عرض البيانات المخزنة فوراً
       await loadCachedData();
       setShowSkeleton(false);
       setIsFirstLoad(false);
-      
-      // ثانياً: تحديث البيانات في الخلفية
       await fetchFreshData();
+      await loadAIData();
     };
     
     initialize();
@@ -284,7 +330,6 @@ const StudentDashboard: React.FC = () => {
   // تحديث البيانات عند العودة للشاشة
   useFocusEffect(
     useCallback(() => {
-      // تحديث بيانات المستخدم فقط (سريع)
       const loadUserData = async () => {
         const stored = await AsyncStorage.getItem('userData');
         if (stored) {
@@ -300,15 +345,15 @@ const StudentDashboard: React.FC = () => {
         }
       };
       loadUserData();
-      
-      // تحديث البيانات في الخلفية
       fetchFreshData();
+      loadAIData();
     }, [])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchFreshData();
+    await loadAIData();
     setRefreshing(false);
   }, []);
 
@@ -336,7 +381,6 @@ const StudentDashboard: React.FC = () => {
   const firstName = user.name.split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
 
-  // عرض Skeleton أثناء التحميل الأول
   if (showSkeleton && isFirstLoad) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -410,6 +454,47 @@ const StudentDashboard: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
 
+          {/* AI Card */}
+          <View style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <Ionicons name="sparkles" size={22} color="#F59E0B" />
+              <Text style={styles.aiTitle}>AI Assistant</Text>
+            </View>
+            
+            {loadingAI ? (
+              <ActivityIndicator size="small" color="#1E3A5F" />
+            ) : (
+              <>
+                {aiTips && (
+                  <View style={styles.aiTipBox}>
+                    <Text style={styles.aiTipText}>💡 {aiTips.tip}</Text>
+                  </View>
+                )}
+                
+                {aiRecommendationsCount > 0 ? (
+                  <TouchableOpacity 
+                    style={styles.aiRecommendBtn}
+                    onPress={() => router.push('/AIRecommendations')}
+                  >
+                    <Text style={styles.aiRecommendText}>
+                      🎯 {aiRecommendationsCount} AI Recommended {aiRecommendationsCount === 1 ? 'Job' : 'Jobs'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={16} color="#1E3A5F" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={[styles.aiRecommendBtn, { opacity: 0.6 }]}
+                    disabled={true}
+                  >
+                    <Text style={[styles.aiRecommendText, { color: '#9CA3AF' }]}>
+                      🎯 Complete your profile for AI recommendations
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <TouchableOpacity style={styles.statCard} onPress={() => handleTabPress('applications')}>
@@ -441,9 +526,7 @@ const StudentDashboard: React.FC = () => {
                 <TouchableOpacity
                   key={job.id || index}
                   style={styles.card}
-                  onPress={() => {
-                    // Could navigate to job detail
-                  }}
+                  onPress={() => router.push({ pathname: '/JobsScreen', params: { selectedJobId: job.id } })}
                   activeOpacity={0.85}
                 >
                   <View style={styles.cardHeader}>
@@ -624,4 +707,46 @@ const styles = StyleSheet.create({
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
   tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
+  // AI Card Styles
+  aiCard: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  aiTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  aiTipBox: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  aiTipText: {
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
+  },
+  aiRecommendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+  },
+  aiRecommendText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1E3A5F',
+  },
 });

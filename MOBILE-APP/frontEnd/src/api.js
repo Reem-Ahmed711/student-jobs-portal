@@ -1,6 +1,5 @@
+// MOBILE-APP/frontEnd/src/api.js (كامل مع إضافات AI)
 // @ts-nocheck
-// MOBILE-APP/frontEnd/src/api.js
-
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -9,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
 
-const API_URL = "http://10.163.82.249:3000";
+const API_URL = "http://192.168.1.14:3000";
 console.log(" API URL:", API_URL);
 const api = axios.create({
   baseURL: API_URL,
@@ -70,11 +69,14 @@ export const getUserProfile = async (uid) => {
   }
 };
 
-export const updateUserProfile = async (uid, data) => {
+export const updateStudentProfile = async (data) => {
   try {
-    const res = await api.put(`/api/profile/${uid}`, data);
+    console.log("📤 Sending update:", data);
+    const res = await api.put("/api/student/profile", data);
+    console.log("📥 Update response:", res.data);
     return res.data;
   } catch (err) {
+    console.log("❌ Update error:", err.response?.data);
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -82,6 +84,19 @@ export const updateUserProfile = async (uid, data) => {
   }
 };
 
+export const fetchStudentProfile = async () => {
+  try {
+    const res = await api.get("/api/student/profile");
+    console.log("📥 Fetch profile response:", res.data);
+    return res.data;
+  } catch (err) {
+    console.log("❌ Fetch error:", err.response?.data);
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
 // ================= JOBS =================
 export const getAvailableJobs = async () => {
   try {
@@ -143,7 +158,6 @@ export const getJobApplicants = async (jobId) => {
     const res = await api.get(`/api/applications/job/${jobId}`);
     return { success: true, data: res.data };
   } catch (err) {
-    // عشان تشوفي الخطأ الحقيقي
     console.log(
       "🔴 getJobApplicants ERROR:",
       err.response?.status,
@@ -358,7 +372,6 @@ export const removeAdmin = async (uid) => {
 };
 // ================= SAVED JOBS =================
 
-// ================= SAVED JOBS =================
 export const saveJob = async (jobId) => {
   try {
     const res = await api.post("/api/saved-jobs", { jobId });
@@ -392,7 +405,7 @@ export const getSavedJobs = async () => {
   }
 };
 
-// ================= COMMENTS (جديد) =================
+// ================= COMMENTS =================
 export const addComment = async (jobId, comment) => {
   try {
     const res = await api.post("/api/comment", { jobId, comment });
@@ -416,7 +429,6 @@ export const getComments = async (jobId) => {
   try {
     const res = await api.get(`/api/comments/${jobId}`);
     console.log(`📝 Got comments for job ${jobId}:`, res.data);
-    // التعامل مع هيكل الرد من الـ Backend
     const comments = res.data.comments || res.data || [];
     return { success: true, comments };
   } catch (err) {
@@ -442,6 +454,63 @@ export const deleteComment = async (commentId) => {
       success: false,
       message: err?.response?.data?.message || err.message,
     };
+  }
+};
+// ================= IMAGE UPLOAD (Cloudinary) =================
+export const uploadProfileImage = async (imageBase64) => {
+  try {
+    const res = await api.post("/api/images/upload", { imageBase64 });
+    return res.data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+// ================= AI APIs =================
+// جلب توصيات وظائف للطالب
+export const getAIRecommendations = async () => {
+  try {
+    const res = await api.get("/api/ai/recommendations");
+    return res.data;
+  } catch (err) {
+    console.log("❌ AI recommendations error:", err.response?.data);
+    return { success: false, data: [] };
+  }
+};
+
+// تحليل مدى توافق الطالب مع وظيفة معينة
+export const analyzeMatchWithAI = async (jobId) => {
+  try {
+    const res = await api.get(`/api/ai/match/${jobId}`);
+    return res.data;
+  } catch (err) {
+    console.log("❌ AI match analysis error:", err.response?.data);
+    return { success: false, data: null };
+  }
+};
+
+// تحسين السيرة الذاتية
+export const improveCVWithAI = async (cvText, jobTitle) => {
+  try {
+    const res = await api.post("/api/ai/improve-cv", { cvText, jobTitle });
+    return res.data;
+  } catch (err) {
+    console.log("❌ AI improve CV error:", err.response?.data);
+    return { success: false, message: err.message };
+  }
+};
+
+// نصائح شخصية للطالب
+export const getAITips = async () => {
+  try {
+    const res = await api.get("/api/ai/tips");
+    return res.data;
+  } catch (err) {
+    console.log("❌ AI tips error:", err.response?.data);
+    return { success: false, data: null };
   }
 };
 

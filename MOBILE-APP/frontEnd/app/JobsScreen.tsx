@@ -1,4 +1,3 @@
-// @ts-nocheck
 // MOBILE-APP/frontEnd/app/JobsScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -19,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableJobs, applyToJob, saveJob, unsaveJob, getSavedJobs, addComment, getComments } from '../src/api';
+import { getAvailableJobs, applyToJob, saveJob, unsaveJob, getSavedJobs, addComment, getComments, analyzeMatchWithAI } from '../src/api';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -38,7 +37,7 @@ interface Job {
   applicants?: number;
   deadline?: string;
   createdAt?: any;
-  commentCount?: number; // 👈 إضافة عدد التعليقات
+  commentCount?: number;
 }
 
 interface Comment {
@@ -49,6 +48,14 @@ interface Comment {
   comment: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+interface AIMatchAnalysis {
+  matchPercentage: number;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation: string;
+  summary: string;
 }
 
 // تجميع ثابت للأقسام لتجنب إعادة الإنشاء
@@ -103,6 +110,109 @@ const BottomTabBar = React.memo(({ active, onPress }: { active: TabKey; onPress:
   );
 });
 
+// ─── Component: AI Match Analysis Modal ─────────────────────────────────────
+const AIMatchAnalysisModal = React.memo(({ 
+  visible, 
+  onClose, 
+  jobTitle,
+  matchData,
+  loading 
+}: { 
+  visible: boolean; 
+  onClose: () => void; 
+  jobTitle: string;
+  matchData: AIMatchAnalysis | null;
+  loading: boolean;
+}) => {
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="sparkles" size={24} color="#F59E0B" />
+              <Text style={styles.modalTitle}>AI Match Analysis</Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.aiLoadingContainer}>
+              <ActivityIndicator size="large" color="#1E3A5F" />
+              <Text style={styles.aiLoadingText}>AI is analyzing your profile...</Text>
+              <Text style={styles.aiLoadingSubtext}>Comparing your skills with {jobTitle}</Text>
+            </View>
+          ) : matchData ? (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Match Percentage */}
+              <View style={styles.aiMatchCard}>
+                <Text style={styles.aiMatchTitle}>Match Score</Text>
+                <View style={styles.aiMatchCircleContainer}>
+                  <View style={styles.aiMatchCircle}>
+                    <Text style={styles.aiMatchPercentage}>{matchData.matchPercentage}%</Text>
+                    <Text style={styles.aiMatchLabel}>Compatibility</Text>
+                  </View>
+                </View>
+                <View style={styles.aiMatchBarContainer}>
+                  <View style={[styles.aiMatchBar, { width: `${matchData.matchPercentage}%`, backgroundColor: matchData.matchPercentage >= 70 ? '#16A34A' : matchData.matchPercentage >= 50 ? '#F59E0B' : '#EF4444' }]} />
+                </View>
+              </View>
+
+              {/* Summary */}
+              <View style={styles.aiSectionCard}>
+                <Text style={styles.aiSectionTitle}>📊 Summary</Text>
+                <Text style={styles.aiSectionText}>{matchData.summary}</Text>
+              </View>
+
+              {/* Strengths */}
+              <View style={styles.aiSectionCard}>
+                <Text style={styles.aiSectionTitle}>✅ Strengths</Text>
+                {matchData.strengths.map((item, index) => (
+                  <View key={index} style={styles.aiBulletPoint}>
+                    <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
+                    <Text style={styles.aiBulletText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Weaknesses */}
+              <View style={styles.aiSectionCard}>
+                <Text style={styles.aiSectionTitle}>⚠️ Areas to Improve</Text>
+                {matchData.weaknesses.map((item, index) => (
+                  <View key={index} style={styles.aiBulletPoint}>
+                    <Ionicons name="alert-circle" size={18} color="#F59E0B" />
+                    <Text style={styles.aiBulletText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Recommendation */}
+              <View style={styles.aiSectionCard}>
+                <Text style={styles.aiSectionTitle}>💡 Recommendation</Text>
+                <Text style={styles.aiSectionText}>{matchData.recommendation}</Text>
+              </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.aiErrorContainer}>
+              <Ionicons name="sad-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.aiErrorText}>Could not analyze match</Text>
+              <Text style={styles.aiErrorSubtext}>Please try again later</Text>
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.aiCloseBtn} onPress={onClose}>
+            <Text style={styles.aiCloseBtnText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+});
+
 // ─── Component: Comments Section (محسن) ─────────────────────────────────────
 const CommentsSection = React.memo(({ 
   jobId, 
@@ -120,18 +230,23 @@ const CommentsSection = React.memo(({
   const [expanded, setExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  // جلب التعليقات (مرة واحدة فقط)
   const loadComments = useCallback(async () => {
     if (!jobId || hasLoaded) return;
     setLoading(true);
     try {
-      const response = await getComments(jobId);
-      let commentsData = [];
-      if (response.success && response.comments) {
-        commentsData = Array.isArray(response.comments) ? response.comments : [];
-      } else if (response.data?.comments) {
-        commentsData = response.data.comments;
-      }
+      const response: any = await getComments(jobId);
+
+let commentsData: Comment[] = [];
+
+if (response?.success && response?.comments) {
+  commentsData = Array.isArray(response.comments)
+    ? response.comments
+    : [];
+} else if (response?.data?.comments) {
+  commentsData = Array.isArray(response.data.comments)
+    ? response.data.comments
+    : [];
+}
       setComments(commentsData);
       setHasLoaded(true);
     } catch (err) {
@@ -141,7 +256,6 @@ const CommentsSection = React.memo(({
     }
   }, [jobId, hasLoaded]);
 
-  // إضافة تعليق جديد
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) {
       Alert.alert('Info', 'Please enter a comment');
@@ -152,7 +266,6 @@ const CommentsSection = React.memo(({
     try {
       const response = await addComment(jobId, newComment.trim());
       if (response.success) {
-        // إضافة التعليق محلياً بدون إعادة تحميل كامل
         const newCommentObj: Comment = {
           id: Date.now().toString(),
           jobId,
@@ -295,6 +408,13 @@ const JobsScreen = () => {
   const [userId, setUserId] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
 
+  // AI States
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [aiMatchData, setAiMatchData] = useState<AIMatchAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiJobId, setAiJobId] = useState<string | null>(null);
+  const [aiJobTitle, setAiJobTitle] = useState<string>('');
+
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -320,10 +440,10 @@ const JobsScreen = () => {
     }
   }, []);
 
-  // جلب الوظائف (محسن - بدون جلب التعليقات لكل وظيفة)
+  // جلب الوظائف
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await getAvailableJobs();
+      const response: any = await getAvailableJobs();
       if (response.success && response.data) {
         let jobs = Array.isArray(response.data) ? response.data : response.data.data || [];
         
@@ -356,7 +476,7 @@ const JobsScreen = () => {
   // جلب الوظائف المحفوظة
   const fetchSavedJobs = useCallback(async () => {
     try {
-      const response = await getSavedJobs();
+      const response: any = await getSavedJobs();
       if (response.success && response.data) {
         const saved = response.data.data || response.data || [];
         const savedIds = saved.map((job: any) => job.id || job._id);
@@ -367,7 +487,30 @@ const JobsScreen = () => {
     }
   }, []);
 
-  // تحميل جميع البيانات بالتوازي (أسرع)
+  // AI: تحليل التوافق مع وظيفة
+  const handleAIAnalyze = useCallback(async (jobId: string, jobTitle: string) => {
+    setAiJobId(jobId);
+    setAiJobTitle(jobTitle);
+    setAiModalVisible(true);
+    setAiLoading(true);
+    setAiMatchData(null);
+    
+    try {
+      const response: any = await analyzeMatchWithAI(jobId);
+      if (response.success && response.data) {
+        setAiMatchData(response.data);
+      } else {
+        setAiMatchData(null);
+      }
+    } catch (err) {
+      console.error("AI analysis error:", err);
+      setAiMatchData(null);
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  // تحميل جميع البيانات بالتوازي
   const loadData = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchJobs(), fetchSavedJobs(), loadUserInfo()]);
@@ -431,7 +574,7 @@ const JobsScreen = () => {
     }
   }, [router, userData]);
 
-  // فلترة الوظائف (محسنة)
+  // فلترة الوظائف
   const filtered = React.useMemo(() => {
     return allJobs.filter((job) => {
       const matchesSearch = search === '' || 
@@ -564,6 +707,14 @@ const JobsScreen = () => {
                     <Text style={[styles.footerText, { color: '#EF4444' }]}>Deadline: {job.deadline}</Text>
                   </View>
                 )}
+                {/* AI Analyze Button */}
+                <TouchableOpacity 
+                  style={styles.aiAnalyzeBtn}
+                  onPress={() => handleAIAnalyze(job.id, job.title)}
+                >
+                  <Ionicons name="sparkles" size={14} color="#D97706" />
+                  <Text style={styles.aiAnalyzeText}>AI Match</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
 
@@ -594,6 +745,22 @@ const JobsScreen = () => {
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.detailDept}>{selectedJob?.department}</Text>
+              
+              {/* AI Analyze Button in Modal */}
+              {selectedJob && (
+                <TouchableOpacity 
+                  style={styles.modalAiButton}
+                  onPress={() => {
+                    setDetailVisible(false);
+                    handleAIAnalyze(selectedJob.id, selectedJob.title);
+                  }}
+                >
+                  <Ionicons name="sparkles" size={18} color="#D97706" />
+                  <Text style={styles.modalAiButtonText}>Analyze my match with AI</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#D97706" />
+                </TouchableOpacity>
+              )}
+              
               <View style={styles.detailInfoGrid}>
                 {selectedJob?.hoursPerWeek && (
                   <View style={styles.detailInfoItem}>
@@ -624,6 +791,15 @@ const JobsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* AI Match Analysis Modal */}
+      <AIMatchAnalysisModal
+        visible={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
+        jobTitle={aiJobTitle}
+        matchData={aiMatchData}
+        loading={aiLoading}
+      />
 
       <BottomTabBar active={activeTab} onPress={handleTabPress} />
     </SafeAreaView>
@@ -684,8 +860,10 @@ const styles = StyleSheet.create({
   detailsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   detailText: { fontSize: 12, color: '#6B7280' },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  footerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
   footerText: { fontSize: 12, color: '#9CA3AF' },
+  aiAnalyzeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
+  aiAnalyzeText: { fontSize: 11, fontWeight: '600', color: '#D97706' },
   emptyState: { alignItems: 'center', marginTop: 60 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
@@ -698,6 +876,8 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', flex: 1, marginRight: 10 },
   detailDept: { fontSize: 14, color: '#6B7280', marginBottom: 16 },
+  modalAiButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginBottom: 16 },
+  modalAiButtonText: { fontSize: 13, fontWeight: '600', color: '#D97706' },
   detailInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   detailInfoItem: { flex: 1, minWidth: '45%', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'center' },
   detailInfoLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
@@ -738,4 +918,27 @@ const styles = StyleSheet.create({
   commentUserName: { fontSize: 13, fontWeight: '600', color: '#111827' },
   commentTime: { fontSize: 10, color: '#9CA3AF' },
   commentText: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
+  
+  // AI Modal Styles
+  aiLoadingContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
+  aiLoadingText: { fontSize: 16, fontWeight: '600', color: '#1E3A5F', marginTop: 16 },
+  aiLoadingSubtext: { fontSize: 13, color: '#6B7280', marginTop: 8 },
+  aiMatchCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center' },
+  aiMatchTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 16 },
+  aiMatchCircleContainer: { alignItems: 'center', marginBottom: 16 },
+  aiMatchCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#1E3A5F', alignItems: 'center', justifyContent: 'center' },
+  aiMatchPercentage: { fontSize: 32, fontWeight: '800', color: '#fff' },
+  aiMatchLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  aiMatchBarContainer: { width: '100%', height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
+  aiMatchBar: { height: 8, borderRadius: 4 },
+  aiSectionCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F3F4F6' },
+  aiSectionTitle: { fontSize: 16, fontWeight: '700', color: '#1E3A5F', marginBottom: 12 },
+  aiSectionText: { fontSize: 14, color: '#4B5563', lineHeight: 20 },
+  aiBulletPoint: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  aiBulletText: { flex: 1, fontSize: 14, color: '#4B5563', lineHeight: 20 },
+  aiErrorContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
+  aiErrorText: { fontSize: 16, fontWeight: '600', color: '#6B7280', marginTop: 16 },
+  aiErrorSubtext: { fontSize: 13, color: '#9CA3AF', marginTop: 8 },
+  aiCloseBtn: { backgroundColor: '#1E3A5F', borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  aiCloseBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

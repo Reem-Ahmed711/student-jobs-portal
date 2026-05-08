@@ -4,6 +4,7 @@ const { admin, db } = require("../firebase");
 
 const uploadImage = async (req, res) => {
   try {
+    console.log("🔵 Request received");
     const { imageBase64, folder } = req.body;
     const userId = req.user.uid;
 
@@ -13,25 +14,36 @@ const uploadImage = async (req, res) => {
         .json({ success: false, message: "No image provided" });
     }
 
-    //
-    const result = await cloudinary.uploader.upload(imageBase64, {
-      folder: folder || `users/${userId}`,
-      transformation: [
-        { width: 500, height: 500, crop: "limit" },
-        { quality: "auto" },
-        { fetch_format: "auto" },
-      ],
+    // 1. إزالة الـ data:image/jpeg;base64, لو موجودة
+    let base64String = imageBase64;
+    if (base64String.includes(",")) {
+      base64String = base64String.split(",")[1];
+    }
+
+    // 2. تحويل base64 إلى Buffer
+    const imageBuffer = Buffer.from(base64String, "base64");
+
+    // 3. رفع الـ Buffer مباشرة إلى Cloudinary
+    const uploadPromise = new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder || `users/${userId}`,
+          transformation: [
+            { width: 500, height: 500, crop: "limit" },
+            { quality: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        },
+      );
+      uploadStream.end(imageBuffer);
     });
 
-    const imageDoc = await db.collection("images").add({
-      url: result.secure_url,
-      publicId: result.public_id,
-      uploadedBy: userId,
-      folder: folder || "profile",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      size: result.bytes,
-    });
+    const result = await uploadPromise;
 
+    // 4. حفظ الرابط في Firestore
     await db.collection("users").doc(userId).update({
       profileImage: result.secure_url,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -39,13 +51,10 @@ const uploadImage = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: {
-        id: imageDoc.id,
-        url: result.secure_url,
-      },
+      data: { url: result.secure_url },
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("❌ Upload error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -94,7 +103,6 @@ const deleteImage = async (req, res) => {
 
     await cloudinary.uploader.destroy(imageData.publicId);
 
-    // حذف من Firestore
     await db.collection("images").doc(imageId).delete();
 
     res.status(200).json({ success: true, message: "Image deleted" });
