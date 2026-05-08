@@ -1,4 +1,3 @@
-// MOBILE-APP/frontEnd/app/JobsScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -35,7 +34,7 @@ interface Job {
   matchPercentage?: number;
   hoursPerWeek?: string;
   applicants?: number;
-  deadline?: string;
+  deadline?: string | null;
   createdAt?: any;
   commentCount?: number;
 }
@@ -58,7 +57,6 @@ interface AIMatchAnalysis {
   summary: string;
 }
 
-// تجميع ثابت للأقسام لتجنب إعادة الإنشاء
 const departments = [
   'All',
   'Computer Science',
@@ -148,7 +146,6 @@ const AIMatchAnalysisModal = React.memo(({
             </View>
           ) : matchData ? (
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Match Percentage */}
               <View style={styles.aiMatchCard}>
                 <Text style={styles.aiMatchTitle}>Match Score</Text>
                 <View style={styles.aiMatchCircleContainer}>
@@ -162,16 +159,14 @@ const AIMatchAnalysisModal = React.memo(({
                 </View>
               </View>
 
-              {/* Summary */}
               <View style={styles.aiSectionCard}>
                 <Text style={styles.aiSectionTitle}>📊 Summary</Text>
                 <Text style={styles.aiSectionText}>{matchData.summary}</Text>
               </View>
 
-              {/* Strengths */}
               <View style={styles.aiSectionCard}>
                 <Text style={styles.aiSectionTitle}>✅ Strengths</Text>
-                {matchData.strengths.map((item, index) => (
+                {Array.isArray(matchData.strengths) && matchData.strengths.map((item, index) => (
                   <View key={index} style={styles.aiBulletPoint}>
                     <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
                     <Text style={styles.aiBulletText}>{item}</Text>
@@ -179,10 +174,9 @@ const AIMatchAnalysisModal = React.memo(({
                 ))}
               </View>
 
-              {/* Weaknesses */}
               <View style={styles.aiSectionCard}>
                 <Text style={styles.aiSectionTitle}>⚠️ Areas to Improve</Text>
-                {matchData.weaknesses.map((item, index) => (
+                {Array.isArray(matchData.weaknesses) && matchData.weaknesses.map((item, index) => (
                   <View key={index} style={styles.aiBulletPoint}>
                     <Ionicons name="alert-circle" size={18} color="#F59E0B" />
                     <Text style={styles.aiBulletText}>{item}</Text>
@@ -190,7 +184,6 @@ const AIMatchAnalysisModal = React.memo(({
                 ))}
               </View>
 
-              {/* Recommendation */}
               <View style={styles.aiSectionCard}>
                 <Text style={styles.aiSectionTitle}>💡 Recommendation</Text>
                 <Text style={styles.aiSectionText}>{matchData.recommendation}</Text>
@@ -213,7 +206,7 @@ const AIMatchAnalysisModal = React.memo(({
   );
 });
 
-// ─── Component: Comments Section (محسن) ─────────────────────────────────────
+// ─── Component: Comments Section ─────────────────────────────────────
 const CommentsSection = React.memo(({ 
   jobId, 
   userId, 
@@ -235,18 +228,12 @@ const CommentsSection = React.memo(({
     setLoading(true);
     try {
       const response: any = await getComments(jobId);
-
-let commentsData: Comment[] = [];
-
-if (response?.success && response?.comments) {
-  commentsData = Array.isArray(response.comments)
-    ? response.comments
-    : [];
-} else if (response?.data?.comments) {
-  commentsData = Array.isArray(response.data.comments)
-    ? response.data.comments
-    : [];
-}
+      let commentsData: Comment[] = [];
+      if (response?.success && response?.comments && Array.isArray(response.comments)) {
+        commentsData = response.comments;
+      } else if (response?.data?.comments && Array.isArray(response.data.comments)) {
+        commentsData = response.data.comments;
+      }
       setComments(commentsData);
       setHasLoaded(true);
     } catch (err) {
@@ -265,7 +252,7 @@ if (response?.success && response?.comments) {
     setSubmitting(true);
     try {
       const response = await addComment(jobId, newComment.trim());
-      if (response.success) {
+      if (response && response.success) {
         const newCommentObj: Comment = {
           id: Date.now().toString(),
           jobId,
@@ -277,10 +264,10 @@ if (response?.success && response?.comments) {
         setComments(prev => [newCommentObj, ...prev]);
         setNewComment('');
       } else {
-        Alert.alert('Error', response.message || 'Failed to add comment');
+        Alert.alert('Error', response?.message || 'Failed to add comment');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to add comment');
+      Alert.alert('Error', err?.message || 'Failed to add comment');
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +379,7 @@ if (response?.success && response?.comments) {
   );
 });
 
-// ─── Main JobsScreen (محسن) ─────────────────────────────────────────────────
+// ─── Main JobsScreen (المعدل بالكامل) ─────────────────────────────────────────────────
 const JobsScreen = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('jobs');
   const [search, setSearch] = useState('');
@@ -412,7 +399,6 @@ const JobsScreen = () => {
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiMatchData, setAiMatchData] = useState<AIMatchAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiJobId, setAiJobId] = useState<string | null>(null);
   const [aiJobTitle, setAiJobTitle] = useState<string>('');
 
   const router = useRouter();
@@ -426,7 +412,6 @@ const JobsScreen = () => {
     email: (params.email as string) || '',
   };
 
-  // جلب معلومات المستخدم
   const loadUserInfo = useCallback(async () => {
     try {
       const [storedUserId, storedUserName] = await Promise.all([
@@ -440,56 +425,76 @@ const JobsScreen = () => {
     }
   }, []);
 
-  // جلب الوظائف
+  // دالة fetchJobs المعدلة بالكامل - آمنة 100%
   const fetchJobs = useCallback(async () => {
     try {
       const response: any = await getAvailableJobs();
-      if (response.success && response.data) {
-        let jobs = Array.isArray(response.data) ? response.data : response.data.data || [];
-        
-        const formattedJobs: Job[] = jobs.map((job: any) => ({
-          id: job.id || job._id,
-          title: job.title || 'Untitled Job',
-          department: job.department || 'Not specified',
-          salary: job.salary || 'Competitive Salary',
-          description: job.description || '',
-          requirements: job.requirements || '',
-          hoursPerWeek: job.hoursPerWeek || '',
-          applicants: job.applicantsCount || job.applicants?.length || 0,
-          deadline: job.deadline ? new Date(job.deadline).toLocaleDateString() : null,
-          matchPercentage: job.matchPercentage || Math.floor(Math.random() * 30) + 70,
-          employerUid: job.employerUid,
-          createdAt: job.createdAt,
-          commentCount: job.commentCount || 0,
-        }));
-        
-        setAllJobs(formattedJobs);
-      } else {
-        setAllJobs([]);
+      
+      let jobsArray: any[] = [];
+      
+      // محاولة استخراج الـ jobs بأمان
+      if (response && typeof response === 'object') {
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          jobsArray = response.data.data;
+        } else if (response?.data && Array.isArray(response.data)) {
+          jobsArray = response.data;
+        } else if (Array.isArray(response)) {
+          jobsArray = response;
+        } else if (response?.jobs && Array.isArray(response.jobs)) {
+          jobsArray = response.jobs;
+        } else if (response?.success && response?.data) {
+          if (Array.isArray(response.data)) {
+            jobsArray = response.data;
+          } else if (response.data?.data && Array.isArray(response.data.data)) {
+            jobsArray = response.data.data;
+          }
+        }
       }
+      
+      const formattedJobs: Job[] = jobsArray.map((job: any) => ({
+        id: job?.id || job?._id || Math.random().toString(),
+        title: job?.title || 'Untitled Job',
+        department: job?.department || 'Not specified',
+        salary: job?.salary || 'Competitive Salary',
+        description: job?.description || '',
+        requirements: job?.requirements || '',
+        hoursPerWeek: job?.hoursPerWeek || '',
+        applicants: job?.applicantsCount || job?.applicants?.length || 0,
+        deadline: job?.deadline ? new Date(job.deadline).toLocaleDateString() : null,
+        matchPercentage: job?.matchPercentage || Math.floor(Math.random() * 30) + 70,
+        employerUid: job?.employerUid,
+        createdAt: job?.createdAt,
+        commentCount: job?.commentCount || 0,
+      }));
+      
+      setAllJobs(formattedJobs);
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
       setAllJobs([]);
     }
   }, []);
 
-  // جلب الوظائف المحفوظة
   const fetchSavedJobs = useCallback(async () => {
     try {
       const response: any = await getSavedJobs();
-      if (response.success && response.data) {
-        const saved = response.data.data || response.data || [];
-        const savedIds = saved.map((job: any) => job.id || job._id);
-        setSavedJobs(savedIds);
+      let savedIds: string[] = [];
+      
+      if (response && typeof response === 'object') {
+        if (response?.success && response?.data) {
+          const saved = response.data?.data || response.data || [];
+          if (Array.isArray(saved)) {
+            savedIds = saved.map((job: any) => job?.id || job?._id).filter(Boolean);
+          }
+        }
       }
+      setSavedJobs(savedIds);
     } catch (err) {
       console.error("Failed to fetch saved jobs:", err);
+      setSavedJobs([]);
     }
   }, []);
 
-  // AI: تحليل التوافق مع وظيفة
   const handleAIAnalyze = useCallback(async (jobId: string, jobTitle: string) => {
-    setAiJobId(jobId);
     setAiJobTitle(jobTitle);
     setAiModalVisible(true);
     setAiLoading(true);
@@ -497,20 +502,16 @@ const JobsScreen = () => {
     
     try {
       const response: any = await analyzeMatchWithAI(jobId);
-      if (response.success && response.data) {
+      if (response?.success && response?.data) {
         setAiMatchData(response.data);
-      } else {
-        setAiMatchData(null);
       }
     } catch (err) {
       console.error("AI analysis error:", err);
-      setAiMatchData(null);
     } finally {
       setAiLoading(false);
     }
   }, []);
 
-  // تحميل جميع البيانات بالتوازي
   const loadData = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchJobs(), fetchSavedJobs(), loadUserInfo()]);
@@ -541,7 +542,7 @@ const JobsScreen = () => {
         setSavedJobs(prev => [...prev, jobId]);
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save job');
+      Alert.alert('Error', err?.message || 'Failed to save job');
     } finally {
       setSavingId(null);
     }
@@ -555,7 +556,7 @@ const JobsScreen = () => {
       Alert.alert('Success 🎉', 'Applied Successfully!');
       setDetailVisible(false);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to apply');
+      Alert.alert('Error', err?.response?.data?.message || 'Failed to apply');
     } finally {
       setApplying(false);
     }
@@ -574,12 +575,14 @@ const JobsScreen = () => {
     }
   }, [router, userData]);
 
-  // فلترة الوظائف
+  // filtered المعدلة - آمنة 100%
   const filtered = React.useMemo(() => {
+    if (!Array.isArray(allJobs)) return [];
     return allJobs.filter((job) => {
+      if (!job) return false;
       const matchesSearch = search === '' || 
-        job.title.toLowerCase().includes(search.toLowerCase()) ||
-        job.department?.toLowerCase().includes(search.toLowerCase());
+        (job.title && job.title.toLowerCase().includes(search.toLowerCase())) ||
+        (job.department && job.department.toLowerCase().includes(search.toLowerCase()));
       const matchesDept = selectedDept === 'All' || job.department === selectedDept;
       return matchesSearch && matchesDept;
     });
@@ -648,79 +651,81 @@ const JobsScreen = () => {
 
       <FlatList
         data={filtered}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item?.id || Math.random().toString()}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A5F']} />}
-        renderItem={({ item: job }) => (
-          <View>
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => {
-                setSelectedJob(job);
-                setDetailVisible(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{job.title}</Text>
-                <TouchableOpacity onPress={() => handleSaveJob(job.id)} disabled={savingId === job.id} style={styles.saveButton}>
-                  {savingId === job.id ? (
-                    <ActivityIndicator size="small" color="#1E3A5F" />
-                  ) : (
-                    <Ionicons name={savedJobs.includes(job.id) ? 'bookmark' : 'bookmark-outline'} size={22} color={savedJobs.includes(job.id) ? '#1E3A5F' : '#9CA3AF'} />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.cardDept}>{job.department}</Text>
-
-              {job.matchPercentage && (
-                <View style={[styles.matchBadge, { backgroundColor: getMatchBgColor(job.matchPercentage) }]}>
-                  <Text style={[styles.matchText, { color: getMatchColor(job.matchPercentage) }]}>{job.matchPercentage}% Match</Text>
+        renderItem={({ item: job }) => {
+          if (!job || !job.id) return null;
+          return (
+            <View key={job.id}>
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => {
+                  setSelectedJob(job);
+                  setDetailVisible(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{job.title}</Text>
+                  <TouchableOpacity onPress={() => handleSaveJob(job.id)} disabled={savingId === job.id} style={styles.saveButton}>
+                    {savingId === job.id ? (
+                      <ActivityIndicator size="small" color="#1E3A5F" />
+                    ) : (
+                      <Ionicons name={savedJobs.includes(job.id) ? 'bookmark' : 'bookmark-outline'} size={22} color={savedJobs.includes(job.id) ? '#1E3A5F' : '#9CA3AF'} />
+                    )}
+                  </TouchableOpacity>
                 </View>
-              )}
 
-              <View style={styles.detailsRow}>
-                {job.hoursPerWeek && (
-                  <View style={styles.detailItem}>
-                    <Ionicons name="time-outline" size={14} color="#6B7280" />
-                    <Text style={styles.detailText}>{job.hoursPerWeek}</Text>
-                  </View>
-                )}
-                {job.salary && (
-                  <View style={styles.detailItem}>
-                    <Ionicons name="cash-outline" size={14} color="#6B7280" />
-                    <Text style={styles.detailText}>{job.salary}</Text>
-                  </View>
-                )}
-              </View>
+                <Text style={styles.cardDept}>{job.department}</Text>
 
-              <View style={styles.footerRow}>
-                {job.applicants !== undefined && (
-                  <View style={styles.detailItem}>
-                    <Ionicons name="people-outline" size={14} color="#9CA3AF" />
-                    <Text style={styles.footerText}>{job.applicants} applicants</Text>
+                {job.matchPercentage && (
+                  <View style={[styles.matchBadge, { backgroundColor: getMatchBgColor(job.matchPercentage) }]}>
+                    <Text style={[styles.matchText, { color: getMatchColor(job.matchPercentage) }]}>{job.matchPercentage}% Match</Text>
                   </View>
                 )}
-                {job.deadline && (
-                  <View style={styles.detailItem}>
-                    <Ionicons name="calendar-outline" size={14} color="#EF4444" />
-                    <Text style={[styles.footerText, { color: '#EF4444' }]}>Deadline: {job.deadline}</Text>
-                  </View>
-                )}
-                {/* AI Analyze Button */}
-                <TouchableOpacity 
-                  style={styles.aiAnalyzeBtn}
-                  onPress={() => handleAIAnalyze(job.id, job.title)}
-                >
-                  <Ionicons name="sparkles" size={14} color="#D97706" />
-                  <Text style={styles.aiAnalyzeText}>AI Match</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
 
-            <CommentsSection jobId={job.id} userId={userId} userName={userName} />
-          </View>
-        )}
+                <View style={styles.detailsRow}>
+                  {job.hoursPerWeek && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="time-outline" size={14} color="#6B7280" />
+                      <Text style={styles.detailText}>{job.hoursPerWeek}</Text>
+                    </View>
+                  )}
+                  {job.salary && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="cash-outline" size={14} color="#6B7280" />
+                      <Text style={styles.detailText}>{job.salary}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.footerRow}>
+                  {job.applicants !== undefined && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="people-outline" size={14} color="#9CA3AF" />
+                      <Text style={styles.footerText}>{job.applicants} applicants</Text>
+                    </View>
+                  )}
+                  {job.deadline && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="calendar-outline" size={14} color="#EF4444" />
+                      <Text style={[styles.footerText, { color: '#EF4444' }]}>Deadline: {job.deadline}</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.aiAnalyzeBtn}
+                    onPress={() => handleAIAnalyze(job.id, job.title)}
+                  >
+                    <Ionicons name="sparkles" size={14} color="#D97706" />
+                    <Text style={styles.aiAnalyzeText}>AI Match</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+
+              <CommentsSection jobId={job.id} userId={userId} userName={userName} />
+            </View>
+          );
+        }}
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
             <Ionicons name="briefcase-outline" size={64} color="#D1D5DB" />
@@ -746,7 +751,6 @@ const JobsScreen = () => {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.detailDept}>{selectedJob?.department}</Text>
               
-              {/* AI Analyze Button in Modal */}
               {selectedJob && (
                 <TouchableOpacity 
                   style={styles.modalAiButton}
@@ -864,7 +868,7 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 12, color: '#9CA3AF' },
   aiAnalyzeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
   aiAnalyzeText: { fontSize: 11, fontWeight: '600', color: '#D97706' },
-  emptyState: { alignItems: 'center', marginTop: 60 },
+  emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 20 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingBottom: 8, paddingTop: 10 },
@@ -891,8 +895,6 @@ const styles = StyleSheet.create({
   applyBtn: { flex: 2, backgroundColor: '#1E3A5F', borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   applyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   
-  // Comments Section Styles
-  commentsWrapper: { marginTop: -8, marginBottom: 16, marginHorizontal: 16 },
   commentsContainer: { backgroundColor: '#fff', borderRadius: 14, padding: 12, marginHorizontal: 16, marginBottom: 16 },
   commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   commentsHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -919,7 +921,6 @@ const styles = StyleSheet.create({
   commentTime: { fontSize: 10, color: '#9CA3AF' },
   commentText: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
   
-  // AI Modal Styles
   aiLoadingContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   aiLoadingText: { fontSize: 16, fontWeight: '600', color: '#1E3A5F', marginTop: 16 },
   aiLoadingSubtext: { fontSize: 13, color: '#6B7280', marginTop: 8 },

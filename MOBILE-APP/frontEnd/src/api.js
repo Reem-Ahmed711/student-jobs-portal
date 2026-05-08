@@ -1,4 +1,4 @@
-// MOBILE-APP/frontEnd/src/api.js (كامل مع إضافات AI)
+// MOBILE-APP/frontEnd/src/api.js (كامل مع إضافات AI - الإصدار المعدل بالكامل)
 // @ts-nocheck
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
 
-const API_URL = "http://192.168.1.14:3000";
+const API_URL = "http://10.163.82.249:3000";
 console.log(" API URL:", API_URL);
 const api = axios.create({
   baseURL: API_URL,
@@ -97,6 +97,7 @@ export const fetchStudentProfile = async () => {
     };
   }
 };
+
 // ================= JOBS =================
 export const getAvailableJobs = async () => {
   try {
@@ -370,13 +371,16 @@ export const removeAdmin = async (uid) => {
     };
   }
 };
-// ================= SAVED JOBS =================
+
+// ================= SAVED JOBS (معدل بالكامل) =================
 
 export const saveJob = async (jobId) => {
   try {
-    const res = await api.post("/api/saved-jobs", { jobId });
+    const res = await api.post("/api/saved-jobs/save", { jobId });
+    console.log("✅ Job saved successfully:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
+    console.error("❌ Save job error:", err.response?.status, err.response?.data);
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -386,9 +390,11 @@ export const saveJob = async (jobId) => {
 
 export const unsaveJob = async (jobId) => {
   try {
-    const res = await api.delete(`/api/saved-jobs/${jobId}`);
+    const res = await api.delete(`/api/saved-jobs/unsave/${jobId}`);
+    console.log("✅ Job unsaved successfully:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
+    console.error("❌ Unsave job error:", err.response?.status, err.response?.data);
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -399,9 +405,21 @@ export const unsaveJob = async (jobId) => {
 export const getSavedJobs = async () => {
   try {
     const res = await api.get("/api/saved-jobs");
-    return { success: true, data: res.data };
+    console.log("📥 Saved jobs response:", JSON.stringify(res.data, null, 2));
+    return res.data; // { success: true, data: [...] }
   } catch (err) {
-    return { success: false, data: [], message: err.message };
+    console.error("❌ Get saved jobs error:", err.response?.status, err.response?.data);
+    return { success: false, data: [] };
+  }
+};
+
+export const isJobSaved = async (jobId) => {
+  try {
+    const res = await api.get(`/api/saved-jobs/check/${jobId}`);
+    return res.data; // { success: true, data: { saved: boolean } }
+  } catch (err) {
+    console.error("❌ Check saved job error:", err.response?.data);
+    return { success: false, data: { saved: false } };
   }
 };
 
@@ -456,6 +474,7 @@ export const deleteComment = async (commentId) => {
     };
   }
 };
+
 // ================= IMAGE UPLOAD (Cloudinary) =================
 export const uploadProfileImage = async (imageBase64) => {
   try {

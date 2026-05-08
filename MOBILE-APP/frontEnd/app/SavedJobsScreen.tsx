@@ -140,37 +140,44 @@ const SavedJobsScreen = () => {
   };
 
   // تحميل الوظائف المحفوظة
-  const loadSavedJobs = async () => {
-    try {
-      const response = await getSavedJobs();
-      if (response.success && response.data) {
-        const formattedJobs = response.data.map((job: any) => ({
-          id: job.id || job._id,
-          title: job.title,
-          department: job.department,
-          departmentCode: job.departmentCode || job.department?.substring(0, 8),
-          hours: job.hoursPerWeek || job.hours,
-          deadline: job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No deadline',
-          salary: job.salary,
-          savedDate: job.savedDate || new Date().toLocaleDateString(),
-          match: job.matchPercentage || Math.floor(Math.random() * 30) + 70,
-          skills: job.skills || ['Communication', 'Teamwork'],
-          description: job.description,
-          requirements: job.requirements,
-          applicants: job.applicantsCount,
-        }));
-        setSavedJobs(formattedJobs);
-      } else {
-        setSavedJobs([]);
-      }
-    } catch (err) {
-      console.error("Error fetching saved jobs:", err);
+ // تحميل الوظائف المحفوظة
+const loadSavedJobs = async () => {
+  try {
+    const response = await getSavedJobs();
+    console.log("Saved jobs response:", response); // للتأكد
+    
+    if (response.success && response.data) {
+      // ✅ التعديل المهم هنا: استخراج job.job من response.data
+      const formattedJobs = response.data.map((item: any) => {
+        const jobData = item.job || item; // لو فيه job جوه، خدها
+        return {
+          id: jobData.id || jobData._id,
+          title: jobData.title,
+          department: jobData.department,
+          departmentCode: jobData.departmentCode || jobData.department?.substring(0, 8),
+          hours: jobData.hoursPerWeek || jobData.hours,
+          deadline: jobData.deadline ? new Date(jobData.deadline).toLocaleDateString() : 'No deadline',
+          salary: jobData.salary,
+          savedDate: item.savedAt ? new Date(item.savedAt.toDate()).toLocaleDateString() : new Date().toLocaleDateString(),
+          match: jobData.matchPercentage || Math.floor(Math.random() * 30) + 70,
+          skills: jobData.skills || ['Communication', 'Teamwork'],
+          description: jobData.description,
+          requirements: jobData.requirements,
+          applicants: jobData.applicantsCount,
+        };
+      });
+      setSavedJobs(formattedJobs);
+    } else {
       setSavedJobs([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching saved jobs:", err);
+    setSavedJobs([]);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   // تحميل بيانات المستخدم
   const loadUserData = async () => {
@@ -224,7 +231,7 @@ const SavedJobsScreen = () => {
     );
   };
 
-  // التقديم على وظيفة
+  
   const handleApply = async () => {
     if (!selectedJob) return;
     setApplying(true);

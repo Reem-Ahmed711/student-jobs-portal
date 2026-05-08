@@ -24,7 +24,7 @@ import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
 const DRAWER_WIDTH = 260;
-const API_URL = 'http://192.168.1.14:3000';
+const API_URL = 'http://10.163.82.249:3000';
 
 // ─── Nav Items ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [

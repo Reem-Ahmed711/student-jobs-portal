@@ -1,4 +1,5 @@
 // MOBILE-APP/app-backend/src/Controllers/aiController.js
+const { db } = require("../firebase"); // ✅ Added this line
 const {
   recommendJobsForStudent,
   improveCV,
@@ -6,6 +7,8 @@ const {
   generateJobDescription,
   analyzeJobMarket,
   generateSkillTest,
+  getAITips,
+  getMatchAnalysis,
 } = require("../Service/aiService");
 
 const {
@@ -94,6 +97,31 @@ const createSkillTest = async (req, res) => {
   }
 };
 
+// ✅ NEW: Get AI Tips for Student
+const getAITipsHandler = async (req, res) => {
+  try {
+    await requireStudent(req.user.uid);
+    const tips = await getAITips(req.user.uid);
+    res.status(200).json({ success: true, data: tips });
+  } catch (err) {
+    console.error("Get AI tips error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ✅ NEW: Get Match Analysis for Student
+const getMatchAnalysisHandler = async (req, res) => {
+  try {
+    await requireStudent(req.user.uid);
+    const { jobId } = req.params;
+    const match = await getMatchAnalysis(jobId, req.user.uid);
+    res.status(200).json({ success: true, data: match });
+  } catch (err) {
+    console.error("Get match analysis error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   getJobRecommendations,
   improveCVHandler,
@@ -101,4 +129,6 @@ module.exports = {
   generateDescription,
   getMarketAnalysis,
   createSkillTest,
+  getAITipsHandler,
+  getMatchAnalysisHandler,
 };
