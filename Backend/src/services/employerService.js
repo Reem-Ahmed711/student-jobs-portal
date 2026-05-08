@@ -28,6 +28,16 @@ const getEmployerProfile = async (uid) => {
 // ── Update Employer Profile ───────────────────────────────────────
 const updateEmployerProfile = async (uid, updatedData) => {
   try {
+    const userRef = db.collection("users").doc(uid);
+    const snapshot = await userRef.get();
+
+    if (!snapshot.exists) {
+      return {
+        success: false,
+        message: "Employer not found",
+      };
+    }
+
     const restrictedFields = [
       "role",
       "uid",
@@ -39,7 +49,7 @@ const updateEmployerProfile = async (uid, updatedData) => {
 
     restrictedFields.forEach((field) => delete updatedData[field]);
 
-    await db.collection("users").doc(uid).update({
+    await userRef.update({
       ...updatedData,
       updatedAt: serverTimestamp(),
     });
