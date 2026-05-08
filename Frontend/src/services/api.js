@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // ✅ تغيير المنفذ إلى 5004
-const API_BASE_URL = 'http://localhost:5004/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

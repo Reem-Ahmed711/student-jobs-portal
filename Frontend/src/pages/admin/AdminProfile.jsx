@@ -48,7 +48,14 @@ const AdminProfile = () => {
     <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
       <Navbar />
       
-      <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
+     <div
+  style={{
+    flex: 1,
+    padding: '30px',
+    minWidth: 0,
+    overflowX: 'hidden'
+  }}
+>
         {/* Header */}
         <div style={{ marginBottom: '30px', animation: 'slideInUp 0.5s ease-out' }}>
           <h1 style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>

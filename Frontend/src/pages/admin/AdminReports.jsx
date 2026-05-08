@@ -45,7 +45,14 @@ const AdminReports = () => {
   return (
     <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
       <Navbar />
-      <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
+    <div
+  style={{
+    flex: 1,
+    padding: '30px',
+    minWidth: 0,
+    overflowX: 'hidden'
+  }}
+>
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: '600' }}>Reported Content</h1>
           <p style={{ color: '#666' }}>Review and manage user reports</p>

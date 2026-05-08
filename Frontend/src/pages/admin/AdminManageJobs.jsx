@@ -96,7 +96,14 @@ const AdminManageJobs = () => {
     return (
       <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
         <Navbar />
-        <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
+       <div
+  style={{
+    flex: 1,
+    padding: '30px',
+    minWidth: 0,
+    overflowX: 'hidden'
+  }}
+>
           <div className="spinner" style={{ margin: '100px auto' }}></div>
         </div>
       </div>
