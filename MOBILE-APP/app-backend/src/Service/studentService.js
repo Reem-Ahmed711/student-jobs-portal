@@ -22,6 +22,8 @@ const updateStudentProfile = async (studentUid, updateData) => {
       "gpa",
       "skills",
       "about",
+      "profileImage",
+      "cv",
       "linkedin",
       "github",
     ];

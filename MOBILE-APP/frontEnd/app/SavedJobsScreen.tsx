@@ -140,37 +140,82 @@ const SavedJobsScreen = () => {
   };
 
   // تحميل الوظائف المحفوظة
-  const loadSavedJobs = async () => {
-    try {
-      const response = await getSavedJobs();
-      if (response.success && response.data) {
-        const formattedJobs = response.data.map((job: any) => ({
-          id: job.id || job._id,
-          title: job.title,
-          department: job.department,
-          departmentCode: job.departmentCode || job.department?.substring(0, 8),
-          hours: job.hoursPerWeek || job.hours,
-          deadline: job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No deadline',
-          salary: job.salary,
-          savedDate: job.savedDate || new Date().toLocaleDateString(),
-          match: job.matchPercentage || Math.floor(Math.random() * 30) + 70,
-          skills: job.skills || ['Communication', 'Teamwork'],
-          description: job.description,
-          requirements: job.requirements,
-          applicants: job.applicantsCount,
-        }));
-        setSavedJobs(formattedJobs);
-      } else {
-        setSavedJobs([]);
+ // تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
+const loadSavedJobs = async () => {
+  try {
+    setLoading(true);
+    const response = await getSavedJobs();
+    console.log("📦 Full saved jobs response:", JSON.stringify(response, null, 2));
+    
+    if (response.success && response.data && Array.isArray(response.data)) {
+      console.log("📊 Number of saved jobs:", response.data.length);
+      
+      const formattedJobs = response.data.map((item: any) => {
+        // استخراج بيانات الوظيفة من حقل job
+        const jobData = item.job || item;
+        
+        // معالجة savedAt
+        let savedDate = 'Recently';
+        if (item.savedAt) {
+          if (item.savedAt._seconds) {
+            const date = new Date(item.savedAt._seconds * 1000);
+            savedDate = date.toLocaleDateString('en-US');
+          } else if (item.savedAt.toDate) {
+            savedDate = item.savedAt.toDate().toLocaleDateString();
+          }
+        }
+        
+        // معالجة deadline
+        let deadline = 'No deadline';
+        if (jobData.deadline) {
+          try {
+            deadline = new Date(jobData.deadline).toLocaleDateString();
+          } catch (e) {
+            deadline = jobData.deadline;
+          }
+        }
+        
+        const formattedJob = {
+          id: jobData.id || jobData._id || item.savedId,
+          title: jobData.title || 'Untitled',
+          department: jobData.department || 'Not specified',
+          departmentCode: jobData.department?.substring(0, 8) || 'Dept',
+          hours: jobData.hoursPerWeek || jobData.hours || 'Flexible',
+          deadline: deadline,
+          salary: jobData.salary || 'Competitive',
+          savedDate: savedDate,
+          match: jobData.matchPercentage || Math.floor(Math.random() * 30) + 70,
+          skills: jobData.skills || ['Communication', 'Teamwork'],
+          description: jobData.description || '',
+          requirements: jobData.requirements || '',
+          applicants: jobData.applicantsCount || 0,
+        };
+        
+        console.log(`✅ Formatted job: ${formattedJob.title} (${formattedJob.id})`);
+        return formattedJob;
+      });
+      
+      console.log(`🎉 Total formatted jobs: ${formattedJobs.length}`);
+      setSavedJobs(formattedJobs);
+      
+      if (formattedJobs.length === 0 && response.data.length > 0) {
+        console.warn("⚠️ Warning: Got data but formatting failed!");
       }
-    } catch (err) {
-      console.error("Error fetching saved jobs:", err);
+    } else {
+      console.warn("⚠️ No saved jobs data:", response);
       setSavedJobs([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Error fetching saved jobs:", err);
+    setSavedJobs([]);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   // تحميل بيانات المستخدم
   const loadUserData = async () => {
@@ -224,7 +269,7 @@ const SavedJobsScreen = () => {
     );
   };
 
-  // التقديم على وظيفة
+  
   const handleApply = async () => {
     if (!selectedJob) return;
     setApplying(true);

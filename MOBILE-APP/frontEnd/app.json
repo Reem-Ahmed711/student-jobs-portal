@@ -39,10 +39,17 @@
           }
         }
       ],
+      [
+        "@react-native-firebase/auth",
+        {
+          "firebase_android_version": "21.0.1"
+        }
+      ],
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      "@react-native-firebase/app"
     ],
     "experiments": {
       "typedRoutes": true,

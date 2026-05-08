@@ -2,20 +2,19 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { admin, db } = require("../firebase");
 
-// تهيئة Gemini
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY || "YOUR_API_KEY",
-);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI("AIzaSyDM78BUFir31yf1iG9rCxfFdpq8FH7flyM"); 
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({  model: "gemini-2.0-flash" });
 
-// ================= 1. توصية وظائف للطالب =================
+// ================= 1. Job Recommendations for Student =================
 const recommendJobsForStudent = async (studentUid) => {
   try {
-    // جلب بيانات الطالب
+    // Fetch student data
     const studentDoc = await db.collection("users").doc(studentUid).get();
     const student = studentDoc.data();
 
-    // جلب جميع الوظائف المتاحة
+    // Fetch all available jobs
     const jobsSnapshot = await db
       .collection("jobs")
       .where("status", "==", "active")
@@ -31,43 +30,57 @@ const recommendJobsForStudent = async (studentUid) => {
 
     if (jobs.length === 0) return [];
 
-    // بناء الـ prompt لـ Gemini
+    // Build prompt for Gemini
     const prompt = `
-      أنا طالب أبحث عن وظيفة. بياناتي:
-      - التخصص: ${student.department || "غير محدد"}
-      - المهارات: ${(student.skills || []).join(", ")}
-      - GPA: ${student.gpa || "غير محدد"}
-      - السنة: ${student.year || "غير محدد"}
+      I am a student looking for a job. My details:
+      - Major: ${student.department || "Not specified"}
+      - Skills: ${(student.skills || []).join(", ")}
+      - GPA: ${student.gpa || "Not specified"}
+      - Year: ${student.year || "Not specified"}
       
-      هذه قائمة بالوظائف المتاحة:
-      ${jobs.map((job, i) => `${i + 1}. ${job.title} - ${job.department}`).join("\n")}
+      Here are the available jobs:
+      ${jobs.map((job, i) => `${i + 1}. ${job.title} - ${job.department} (ID: ${job.id})`).join("\n")}
       
-      قم بترتيب هذه الوظائف حسب مدى توافقها معي. أرسل لي فقط قائمة بالـ IDs مرتبة من الأفضل إلى الأقل توافقاً.
-      مثال: ["jobId1", "jobId2", "jobId3"]
+      Return ONLY a JSON array of job IDs sorted from best match to least match.
+      Example format: ["jobId1", "jobId2", "jobId3"]
     `;
 
     const result = await model.generateContent(prompt);
-    const response = result.response.text();
-
-    // تحويل النتيجة إلى array
-    const recommendedIds = JSON.parse(response);
+    const responseText = result.response.text();
+    
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
+    let recommendedIds = [];
+    
+    if (jsonMatch) {
+      try {
+        recommendedIds = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        recommendedIds = jobs.map(job => job.id);
+      }
+    } else {
+      recommendedIds = jobs.map(job => job.id);
+    }
+    
     return recommendedIds;
   } catch (error) {
     console.error("AI recommendation error:", error);
-    return [];
+    const jobsSnapshot = await db.collection("jobs").where("status", "==", "active").get();
+    return jobsSnapshot.docs.map((doc) => doc.id);
   }
 };
 
-// ================= 2. تحسين السيرة الذاتية =================
+// ================= 2. CV Improvement =================
 const improveCV = async (cvText, jobTitle) => {
   try {
     const prompt = `
-      قم بتحسين السيرة الذاتية التالية لوظيفة "${jobTitle}":
+      Improve the following CV for the "${jobTitle}" position:
       
       ${cvText}
       
-      أرسل لي السيرة المحسنة مع نصائح للتحسين.
-      يجب أن تكون السيرة منظمة وجذابة لأرباب العمل.
+      Send me the improved CV with improvement tips.
+      The CV should be well-organized and attractive to employers.
     `;
 
     const result = await model.generateContent(prompt);
@@ -78,36 +91,36 @@ const improveCV = async (cvText, jobTitle) => {
   }
 };
 
-// ================= 3. تحليل التطبيقات (لصاحب العمل) =================
+// ================= 3. Application Analysis (for Employers) =================
 const analyzeApplication = async (jobId, studentUid) => {
   try {
-    // جلب بيانات الوظيفة
+    // Fetch job data
     const jobDoc = await db.collection("jobs").doc(jobId).get();
     const job = jobDoc.data();
 
-    // جلب بيانات الطالب
+    // Fetch student data
     const studentDoc = await db.collection("users").doc(studentUid).get();
     const student = studentDoc.data();
 
     const prompt = `
-      قم بتحليل مدى توافق الطالب التالي مع الوظيفة:
+      Analyze how well the following student matches the job:
       
-      الوظيفة:
-      - المسمى: ${job.title}
-      - القسم: ${job.department}
-      - المتطلبات: ${job.requirements || "غير محددة"}
+      Job:
+      - Title: ${job.title}
+      - Department: ${job.department}
+      - Requirements: ${job.requirements || "Not specified"}
       
-      الطالب:
-      - التخصص: ${student.department || "غير محدد"}
-      - المهارات: ${(student.skills || []).join(", ")}
-      - GPA: ${student.gpa || "غير محدد"}
-      - السنة: ${student.year || "غير محدد"}
+      Student:
+      - Major: ${student.department || "Not specified"}
+      - Skills: ${(student.skills || []).join(", ")}
+      - GPA: ${student.gpa || "Not specified"}
+      - Year: ${student.year || "Not specified"}
       
-      أرسل لي:
-      1. نسبة التوافق (0-100%)
-      2. نقاط القوة
-      3. نقاط الضعف
-      4. توصية (قبول/مراجعة/رفض)
+      Send me:
+      1. Match percentage (0-100%)
+      2. Strengths
+      3. Weaknesses
+      4. Recommendation (Accept/Review/Reject)
     `;
 
     const result = await model.generateContent(prompt);
@@ -120,19 +133,19 @@ const analyzeApplication = async (jobId, studentUid) => {
   }
 };
 
-// ================= 4. إنشاء وصف وظيفي (لصاحب العمل) =================
+// ================= 4. Generate Job Description (for Employers) =================
 const generateJobDescription = async (title, department) => {
   try {
     const prompt = `
-      قم بإنشاء وصف وظيفي احترافي لوظيفة:
-      - المسمى: ${title}
-      - القسم: ${department}
+      Create a professional job description for:
+      - Title: ${title}
+      - Department: ${department}
       
-      أرسل لي:
-      1. وصف المهام (3-5 نقاط)
-      2. المتطلبات (3-5 نقاط)
-      3. المؤهلات المفضلة
-      4. المهارات المطلوبة
+      Send me:
+      1. Responsibilities (3-5 bullet points)
+      2. Requirements (3-5 bullet points)
+      3. Preferred qualifications
+      4. Required skills
     `;
 
     const result = await model.generateContent(prompt);
@@ -143,19 +156,19 @@ const generateJobDescription = async (title, department) => {
   }
 };
 
-// ================= 5. تحليل سوق العمل =================
+// ================= 5. Job Market Analysis =================
 const analyzeJobMarket = async () => {
   try {
-    // جلب جميع الوظائف
+    // Fetch all jobs
     const jobsSnapshot = await db.collection("jobs").get();
     const jobs = jobsSnapshot.docs.map((doc) => doc.data());
 
-    // حساب الإحصائيات
+    // Calculate statistics
     const departments = {};
     const avgSalaries = {};
 
     jobs.forEach((job) => {
-      const dept = job.department || "غير محدد";
+      const dept = job.department || "Not specified";
       departments[dept] = (departments[dept] || 0) + 1;
 
       const salary = parseInt(job.salary) || 0;
@@ -168,20 +181,20 @@ const analyzeJobMarket = async () => {
       }
     });
 
-    // حساب متوسط الرواتب
+    // Calculate average salaries
     Object.keys(avgSalaries).forEach((dept) => {
       avgSalaries[dept] = avgSalaries[dept].total / avgSalaries[dept].count;
     });
 
     const prompt = `
-      قم بتحليل سوق العمل بناءً على هذه البيانات:
-      - عدد الوظائف لكل قسم: ${JSON.stringify(departments)}
-      - متوسط الرواتب لكل قسم: ${JSON.stringify(avgSalaries)}
+      Analyze the job market based on this data:
+      - Number of jobs per department: ${JSON.stringify(departments)}
+      - Average salary per department: ${JSON.stringify(avgSalaries)}
       
-      أرسل لي:
-      1. أكثر 3 أقسام طلباً
-      2. أكثر المهارات المطلوبة (توقعاً)
-      3. نصائح للطلاب الجدد
+      Send me:
+      1. Top 3 most in-demand departments
+      2. Most in-demand skills (predicted)
+      3. Tips for new graduates
     `;
 
     const result = await model.generateContent(prompt);
@@ -197,16 +210,16 @@ const analyzeJobMarket = async () => {
   }
 };
 
-// ================= 6. إنشاء اختبار مهارات =================
+// ================= 6. Generate Skills Test =================
 const generateSkillTest = async (jobTitle, skills) => {
   try {
     const prompt = `
-      قم بإنشاء اختبار قصير (5 أسئلة) لتقييم مهارات المرشح لوظيفة "${jobTitle}".
-      المهارات المطلوبة: ${skills.join(", ")}
+      Create a short quiz (5 questions) to assess candidate skills for the "${jobTitle}" position.
+      Required skills: ${skills.join(", ")}
       
-      كل سؤال يجب أن يكون:
-      - السؤال
-      - 4 اختيارات (مع تحديد الإجابة الصحيحة)
+      Each question should include:
+      - The question
+      - 4 options (with the correct answer indicated)
     `;
 
     const result = await model.generateContent(prompt);
@@ -217,6 +230,96 @@ const generateSkillTest = async (jobTitle, skills) => {
   }
 };
 
+// ================= 7. 🆕 GET AI TIPS (NEW) =================
+const getAITips = async (studentUid) => {
+  try {
+    const studentDoc = await db.collection("users").doc(studentUid).get();
+    const student = studentDoc.data();
+
+    const applicationsSnapshot = await db
+      .collection("applications")
+      .where("studentUid", "==", studentUid)
+      .get();
+    
+    const applicationsCount = applicationsSnapshot.size;
+
+    const prompt = `
+      Based on this student profile:
+      - Major: ${student.department || "Not specified"}
+      - Skills: ${(student.skills || []).join(", ")}
+      - GPA: ${student.gpa || "Not specified"}
+      - Year: ${student.year || "Not specified"}
+      - Number of job applications: ${applicationsCount}
+      
+      Provide 5 personalized tips for job search improvement.
+      Return as JSON array: [{"title": "Tip title", "description": "Tip description"}]
+    `;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
+    
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error("Failed to parse tips:", e);
+      }
+    }
+    
+    return [
+      { title: "Complete Your Profile", description: "Add more skills and details to your profile" },
+      { title: "Apply More", description: `You've applied to ${applicationsCount} jobs. Try to reach 15+ applications` }
+    ];
+  } catch (error) {
+    console.error("AI tips error:", error);
+    return [{ title: "Keep Learning", description: "Continue developing your skills" }];
+  }
+};
+
+// ================= 8. 🆕 GET MATCH ANALYSIS (NEW) =================
+const getMatchAnalysis = async (jobId, studentUid) => {
+  try {
+    const jobDoc = await db.collection("jobs").doc(jobId).get();
+    const job = jobDoc.data();
+    const studentDoc = await db.collection("users").doc(studentUid).get();
+    const student = studentDoc.data();
+
+    const prompt = `
+      Analyze job fit:
+      JOB: ${job.title} - ${job.department}
+      Requirements: ${job.requirements || "None"}
+      STUDENT: Major: ${student.department}, Skills: ${(student.skills || []).join(", ")}, GPA: ${student.gpa}
+      
+      Return JSON: {"matchPercentage": 0-100, "strengths": [], "weaknesses": [], "recommendation": "Accept/Review/Reject", "feedback": ""}
+    `;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error("Failed to parse match:", e);
+      }
+    }
+    
+    return {
+      matchPercentage: 50,
+      strengths: student.skills || ["Good potential"],
+      weaknesses: ["Limited experience"],
+      recommendation: "Review",
+      feedback: "Manual review recommended"
+    };
+  } catch (error) {
+    console.error("AI match analysis error:", error);
+    return { matchPercentage: 50, recommendation: "Review", feedback: "AI analysis unavailable" };
+  }
+};
+
+// ================= EXPORT (UPDATE THIS!) =================
 module.exports = {
   recommendJobsForStudent,
   improveCV,
@@ -224,4 +327,6 @@ module.exports = {
   generateJobDescription,
   analyzeJobMarket,
   generateSkillTest,
+  getAITips,        // 🆕 ADD THIS
+  getMatchAnalysis, // 🆕 ADD THIS
 };
