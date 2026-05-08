@@ -1,4 +1,5 @@
 // D:\student-jobs-portal\Frontend\src\services\api.js
+
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:5000/api";
@@ -63,18 +64,31 @@ export const updateProfile = async (profileData) => {
 };
 
 // ==================== JOBS ====================
-export const getAllJobs = async () => {
-  const response = await apiClient.get('/jobs');
+export const getAllJobs = async (filters = {}) => {
+  const response = await axios.get(`${API_BASE_URL}/jobs`, { params: filters });
   return response;
 };
 
 export const getJobById = async (jobId) => {
-  const response = await apiClient.get(`/jobs/${jobId}`);
+  const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
   return response;
 };
 
 export const createJob = async (jobData) => {
-  const response = await apiClient.post('/jobs', jobData);
+  const token = localStorage.getItem('token');
+  
+  const formattedData = {
+    ...jobData,
+    deadline: jobData.deadline ? new Date(jobData.deadline).toISOString() : null,
+    createdAt: new Date().toISOString()
+  };
+  
+  const response = await axios.post(`${API_BASE_URL}/jobs`, formattedData, {
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
   return response;
 };
 
@@ -105,12 +119,32 @@ export const withdrawApplication = async (applicationId) => {
 };
 
 export const acceptApplication = async (applicationId) => {
-  const response = await apiClient.put(`/applications/${applicationId}/accept`);
+  const token = localStorage.getItem('token');
+  const response = await axios.patch(
+    `${API_BASE_URL}/employer/applications/${applicationId}/accept`,
+    {},
+    {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
   return response;
 };
 
 export const rejectApplication = async (applicationId) => {
-  const response = await apiClient.put(`/applications/${applicationId}/reject`);
+  const token = localStorage.getItem('token');
+  const response = await axios.patch(
+    `${API_BASE_URL}/employer/applications/${applicationId}/reject`,
+    {},
+    {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
   return response;
 };
 
@@ -154,9 +188,10 @@ export const getEmployerStats = async () => {
   });
   return response;
 };
+
 export const getEmployerDashboard = async () => {
   const token = localStorage.getItem('token');
-  const response = await axios.get(`${API_BASE_URL }/employer/dashboard`, {
+  const response = await axios.get(`${API_BASE_URL}/employer/dashboard`, {
     headers: { Authorization: `Bearer ${token}` }
   });
   return response;
@@ -168,10 +203,54 @@ export const getEmployerJobs = async () => {
     headers: { Authorization: `Bearer ${token}` }
   });
   return response;
-}; 
+};
+
+export const getEmployerProfile = async () => {
+  const token = localStorage.getItem('token');
+  const response = await axios.get(`${API_BASE_URL}/employer/profile`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response;
+};
+
+export const updateEmployerProfile = async (profileData) => {
+  const token = localStorage.getItem('token');
+  const response = await axios.put(`${API_BASE_URL}/employer/profile`, profileData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response;
+};
+
+// ✅ دالة جلب تاريخ التوظيف (Hiring History)
+export const getHiringHistory = async () => {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    console.error('❌ No token found in getHiringHistory');
+    throw new Error('No authentication token found');
+  }
+  
+  console.log('🔵 Fetching hiring history from:', `${API_BASE_URL}/employer/hiring-history`);
+  
+  const response = await axios.get(`${API_BASE_URL}/employer/hiring-history`, {
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  console.log('✅ Hiring history response:', response.data);
+  return response;
+};
 
 export const getJobApplicants = async (jobId) => {
-  const response = await apiClient.get(`/employer/jobs/${jobId}/applications`);
+  const token = localStorage.getItem('token');
+  const response = await axios.get(
+    `${API_BASE_URL}/employer/jobs/${jobId}/applications`,
+    {
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
   return response;
 };
 
@@ -214,7 +293,7 @@ export const getRatings = async (targetUid) => {
   return response;
 };
 
-// ==================== ADMIN -修正版 (متوافق مع الباكند بتاعك) ====================
+// ==================== ADMIN ====================
 
 // ---- Employers ----
 export const getAllEmployers = async () => {
@@ -284,7 +363,7 @@ export const removeAdmin = async (uid) => {
   return response;
 };
 
-// ---- User Management (Delete any user) ----
+// ---- User Management ----
 export const adminDeleteUser = async (uid) => {
   const response = await apiClient.delete(`/admin/users/${uid}`);
   return response;
@@ -323,9 +402,8 @@ export const getPlatformStats = async () => {
   return response;
 };
 
-// ---- Legacy/Compatibility (للتوافق مع الكود القديم) ----
+// ---- Legacy/Compatibility ----
 export const getAllUsers = async () => {
-  // تجميع كل المستخدمين من الأدوار المختلفة
   try {
     const [employers, students, admins] = await Promise.all([
       getAllEmployers(),
