@@ -353,4 +353,22 @@ export const getAdminStats = async () => {
   return getPlatformStats();
 };
 
+// ==================== REPORTS ====================
+export const getAllReports = async () => {
+  const response = await apiClient.get("/admin/reports");
+  return response;
+};
+
+export const updateReportStatus = async (reportId, status) => {
+  const response = await apiClient.patch(`/admin/reports/${reportId}/status`, {
+    status,
+  });
+  return response;
+};
+
+export const deleteReport = async (reportId) => {
+  const response = await apiClient.delete(`/admin/reports/${reportId}`);
+  return response;
+};
+
 export default apiClient;

@@ -91,5 +91,62 @@ router.get("/users", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// ==================== Reports Management ====================
+
+// جلب كل التقارير
+router.get("/reports", async (req, res) => {
+  try {
+    const { db } = require("../config/firebase");
+    const reportsSnapshot = await db
+      .collection("reports")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const reports = reportsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ success: true, data: reports });
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// تحديث حالة التقرير (حل)
+router.patch("/reports/:reportId/status", async (req, res) => {
+  try {
+    const { db } = require("../config/firebase");
+    const { reportId } = req.params;
+    const { status } = req.body;
+
+    await db.collection("reports").doc(reportId).update({
+      status: status,
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: req.user.uid,
+    });
+
+    res.json({ success: true, message: "Report status updated" });
+  } catch (error) {
+    console.error("Error updating report:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// حذف تقرير (رفض)
+router.delete("/reports/:reportId", async (req, res) => {
+  try {
+    const { db } = require("../config/firebase");
+    const { reportId } = req.params;
+
+    await db.collection("reports").doc(reportId).delete();
+
+    res.json({ success: true, message: "Report deleted" });
+  } catch (error) {
+    console.error("Error deleting report:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

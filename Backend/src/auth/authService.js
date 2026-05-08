@@ -67,7 +67,7 @@ async function registerUser({
 async function loginUser({ email, password }) {
   validateLoginInput({ email, password });
 
-  const API_KEY = "AIzaSyDIarPCk6uaKVmi-4epeEHDgMLg67xdeFE";
+  const API_KEY = "AIzaSyCD3-s0qrIQ4oIgI8T3r7_HnbMSO1Z6K1s";
 
   try {
     const response = await axios.post(

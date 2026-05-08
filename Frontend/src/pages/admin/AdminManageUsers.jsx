@@ -19,21 +19,32 @@ const fetchUsers = async () => {
   setLoading(true);
   try {
     const response = await getAllUsers();
+    console.log('1. Full response:', response);
     
-    // ✅ التأكد من أن البيانات مصفوفة
-    let usersData = [];
-    if (response.data?.data && Array.isArray(response.data.data)) {
-      usersData = response.data.data;
-    } else if (response.data && Array.isArray(response.data)) {
-      usersData = response.data;
-    } else if (Array.isArray(response)) {
-      usersData = response;
-    } else {
-      usersData = [];
+    let usersData = response.data || [];
+    console.log('2. usersData length:', usersData.length);
+    
+    // إزالة التكرار
+    const uniqueMap = new Map();
+    for (const user of usersData) {
+      const key = user.email || user.id;
+      console.log('3. Processing user:', key);
+      if (key && !uniqueMap.has(key)) {
+        uniqueMap.set(key, user);
+      }
     }
     
-    setUsers(usersData);
-    setFilteredUsers(usersData);
+    const uniqueUsers = Array.from(uniqueMap.values());
+    console.log('4. Unique users count:', uniqueUsers.length);
+    
+    // إحصائيات مفصلة
+    const students = uniqueUsers.filter(u => u.role === 'student').length;
+    const employers = uniqueUsers.filter(u => u.role === 'employer').length;
+    const admins = uniqueUsers.filter(u => u.role === 'admin').length;
+    console.log(`5. Students: ${students}, Employers: ${employers}, Admins: ${admins}, Total: ${uniqueUsers.length}`);
+    
+    setUsers(uniqueUsers);
+    setFilteredUsers(uniqueUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     setUsers([]);
@@ -110,6 +121,7 @@ const fetchUsers = async () => {
     padding: '30px',
     minWidth: 0,
     overflowX: 'hidden'
+    
   }}
 >
           <div className="spinner" style={{ margin: '100px auto' }}></div>
@@ -123,8 +135,8 @@ const fetchUsers = async () => {
       <Navbar />
       <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
         {/* Header */}
-        <div style={{ marginBottom: '30px', animation: 'slideInUp 0.5s ease-out' }}>
-          <h1 style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>
+        <div style={{ marginBottom: '20px', animation: 'slideInUp 0.5s ease-out' }}>
+          <h1 style={{ fontSize: '24px', color: '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>
             Manage Users
           </h1>
           <p style={{ color: '#666' }}>View, manage, and control user access</p>
@@ -134,8 +146,8 @@ const fetchUsers = async () => {
         <div style={{
           background: 'white',
           borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '20px',
+          padding: '12px',
+          marginBottom: '15px',
           display: 'flex',
           gap: '20px',
           alignItems: 'center',
@@ -276,7 +288,7 @@ const fetchUsers = async () => {
         )}
 
         {/* Summary */}
-        <div style={{ marginTop: '20px', padding: '15px', background: 'white', borderRadius: '8px', textAlign: 'center' }}>
+        <div style={{ marginTop: '20px', padding: '10px', background: 'white', borderRadius: '8px', textAlign: 'center' }}>
           <p style={{ color: '#666' }}>
             Total Users: <strong>{users.length}</strong> | 
             Students: <strong>{users.filter(u => u.role === 'student').length}</strong> |
