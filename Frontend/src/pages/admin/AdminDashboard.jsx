@@ -5,6 +5,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { getPlatformStats, adminGetAllJobs, adminGetAllApplications, getAllEmployers, getAllStudents } from '../../services/api';
 
 
 const AdminDashboard = () => {
@@ -45,17 +46,57 @@ const AdminDashboard = () => {
     { name: 'Rejected', value: 5, color: '#ef4444' }
   ];
 
-  useEffect(() => {
-    setTimeout(() => {
+  // D:\student-jobs-portal\Frontend\src\pages\admin\AdminDashboard.jsx
+// استبدل الجزء الخاص بـ useEffect بالكود ده:
+
+
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // جلب كل البيانات من الباكند
+      const [statsRes, jobsRes, appsRes, employersRes, studentsRes] = await Promise.all([
+        getPlatformStats(),
+        adminGetAllJobs(),
+        adminGetAllApplications(),
+        getAllEmployers(),
+        getAllStudents()
+      ]);
+      
+      // استخراج البيانات من الـ response
+      const statsData = statsRes.data?.data || statsRes.data || {};
+      const jobsData = jobsRes.data?.data || jobsRes.data || [];
+      const appsData = appsRes.data?.data || appsRes.data || [];
+      const employers = employersRes.data?.data || employersRes.data || [];
+      const students = studentsRes.data?.data || studentsRes.data || [];
+      
+      // حساب الإحصائيات
+      const totalUsers = employers.length + students.length;
+      const activeJobs = jobsData.filter(j => j.status === 'active' || j.approved === true).length;
+      const totalApplications = appsData.length;
+      const acceptedApplications = appsData.filter(a => a.status === 'accepted' || a.status === 'approved').length;
+      const placementRate = totalApplications > 0 ? Math.round((acceptedApplications / totalApplications) * 100) : 0;
+      
       setStats({
-        totalUsers: 1245,
-        activeJobs: 82,
-        totalApplications: 892,
-        placementRate: 67
+        totalUsers: totalUsers,
+        activeJobs: activeJobs,
+        totalApplications: totalApplications,
+        placementRate: placementRate
       });
+      
+      // لو عايز تحفظ البيانات الكاملة للاستخدام في مكان آخر
+      console.log('Dashboard Data:', { statsData, jobsData, appsData, employers, students });
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      // عرض رسالة خطأ للمستخدم
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+  
+  fetchDashboardData();
+}, []);
 
   const pendingVerifications = [
     {

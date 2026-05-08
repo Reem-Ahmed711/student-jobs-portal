@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import { getAllJobs, deleteJob, updateJob } from '../../services/api';
+  import { adminGetAllJobs, adminDeleteJob, adminUpdateJobStatus } from '../../services/api';
 
 const AdminManageJobs = () => {
   const [jobs, setJobs] = useState([]);
@@ -10,23 +11,42 @@ const AdminManageJobs = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-
+const handleApproveJob = (jobId) => handleUpdateJobStatus(jobId, 'active');
+const handleRejectJob = (jobId) => handleUpdateJobStatus(jobId, 'closed');
   useEffect(() => {
     fetchJobs();
   }, []);
 
-  const fetchJobs = async () => {
-    setLoading(true);
-    try {
-      const response = await getAllJobs();
-      setJobs(response.data || []);
-      setFilteredJobs(response.data || []);
-    } catch (error) {
-      console.error('Error fetching jobs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+// استبدل fetchJobs:
+const fetchJobs = async () => {
+  setLoading(true);
+  try {
+    const response = await adminGetAllJobs();
+    const jobsData = response.data?.data || response.data || [];
+    setJobs(jobsData);
+    setFilteredJobs(jobsData);
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    alert('❌ Failed to fetch jobs');
+  } finally {
+    setLoading(false);
+  }
+};
+// استبدل handleApproveJob و handleRejectJob:
+const handleUpdateJobStatus = async (jobId, newStatus) => {
+  try {
+    await adminUpdateJobStatus(jobId, newStatus);
+    alert(`✅ Job ${newStatus === 'active' ? 'approved' : 'closed'} successfully`);
+    fetchJobs();
+  } catch (error) {
+    console.error('Error updating job status:', error);
+    alert('❌ Failed to update job status');
+  }
+};
+
+// استخدم دالة واحدة للـ approve و reject
+
 
   useEffect(() => {
     let result = [...jobs];
@@ -50,29 +70,8 @@ const AdminManageJobs = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, jobs]);
 
-  const handleApproveJob = async (jobId) => {
-    try {
-      await updateJob(jobId, { status: 'active', approved: true });
-      alert('Job approved successfully');
-      fetchJobs();
-    } catch (error) {
-      console.error('Error approving job:', error);
-      alert('Failed to approve job');
-    }
-  };
+  
 
-  const handleRejectJob = async (jobId) => {
-    if (window.confirm('Are you sure you want to reject this job?')) {
-      try {
-        await updateJob(jobId, { status: 'rejected', approved: false });
-        alert('Job rejected');
-        fetchJobs();
-      } catch (error) {
-        console.error('Error rejecting job:', error);
-        alert('Failed to reject job');
-      }
-    }
-  };
 
   const handleDeleteJob = async (jobId, jobTitle) => {
     if (window.confirm(`Are you sure you want to delete "${jobTitle}"?`)) {

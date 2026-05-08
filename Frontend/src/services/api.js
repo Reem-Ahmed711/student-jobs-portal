@@ -1,7 +1,6 @@
-// C:\Student-job-portal\Frontend\src\services\api.js
+// D:\student-jobs-portal\Frontend\src\services\api.js
 import axios from 'axios';
 
-// ✅ تغيير المنفذ إلى 5004
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const apiClient = axios.create({
@@ -202,25 +201,151 @@ export const getRatings = async (targetUid) => {
   return response;
 };
 
-// ==================== ADMIN ====================
-export const getAllUsers = async () => {
-  const response = await apiClient.get('/admin/users');
+// ==================== ADMIN -修正版 (متوافق مع الباكند بتاعك) ====================
+
+// ---- Employers ----
+export const getAllEmployers = async () => {
+  const response = await apiClient.get('/admin/employers');
   return response;
+};
+
+export const getEmployerById = async (uid) => {
+  const response = await apiClient.get(`/admin/employers/${uid}`);
+  return response;
+};
+
+export const updateEmployer = async (uid, data) => {
+  const response = await apiClient.put(`/admin/employers/${uid}`, data);
+  return response;
+};
+
+export const deleteEmployer = async (uid) => {
+  const response = await apiClient.delete(`/admin/employers/${uid}`);
+  return response;
+};
+
+export const toggleEmployerStatus = async (uid) => {
+  const response = await apiClient.patch(`/admin/employers/${uid}/toggle-status`);
+  return response;
+};
+
+// ---- Students ----
+export const getAllStudents = async () => {
+  const response = await apiClient.get('/admin/students');
+  return response;
+};
+
+export const getStudentById = async (uid) => {
+  const response = await apiClient.get(`/admin/students/${uid}`);
+  return response;
+};
+
+export const updateStudent = async (uid, data) => {
+  const response = await apiClient.put(`/admin/students/${uid}`, data);
+  return response;
+};
+
+export const deleteStudent = async (uid) => {
+  const response = await apiClient.delete(`/admin/students/${uid}`);
+  return response;
+};
+
+export const toggleStudentStatus = async (uid) => {
+  const response = await apiClient.patch(`/admin/students/${uid}/toggle-status`);
+  return response;
+};
+
+// ---- Admins ----
+export const getAllAdmins = async () => {
+  const response = await apiClient.get('/admin/admins');
+  return response;
+};
+
+export const makeAdmin = async (uid) => {
+  const response = await apiClient.patch(`/admin/make-admin/${uid}`);
+  return response;
+};
+
+export const removeAdmin = async (uid) => {
+  const response = await apiClient.patch(`/admin/remove-admin/${uid}`);
+  return response;
+};
+
+// ---- User Management (Delete any user) ----
+export const adminDeleteUser = async (uid) => {
+  const response = await apiClient.delete(`/admin/users/${uid}`);
+  return response;
+};
+
+// ---- Admin Jobs Management ----
+export const adminGetAllJobs = async () => {
+  const response = await apiClient.get('/admin/jobs');
+  return response;
+};
+
+export const adminDeleteJob = async (jobId) => {
+  const response = await apiClient.delete(`/admin/jobs/${jobId}`);
+  return response;
+};
+
+export const adminUpdateJobStatus = async (jobId, status) => {
+  const response = await apiClient.patch(`/admin/jobs/${jobId}/status`, { status });
+  return response;
+};
+
+// ---- Admin Applications Management ----
+export const adminGetAllApplications = async () => {
+  const response = await apiClient.get('/admin/applications');
+  return response;
+};
+
+export const adminUpdateApplicationStatus = async (appId, status) => {
+  const response = await apiClient.patch(`/admin/applications/${appId}/status`, { status });
+  return response;
+};
+
+// ---- Platform Stats ----
+export const getPlatformStats = async () => {
+  const response = await apiClient.get('/admin/stats');
+  return response;
+};
+
+// ---- Legacy/Compatibility (للتوافق مع الكود القديم) ----
+export const getAllUsers = async () => {
+  // تجميع كل المستخدمين من الأدوار المختلفة
+  try {
+    const [employers, students, admins] = await Promise.all([
+      getAllEmployers(),
+      getAllStudents(),
+      getAllAdmins()
+    ]);
+    
+    const allUsers = [
+      ...(employers.data?.data || employers.data || []).map(u => ({ ...u, role: 'employer' })),
+      ...(students.data?.data || students.data || []).map(u => ({ ...u, role: 'student' })),
+      ...(admins.data?.data || admins.data || []).map(u => ({ ...u, role: 'admin' }))
+    ];
+    
+    return { data: allUsers };
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const updateUserRole = async (userId, role) => {
-  const response = await apiClient.put(`/admin/users/${userId}/role`, { role });
-  return response;
+  if (role === 'admin') {
+    return makeAdmin(userId);
+  } else {
+    return removeAdmin(userId);
+  }
 };
 
 export const deleteUser = async (userId) => {
-  const response = await apiClient.delete(`/admin/users/${userId}`);
-  return response;
+  return adminDeleteUser(userId);
 };
 
 export const getAdminStats = async () => {
-  const response = await apiClient.get('/admin/stats');
-  return response;
+  return getPlatformStats();
 };
 
 export default apiClient;
