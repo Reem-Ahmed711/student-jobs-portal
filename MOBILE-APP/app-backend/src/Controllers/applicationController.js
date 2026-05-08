@@ -73,10 +73,28 @@ const updateApplicationStatusController = async (req, res) => {
     res.status(statusCode).json({ success: false, message: err.message });
   }
 };
-
+// ================= Count Student Applications =================
+const getStudentApplicationsCountController = async (req, res) => {
+  try {
+    const { db } = require("../firebase");
+    const snapshot = await db
+      .collection("applications")
+      .where("studentUid", "==", req.user.uid)
+      .get();
+    
+    res.status(200).json({ 
+      success: true, 
+      count: snapshot.size 
+    });
+  } catch (err) {
+    console.error("Error getting applications count:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 module.exports = {
   applyToJobController,
   getJobApplicationsController,
   getStudentApplicationsController,
-  updateApplicationStatusController, // ✅ تصدير الـ Controller الجديد
+  updateApplicationStatusController,
+    getStudentApplicationsCountController,// ✅ تصدير الـ Controller الجديد
 };

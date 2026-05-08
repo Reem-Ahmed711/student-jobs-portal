@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_URL = "http://10.163.82.249:3000";
+const API_URL = "http://192.168.1.54:3000";
 
 export default function EditProfileScreen() {
   const router = useRouter();

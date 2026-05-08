@@ -80,14 +80,19 @@ const removeAdminController = async (req, res) => {
 // ================= Admin Delete Job =================
 const adminDeleteJobController = async (req, res) => {
   try {
-    console.log("🟢 adminDeleteJobController called for job:", req.params.jobId);
+    console.log(
+      "🟢 adminDeleteJobController called for job:",
+      req.params.jobId,
+    );
     await requireAdmin(req.user.uid);
     const { jobId } = req.params;
-    
+
     if (!jobId) {
-      return res.status(400).json({ success: false, message: "Job ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Job ID is required" });
     }
-    
+
     const result = await adminDeleteJob(jobId, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
@@ -100,14 +105,19 @@ const adminDeleteJobController = async (req, res) => {
 // ================= Admin Delete User =================
 const adminDeleteUserController = async (req, res) => {
   try {
-    console.log("🟢 adminDeleteUserController called for user:", req.params.uid);
+    console.log(
+      "🟢 adminDeleteUserController called for user:",
+      req.params.uid,
+    );
     await requireAdmin(req.user.uid);
     const { uid } = req.params;
-    
+
     if (!uid) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User ID is required" });
     }
-    
+
     const result = await adminDeleteUser(uid, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
@@ -123,11 +133,11 @@ const adminGetAllJobsController = async (req, res) => {
     console.log("🟢 adminGetAllJobsController called");
     console.log("📝 Query params:", req.query);
     console.log("👤 Admin user:", req.user?.uid);
-    
+
     await requireAdmin(req.user.uid);
     const { department, status } = req.query;
     const result = await adminGetAllJobs({ department, status });
-    
+
     console.log(`✅ Returning ${result.length} jobs`);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
@@ -141,20 +151,27 @@ const adminGetAllJobsController = async (req, res) => {
 // ================= Admin Update Job Status =================
 const adminUpdateJobStatusController = async (req, res) => {
   try {
-    console.log("🟢 adminUpdateJobStatusController called for job:", req.params.jobId);
+    console.log(
+      "🟢 adminUpdateJobStatusController called for job:",
+      req.params.jobId,
+    );
     console.log("📝 New status:", req.body.status);
-    
+
     await requireAdmin(req.user.uid);
     const { jobId } = req.params;
     const { status } = req.body;
-    
+
     if (!jobId) {
-      return res.status(400).json({ success: false, message: "Job ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Job ID is required" });
     }
     if (!status) {
-      return res.status(400).json({ success: false, message: "Status is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Status is required" });
     }
-    
+
     const result = await adminUpdateJobStatus(jobId, status, req.user.uid);
     res.status(200).json(result);
   } catch (err) {
@@ -173,7 +190,10 @@ const adminGetAllApplicationsController = async (req, res) => {
     const result = await adminGetAllApplications({ status });
     res.status(200).json({ success: true, data: result });
   } catch (err) {
-    console.error("🔴 Error in adminGetAllApplicationsController:", err.message);
+    console.error(
+      "🔴 Error in adminGetAllApplicationsController:",
+      err.message,
+    );
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -193,7 +213,10 @@ const adminUpdateApplicationStatusController = async (req, res) => {
     );
     res.status(200).json(result);
   } catch (err) {
-    console.error("🔴 Error in adminUpdateApplicationStatusController:", err.message);
+    console.error(
+      "🔴 Error in adminUpdateApplicationStatusController:",
+      err.message,
+    );
     const status = err.message.includes("Access denied") ? 403 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
@@ -248,6 +271,33 @@ const searchUsersController = async (req, res) => {
   }
 };
 
+const updateAllCommentCounts = async (req, res) => {
+  try {
+    const { admin, db } = require("../firebase");
+    const jobsSnapshot = await db.collection("jobs").get();
+    let updatedCount = 0;
+
+    for (const jobDoc of jobsSnapshot.docs) {
+      const commentsSnapshot = await db
+        .collection("comments")
+        .where("jobId", "==", jobDoc.id)
+        .get();
+      await db.collection("jobs").doc(jobDoc.id).update({
+        commentCount: commentsSnapshot.size,
+      });
+      updatedCount++;
+      console.log(`✅ Job ${jobDoc.id}: ${commentsSnapshot.size} comments`);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Updated ${updatedCount} jobs with comment counts`,
+    });
+  } catch (error) {
+    console.error("Error updating comment counts:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 // ================= EXPORTS =================
 module.exports = {
   getDashboardStats,
@@ -263,4 +313,5 @@ module.exports = {
   getAllAdminsController,
   getAdminLogsController,
   searchUsersController,
+  updateAllCommentCounts,
 };

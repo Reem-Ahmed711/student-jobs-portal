@@ -69,12 +69,18 @@ const getAllJobs = async () => {
   const snapshot = await db.collection("jobs").get();
 
   const jobs = [];
-  snapshot.forEach((doc) => {
-    jobs.push({
-      id: doc.id,
-      ...doc.data(),
-    });
-  });
+  for (const doc of snapshot.docs) {
+    const jobData = { id: doc.id, ...doc.data() };
+
+    // ✅ جلب عدد التعليقات لكل وظيفة
+    const commentsSnapshot = await db
+      .collection("comments")
+      .where("jobId", "==", doc.id)
+      .get();
+    jobData.commentCount = commentsSnapshot.size;
+
+    jobs.push(jobData);
+  }
 
   return jobs;
 };

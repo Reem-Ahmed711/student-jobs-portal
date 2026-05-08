@@ -8,12 +8,14 @@ const {
   applyToJobController,
   getJobApplicationsController,
   getStudentApplicationsController,
-  updateApplicationStatusController,  // ✅ إضافة الـ Controller الجديد
+  updateApplicationStatusController,
+  getStudentApplicationsCountController,  // ✅ أضيفي هذا السطر
 } = require("../Controllers/applicationController");
 
 router.post("/", verifyToken, applyToJobController);
 router.get("/job/:jobId", verifyToken, getJobApplicationsController);
 router.get("/student", verifyToken, getStudentApplicationsController);
-router.put("/:applicationId/status", verifyToken, updateApplicationStatusController); // ✅ Route لقبول/رفض الطلبات
+router.get("/student/count", verifyToken, getStudentApplicationsCountController); // ✅ هذا السطر
+router.put("/:applicationId/status", verifyToken, updateApplicationStatusController);
 
 module.exports = router;

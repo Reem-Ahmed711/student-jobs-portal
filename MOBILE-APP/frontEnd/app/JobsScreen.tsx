@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -210,11 +211,15 @@ const AIMatchAnalysisModal = React.memo(({
 const CommentsSection = React.memo(({ 
   jobId, 
   userId, 
-  userName 
+  userName,
+  initialCommentCount = 0,
+  onCommentCountChange
 }: { 
   jobId: string; 
   userId: string; 
   userName: string;
+  initialCommentCount?: number;
+  onCommentCountChange?: (count: number) => void;
 }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -222,9 +227,10 @@ const CommentsSection = React.memo(({
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [commentCount, setCommentCount] = useState(initialCommentCount);
 
   const loadComments = useCallback(async () => {
-    if (!jobId || hasLoaded) return;
+    if (!jobId) return;
     setLoading(true);
     try {
       const response: any = await getComments(jobId);
@@ -235,13 +241,19 @@ const CommentsSection = React.memo(({
         commentsData = response.data.comments;
       }
       setComments(commentsData);
+      setCommentCount(commentsData.length);
       setHasLoaded(true);
+      
+      // ✅ إعلام المكون الأب بتغير العدد
+      if (onCommentCountChange) {
+        onCommentCountChange(commentsData.length);
+      }
     } catch (err) {
       console.error('Failed to load comments:', err);
     } finally {
       setLoading(false);
     }
-  }, [jobId, hasLoaded]);
+  }, [jobId, onCommentCountChange]);
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) {
@@ -253,15 +265,8 @@ const CommentsSection = React.memo(({
     try {
       const response = await addComment(jobId, newComment.trim());
       if (response && response.success) {
-        const newCommentObj: Comment = {
-          id: Date.now().toString(),
-          jobId,
-          userId,
-          userName: userName || 'You',
-          comment: newComment.trim(),
-          createdAt: new Date().toISOString(),
-        };
-        setComments(prev => [newCommentObj, ...prev]);
+        // ✅ إعادة تحميل التعليقات
+        await loadComments();
         setNewComment('');
       } else {
         Alert.alert('Error', response?.message || 'Failed to add comment');
@@ -271,7 +276,7 @@ const CommentsSection = React.memo(({
     } finally {
       setSubmitting(false);
     }
-  }, [jobId, newComment, userId, userName]);
+  }, [jobId, newComment, loadComments]);
 
   const formatDate = useCallback((dateString: string) => {
     if (!dateString) return '';
@@ -289,17 +294,21 @@ const CommentsSection = React.memo(({
     return date.toLocaleDateString();
   }, []);
 
+  const handleToggleExpand = useCallback(() => {
+    setExpanded(prev => !prev);
+    if (!hasLoaded) {
+      loadComments();
+    }
+  }, [hasLoaded, loadComments]);
+
   if (!expanded) {
     return (
       <TouchableOpacity 
         style={styles.showCommentsBtn}
-        onPress={() => {
-          setExpanded(true);
-          loadComments();
-        }}
+        onPress={handleToggleExpand}
       >
         <Ionicons name="chatbubble-outline" size={16} color="#1E3A5F" />
-        <Text style={styles.showCommentsText}>Comments ({comments.length})</Text>
+        <Text style={styles.showCommentsText}>Comments ({commentCount})</Text>
         <Ionicons name="chevron-down" size={16} color="#1E3A5F" />
       </TouchableOpacity>
     );
@@ -310,7 +319,7 @@ const CommentsSection = React.memo(({
       <View style={styles.commentsHeader}>
         <View style={styles.commentsHeaderLeft}>
           <Ionicons name="chatbubbles" size={18} color="#1E3A5F" />
-          <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
+          <Text style={styles.commentsTitle}>Comments ({commentCount})</Text>
         </View>
         <TouchableOpacity onPress={() => setExpanded(false)}>
           <Ionicons name="chevron-up" size={18} color="#9CA3AF" />
@@ -403,6 +412,21 @@ const JobsScreen = () => {
 
   const router = useRouter();
   const params = useLocalSearchParams();
+  
+   useEffect(() => {
+    const clearOldCache = async () => {
+      const cachedJobs = await AsyncStorage.getItem('cachedJobs');
+      if (cachedJobs) {
+        const jobs = JSON.parse(cachedJobs);
+        const hasOldFormat = jobs.some((job: any) => job.commentCount === undefined);
+        if (hasOldFormat) {
+          await AsyncStorage.removeItem('cachedJobs');
+          console.log('✅ Old cache cleared');
+        }
+      }
+    };
+    clearOldCache();
+  }, []);
 
   const userData = {
     name: (params.name as string) || 'Student',
@@ -464,10 +488,11 @@ const JobsScreen = () => {
         matchPercentage: job?.matchPercentage || Math.floor(Math.random() * 30) + 70,
         employerUid: job?.employerUid,
         createdAt: job?.createdAt,
-        commentCount: job?.commentCount || 0,
+          commentCount: job.commentCount || 0,
       }));
       
       setAllJobs(formattedJobs);
+      
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
       setAllJobs([]);

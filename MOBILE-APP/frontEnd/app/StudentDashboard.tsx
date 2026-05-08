@@ -328,27 +328,28 @@ const StudentDashboard: React.FC = () => {
   }, []);
 
   // تحديث البيانات عند العودة للشاشة
-  useFocusEffect(
-    useCallback(() => {
-      const loadUserData = async () => {
-        const stored = await AsyncStorage.getItem('userData');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setUser(prev => ({
-            ...prev,
-            name: parsed.name || prev.name,
-            department: parsed.department || prev.department,
-            gpa: parsed.gpa || prev.gpa,
-            year: parsed.year || prev.year,
-            profileImage: parsed.profileImage || prev.profileImage,
-          }));
-        }
-      };
-      loadUserData();
-      fetchFreshData();
-      loadAIData();
-    }, [])
-  );
+useFocusEffect(
+  useCallback(() => {
+    const loadUserData = async () => {
+      const stored = await AsyncStorage.getItem('userData');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log("🖼️ Dashboard loading image:", parsed.profileImage);
+        setUser(prev => ({
+          ...prev,
+          name: parsed.name || prev.name,
+          department: parsed.department || prev.department,
+          gpa: parsed.gpa || prev.gpa,
+          year: parsed.year || prev.year,
+          profileImage: parsed.profileImage,  // ✅ أهم سطر
+        }));
+      }
+    };
+    loadUserData();
+    fetchFreshData();
+    loadAIData();
+  }, [])
+);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -428,9 +429,13 @@ const StudentDashboard: React.FC = () => {
         <View style={styles.content}>
           {/* Profile Card - مع الصورة */}
           <TouchableOpacity style={styles.profileCard} onPress={() => handleTabPress('profile')}>
-            {user.profileImage ? (
-              <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
-            ) : (
+           {user.profileImage ? (
+  <Image 
+    key={user.profileImage}  // 🔥 دي أهم حاجة - بتخلي الصورة تتحدث
+    source={{ uri: user.profileImage }} 
+    style={styles.avatarImage} 
+  />
+) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarInitial}>{initial}</Text>
               </View>
