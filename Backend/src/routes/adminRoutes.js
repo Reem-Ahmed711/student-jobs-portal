@@ -35,21 +35,21 @@ const {
 router.use(verifyToken, verifyRole("admin"));
 
 // Employer
-router.get("/employers",                    getAllEmployersController);
-router.get("/employers/:uid",           getEmployerByIdController);
-router.put("/employers/:uid",            updateEmployerController);
-router.delete("/employers/:uid",             deleteEmployerController);
+router.get("/employers", getAllEmployersController);
+router.get("/employers/:uid", getEmployerByIdController);
+router.put("/employers/:uid", updateEmployerController);
+router.delete("/employers/:uid", deleteEmployerController);
 router.patch("/employers/:uid/toggle-status", toggleEmployerStatusController);
 
-// Student 
-router.get("/students",                   getAllStudentsController);
-router.get("/students/:uid",              getStudentByIdController);
-router.put("/students/:uid",               updateStudentController);
-router.delete("/students/:uid",            deleteStudentController);
-router.patch("/students/:uid/toggle-status",  toggleStudentStatusController);
+// Student
+router.get("/students", getAllStudentsController);
+router.get("/students/:uid", getStudentByIdController);
+router.put("/students/:uid", updateStudentController);
+router.delete("/students/:uid", deleteStudentController);
+router.patch("/students/:uid/toggle-status", toggleStudentStatusController);
 
 // Platform Stats
-router.get("/stats",    getPlatformStatsController);
+router.get("/stats", getPlatformStatsController);
 // Admins
 router.get("/admins", getAllAdminsController);
 
@@ -71,7 +71,25 @@ router.get("/applications", adminGetAllApplicationsController);
 
 router.patch(
   "/applications/:appId/status",
-  adminUpdateApplicationStatusController
+  adminUpdateApplicationStatusController,
 );
+// ==================== GET ALL USERS (Combined) ====================
+router.get("/users", async (req, res) => {
+  try {
+    const { db } = require("../config/firebase");
+
+    // جلب جميع المستخدمين من Firestore
+    const usersSnapshot = await db.collection("users").get();
+    const users = usersSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

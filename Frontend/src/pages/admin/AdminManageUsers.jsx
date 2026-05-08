@@ -15,18 +15,33 @@ const AdminManageUsers = () => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const response = await getAllUsers();
-      setUsers(response.data || []);
-      setFilteredUsers(response.data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoading(false);
+const fetchUsers = async () => {
+  setLoading(true);
+  try {
+    const response = await getAllUsers();
+    
+    // ✅ التأكد من أن البيانات مصفوفة
+    let usersData = [];
+    if (response.data?.data && Array.isArray(response.data.data)) {
+      usersData = response.data.data;
+    } else if (response.data && Array.isArray(response.data)) {
+      usersData = response.data;
+    } else if (Array.isArray(response)) {
+      usersData = response;
+    } else {
+      usersData = [];
     }
-  };
+    
+    setUsers(usersData);
+    setFilteredUsers(usersData);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    setUsers([]);
+    setFilteredUsers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     let result = [...users];

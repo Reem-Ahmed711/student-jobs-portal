@@ -55,7 +55,8 @@ const aiRoutes = require("./Routes/aiRoute");
 const studentRoutes = require("./Routes/studentRoute");
 const cvRoutes = require("./Routes/cvRoute");
 const commentRoutes = require("./Routes/commentRoute");
-
+const authRoute = require("./Routes/authRoute");
+app.use("/api", authRoute);
 app.use("/api", commentRoutes);
 app.use("/api/cv", cvRoutes);
 app.use("/api/student", studentRoutes);

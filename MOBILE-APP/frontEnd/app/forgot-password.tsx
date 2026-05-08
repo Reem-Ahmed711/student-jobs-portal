@@ -19,18 +19,21 @@ import {
   Poppins_700Bold,
   Poppins_800ExtraBold,
 } from "@expo-google-fonts/poppins";
+import { forgotPassword, resetPassword } from "../src/api";
 
 export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
   const [newFocused, setNewFocused] = useState(false);
   const [confirmFocused, setConfirmFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [oobCode, setOobCode] = useState("");
   const router = useRouter();
   const otpRefs = useRef<(TextInput | null)[]>([]);
 
@@ -43,22 +46,74 @@ export default function ForgotPasswordScreen() {
 
   if (!fontsLoaded) return null;
 
-  const handleSendCode = () => {
-    if (!phone) return Alert.alert("Error", "Please enter your phone number.");
-    setStep(2);
+  // استخراج oobCode من الرابط (للتطبيق)
+  const extractOobCodeFromUrl = () => {
+    // في التطبيق، الرابط بيجيلك من deep linking
+    // دلوقتي هنخلي المستخدم يدخل الكود يدوياً
+    return otp.join("");
+  };
+
+  const handleSendCode = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await forgotPassword(email);
+      if (res.success) {
+        Alert.alert("Success", "Password reset email sent! Check your inbox.");
+        setStep(2);
+      } else {
+        Alert.alert("Error", res.message);
+      }
+    } catch (err) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyOtp = () => {
-    if (otp.join("").length < 6) return Alert.alert("Error", "Please enter the full 6-digit code.");
+    const code = otp.join("");
+    if (code.length < 6) {
+      Alert.alert("Error", "Please enter the full 6-digit code.");
+      return;
+    }
+    setOobCode(code);
     setStep(3);
   };
 
-  const handleResetPassword = () => {
-    if (!newPassword || !confirmPassword) return Alert.alert("Error", "Please fill in all fields.");
-    if (newPassword !== confirmPassword) return Alert.alert("Error", "Passwords do not match.");
-    Alert.alert("Success", "Password reset successfully!", [
-      { text: "Login", onPress: () => router.replace("/") },
-    ]);
+  const handleResetPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await resetPassword(oobCode, newPassword);
+      if (res.success) {
+        Alert.alert("Success", "Password reset successfully! Please login.", [
+          { text: "Login", onPress: () => router.replace("/login") },
+        ]);
+      } else {
+        Alert.alert("Error", res.message);
+      }
+    } catch (err) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (val: string, index: number) => {
@@ -72,8 +127,6 @@ export default function ForgotPasswordScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.kav}>
-
-        {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -82,8 +135,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <View style={styles.logoRow}>
-            {/* <Text style={styles.sparkle}>✦</Text> */}
-            <Text style={styles.appName}>Student jobs portal</Text>
+            <Text style={styles.appName}>Student Jobs Portal</Text>
           </View>
           <View style={{ width: 40 }} />
         </View>
@@ -93,8 +145,7 @@ export default function ForgotPasswordScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-
-          {/* ── STEP 1 — Phone ── */}
+          {/* STEP 1 — Email */}
           {step === 1 && (
             <>
               <View style={styles.iconWrapper}>
@@ -105,31 +156,26 @@ export default function ForgotPasswordScreen() {
 
               <Text style={styles.heading}>Forgot Password?</Text>
               <Text style={styles.subheading}>
-                No worries! Enter your phone number and we'll send you a reset code.
+                Enter your email address and we'll send you a reset link.
               </Text>
 
-              <View style={[styles.inputBox, phoneFocused && styles.inputBoxFocused]}>
-                <Text style={styles.floatingLabel}>Phone Number</Text>
-                <View style={styles.phoneRow}>
-                  <Text style={styles.countryCode}>EG +20</Text>
-                  <View style={styles.dividerV} />
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="010 0000 0000"
-                    placeholderTextColor="#b0bec5"
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
-                    onFocus={() => setPhoneFocused(true)}
-                    onBlur={() => setPhoneFocused(false)}
-                    maxLength={11}
-                  />
-                  {phone.length >= 10 && <Text style={styles.checkIcon}>✓</Text>}
-                </View>
+              <View style={[styles.inputBox, emailFocused && styles.inputBoxFocused]}>
+                <Text style={styles.floatingLabel}>Email Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="example@cu.edu.eg"
+                  placeholderTextColor="#b0bec5"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                />
               </View>
 
-              <TouchableOpacity style={styles.mainBtn} activeOpacity={0.85} onPress={handleSendCode}>
-                <Text style={styles.mainBtnText}>Send Reset Code</Text>
+              <TouchableOpacity style={styles.mainBtn} activeOpacity={0.85} onPress={handleSendCode} disabled={loading}>
+                <Text style={styles.mainBtnText}>{loading ? "Sending..." : "Send Reset Email"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.backToLogin} onPress={() => router.back()}>
@@ -138,19 +184,19 @@ export default function ForgotPasswordScreen() {
             </>
           )}
 
-          {/* ── STEP 2 — OTP ── */}
+          {/* STEP 2 — OTP Code */}
           {step === 2 && (
             <>
               <View style={styles.iconWrapper}>
                 <View style={styles.iconCircle}>
-                  <Text style={styles.iconEmoji}>📲</Text>
+                  <Text style={styles.iconEmoji}>📧</Text>
                 </View>
               </View>
 
-              <Text style={styles.heading}>Check your phone</Text>
+              <Text style={styles.heading}>Check your email</Text>
               <Text style={styles.subheading}>
                 We sent a 6-digit code to{"\n"}
-                <Text style={styles.phoneHighlight}>+20 {phone}</Text>
+                <Text style={styles.phoneHighlight}>{email}</Text>
               </Text>
 
               <View style={styles.otpRow}>
@@ -173,15 +219,15 @@ export default function ForgotPasswordScreen() {
               </TouchableOpacity>
 
               <View style={styles.resendRow}>
-                <Text style={styles.resendText}>Didn't receive it?  </Text>
-                <TouchableOpacity>
-                  <Text style={styles.resendLink}>Resend SMS</Text>
+                <Text style={styles.resendText}>Didn't receive it? </Text>
+                <TouchableOpacity onPress={handleSendCode}>
+                  <Text style={styles.resendLink}>Resend Email</Text>
                 </TouchableOpacity>
               </View>
             </>
           )}
 
-          {/* ── STEP 3 — New Password ── */}
+          {/* STEP 3 — New Password */}
           {step === 3 && (
             <>
               <View style={styles.iconWrapper}>
@@ -233,32 +279,29 @@ export default function ForgotPasswordScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.mainBtn} activeOpacity={0.85} onPress={handleResetPassword}>
-                <Text style={styles.mainBtnText}>Reset Password</Text>
+              <TouchableOpacity style={styles.mainBtn} activeOpacity={0.85} onPress={handleResetPassword} disabled={loading}>
+                <Text style={styles.mainBtnText}>{loading ? "Resetting..." : "Reset Password"}</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {/* Footer */}
           <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Remember your password?  </Text>
-            <TouchableOpacity onPress={() => router.replace("/")}>
+            <Text style={styles.footerText}>Remember your password? </Text>
+            <TouchableOpacity onPress={() => router.replace("/login")}>
               <Text style={styles.footerLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
+// Styles (نفس اللي عندك، ما غيرتش حاجة)
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f5f7fa" },
   kav: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: 26, paddingBottom: 48 },
-
-  // Top Bar
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -277,8 +320,6 @@ const styles = StyleSheet.create({
   logoRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   sparkle: { fontSize: 15, color: "#1a6fd4" },
   appName: { fontFamily: "Poppins_600SemiBold", fontSize: 16, color: "#0f172a" },
-
-  // Icon
   iconWrapper: { alignItems: "center", marginTop: 36, marginBottom: 28 },
   iconCircle: {
     width: 120, height: 120, borderRadius: 60,
@@ -287,8 +328,6 @@ const styles = StyleSheet.create({
     shadowColor: "#1a6fd4", shadowOpacity: 0.1, shadowRadius: 20, elevation: 3,
   },
   iconEmoji: { fontSize: 56 },
-
-  // Heading
   heading: {
     fontFamily: "Poppins_800ExtraBold",
     fontSize: 30, color: "#0f172a", marginBottom: 8,
@@ -301,8 +340,6 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_600SemiBold",
     color: "#1a6fd4",
   },
-
-  // Inputs
   inputBox: {
     width: "100%", backgroundColor: "#ffffff", borderRadius: 14,
     paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
@@ -318,8 +355,6 @@ const styles = StyleSheet.create({
   input: { fontFamily: "Poppins_400Regular", fontSize: 15, color: "#0f172a", paddingVertical: 2 },
   toggleText: { fontFamily: "Poppins_600SemiBold", fontSize: 12, color: "#1a6fd4", paddingLeft: 8 },
   checkIcon: { fontSize: 16, color: "#22c55e", fontFamily: "Poppins_700Bold" },
-
-  // Main Button
   mainBtn: {
     width: "100%", height: 52, borderRadius: 30,
     backgroundColor: "#1a6fd4",
@@ -329,12 +364,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35, shadowRadius: 14, elevation: 6,
   },
   mainBtnText: { fontFamily: "Poppins_700Bold", fontSize: 16, color: "#fff", letterSpacing: 0.3 },
-
-  // Back to login link
   backToLogin: { alignItems: "center", marginTop: 4 },
   backToLoginText: { fontFamily: "Poppins_600SemiBold", fontSize: 13, color: "#1a6fd4" },
-
-  // OTP
   otpRow: {
     flexDirection: "row", justifyContent: "space-between",
     width: "100%", marginBottom: 24,
@@ -346,13 +377,9 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
   },
   otpBoxFilled: { borderColor: "#1a6fd4", backgroundColor: "#f0f6ff" },
-
-  // Resend
   resendRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 4 },
   resendText: { fontFamily: "Poppins_400Regular", color: "#94a3b8", fontSize: 13 },
   resendLink: { fontFamily: "Poppins_700Bold", color: "#1a6fd4", fontSize: 13 },
-
-  // Footer
   footerRow: { flexDirection: "row", marginTop: 32, alignItems: "center", justifyContent: "center" },
   footerText: { fontFamily: "Poppins_400Regular", color: "#94a3b8", fontSize: 13 },
   footerLink: { fontFamily: "Poppins_700Bold", color: "#1a6fd4", fontSize: 13 },

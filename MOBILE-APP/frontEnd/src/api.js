@@ -15,7 +15,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 60000,
+  timeout: 120000,
 });
 
 // ================= TOKEN INTERCEPTOR =================
@@ -571,7 +571,9 @@ export const getAITips = async () => {
 
 export const registerPushToken = async (pushToken) => {
   try {
-    const res = await api.post("/api/notifications/register-token", { pushToken });
+    const res = await api.post("/api/notifications/register-token", {
+      pushToken,
+    });
     return res.data;
   } catch (err) {
     console.error("❌ Register push token error:", err);
@@ -621,11 +623,40 @@ export const getUnreadNotificationsCount = async () => {
 
 export const sendTestNotification = async (title, body, type = "general") => {
   try {
-    const res = await api.post("/api/notifications/test", { title, body, type });
+    const res = await api.post("/api/notifications/test", {
+      title,
+      body,
+      type,
+    });
     return res.data;
   } catch (err) {
     console.error("❌ Send test notification error:", err);
     return { success: false };
+  }
+};
+
+// ================= FORGOT PASSWORD =================
+export const forgotPassword = async (email) => {
+  try {
+    const res = await api.post("/api/forgot-password", { email });
+    return res.data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const resetPassword = async (oobCode, newPassword) => {
+  try {
+    const res = await api.post("/api/reset-password", { oobCode, newPassword });
+    return res.data;
+  } catch (err) {
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
   }
 };
 // ================= EXPORT DEFAULT =================
