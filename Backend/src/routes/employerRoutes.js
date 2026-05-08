@@ -13,10 +13,12 @@ const {
   rejectApplicationController,
   getEmployerStatsController,
   getEmployerDashboardController,
+  getHiringHistoryController,
 } = require("../Controllers/employerController");
 
 
 router.use(verifyToken, verifyRole("employer"));
+router.get("/hiring-history", getHiringHistoryController);
 //router.post("/jobs", createJobController);
 router.get("/profile",        getEmployerProfileController);
 router.put("/profile",        updateEmployerProfileController);

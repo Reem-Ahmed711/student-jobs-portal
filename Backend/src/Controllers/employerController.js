@@ -105,7 +105,17 @@ const getEmployerDashboardController = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const getHiringHistoryController = async (req, res) => {
+  try {
+    const result = await getHiringHistory(req.user.uid);
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
+// وفي module.exports أضف:
+// getHiringHistoryController,
 module.exports = {
   getEmployerProfileController,
   updateEmployerProfileController,
@@ -116,4 +126,5 @@ module.exports = {
   getEmployerStatsController,
   getEmployerDashboardController,
     createJobController,
+    getHiringHistoryController,
 };
