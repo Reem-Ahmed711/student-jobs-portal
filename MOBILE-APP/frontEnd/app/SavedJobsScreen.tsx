@@ -141,37 +141,75 @@ const SavedJobsScreen = () => {
 
   // تحميل الوظائف المحفوظة
  // تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
+// تحميل الوظائف المحفوظة
 const loadSavedJobs = async () => {
   try {
+    setLoading(true);
     const response = await getSavedJobs();
-    console.log("Saved jobs response:", response); // للتأكد
+    console.log("📦 Full saved jobs response:", JSON.stringify(response, null, 2));
     
-    if (response.success && response.data) {
-      // ✅ التعديل المهم هنا: استخراج job.job من response.data
+    if (response.success && response.data && Array.isArray(response.data)) {
+      console.log("📊 Number of saved jobs:", response.data.length);
+      
       const formattedJobs = response.data.map((item: any) => {
-        const jobData = item.job || item; // لو فيه job جوه، خدها
-        return {
-          id: jobData.id || jobData._id,
-          title: jobData.title,
-          department: jobData.department,
-          departmentCode: jobData.departmentCode || jobData.department?.substring(0, 8),
-          hours: jobData.hoursPerWeek || jobData.hours,
-          deadline: jobData.deadline ? new Date(jobData.deadline).toLocaleDateString() : 'No deadline',
-          salary: jobData.salary,
-          savedDate: item.savedAt ? new Date(item.savedAt.toDate()).toLocaleDateString() : new Date().toLocaleDateString(),
+        // استخراج بيانات الوظيفة من حقل job
+        const jobData = item.job || item;
+        
+        // معالجة savedAt
+        let savedDate = 'Recently';
+        if (item.savedAt) {
+          if (item.savedAt._seconds) {
+            const date = new Date(item.savedAt._seconds * 1000);
+            savedDate = date.toLocaleDateString('en-US');
+          } else if (item.savedAt.toDate) {
+            savedDate = item.savedAt.toDate().toLocaleDateString();
+          }
+        }
+        
+        // معالجة deadline
+        let deadline = 'No deadline';
+        if (jobData.deadline) {
+          try {
+            deadline = new Date(jobData.deadline).toLocaleDateString();
+          } catch (e) {
+            deadline = jobData.deadline;
+          }
+        }
+        
+        const formattedJob = {
+          id: jobData.id || jobData._id || item.savedId,
+          title: jobData.title || 'Untitled',
+          department: jobData.department || 'Not specified',
+          departmentCode: jobData.department?.substring(0, 8) || 'Dept',
+          hours: jobData.hoursPerWeek || jobData.hours || 'Flexible',
+          deadline: deadline,
+          salary: jobData.salary || 'Competitive',
+          savedDate: savedDate,
           match: jobData.matchPercentage || Math.floor(Math.random() * 30) + 70,
           skills: jobData.skills || ['Communication', 'Teamwork'],
-          description: jobData.description,
-          requirements: jobData.requirements,
-          applicants: jobData.applicantsCount,
+          description: jobData.description || '',
+          requirements: jobData.requirements || '',
+          applicants: jobData.applicantsCount || 0,
         };
+        
+        console.log(`✅ Formatted job: ${formattedJob.title} (${formattedJob.id})`);
+        return formattedJob;
       });
+      
+      console.log(`🎉 Total formatted jobs: ${formattedJobs.length}`);
       setSavedJobs(formattedJobs);
+      
+      if (formattedJobs.length === 0 && response.data.length > 0) {
+        console.warn("⚠️ Warning: Got data but formatting failed!");
+      }
     } else {
+      console.warn("⚠️ No saved jobs data:", response);
       setSavedJobs([]);
     }
   } catch (err) {
-    console.error("Error fetching saved jobs:", err);
+    console.error("❌ Error fetching saved jobs:", err);
     setSavedJobs([]);
   } finally {
     setLoading(false);

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableJobs, applyToJob, saveJob, unsaveJob, getSavedJobs, addComment, getComments, analyzeMatchWithAI } from '../src/api';
+import { getAvailableJobs, applyToJob, saveJob, unsaveJob, getSavedJobs, addComment, getComments, analyzeMatchWithAI,isJobSaved } from '../src/api';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -530,23 +530,39 @@ const JobsScreen = () => {
     }, [loadData])
   );
 
-  const handleSaveJob = useCallback(async (jobId: string) => {
-    setSavingId(jobId);
-    try {
-      const isSaved = savedJobs.includes(jobId);
-      if (isSaved) {
-        await unsaveJob(jobId);
+ const handleSaveJob = useCallback(async (jobId: string) => {
+  setSavingId(jobId);
+  try {
+    // ✅ نتحقق من الحالة الحقيقية من السيرفر
+    const checkResult = await isJobSaved(jobId);
+    const currentlySaved = checkResult.data?.saved === true;
+    
+    if (currentlySaved) {
+      // ✅ إلغاء حفظ
+      const result = await unsaveJob(jobId);
+      if (result.success) {
         setSavedJobs(prev => prev.filter(id => id !== jobId));
+        Alert.alert('Success', 'Job removed from saved');
       } else {
-        await saveJob(jobId);
-        setSavedJobs(prev => [...prev, jobId]);
+        Alert.alert('Error', result.message || 'Failed to unsave job');
       }
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save job');
-    } finally {
-      setSavingId(null);
+    } else {
+      // ✅ حفظ جديد
+      const result = await saveJob(jobId);
+      if (result.success) {
+        setSavedJobs(prev => [...prev, jobId]);
+        Alert.alert('Success', 'Job saved successfully');
+      } else {
+        Alert.alert('Error', result.message || 'Failed to save job');
+      }
     }
-  }, [savedJobs]);
+  } catch (err: any) {
+    console.error("Save/Unsave error:", err);
+    Alert.alert('Error', err?.message || 'Something went wrong');
+  } finally {
+    setSavingId(null);
+  }
+}, []);
 
   const handleApply = useCallback(async () => {
     if (!selectedJob) return;

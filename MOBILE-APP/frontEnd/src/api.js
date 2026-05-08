@@ -373,6 +373,7 @@ export const removeAdmin = async (uid) => {
 };
 
 // ================= SAVED JOBS (معدل بالكامل) =================
+// ================= SAVED JOBS (معدل) =================
 
 export const saveJob = async (jobId) => {
   try {
@@ -406,7 +407,7 @@ export const getSavedJobs = async () => {
   try {
     const res = await api.get("/api/saved-jobs");
     console.log("📥 Saved jobs response:", JSON.stringify(res.data, null, 2));
-    return res.data; // { success: true, data: [...] }
+    return res.data;
   } catch (err) {
     console.error("❌ Get saved jobs error:", err.response?.status, err.response?.data);
     return { success: false, data: [] };
@@ -416,7 +417,7 @@ export const getSavedJobs = async () => {
 export const isJobSaved = async (jobId) => {
   try {
     const res = await api.get(`/api/saved-jobs/check/${jobId}`);
-    return res.data; // { success: true, data: { saved: boolean } }
+    return res.data;
   } catch (err) {
     console.error("❌ Check saved job error:", err.response?.data);
     return { success: false, data: { saved: false } };
