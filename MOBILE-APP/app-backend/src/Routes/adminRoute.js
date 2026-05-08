@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middleware/verifyToken");
 const { requireAdmin } = require("../auth/roleGuard");
-const { admin, db } = require("../firebase"); 
+const { admin, db } = require("../firebase");
 const {
   getDashboardStats,
   getAllUsersController,
@@ -18,6 +18,7 @@ const {
   getAllAdminsController,
   getAdminLogsController,
   searchUsersController,
+  updateAllCommentCounts,
 } = require("../Controllers/adminController");
 
 // Helper middleware to check admin
@@ -47,6 +48,7 @@ router.delete("/users/:uid", adminDeleteUserController);
 router.get("/jobs", adminGetAllJobsController);
 router.delete("/jobs/:jobId", adminDeleteJobController);
 router.patch("/jobs/:jobId/status", adminUpdateJobStatusController);
+router.get("/update-comment-counts", updateAllCommentCounts);
 
 // Application Management
 router.get("/applications", adminGetAllApplicationsController);
@@ -65,14 +67,17 @@ router.put("/profile", async (req, res) => {
   try {
     const { name, department, phone } = req.body;
     const userId = req.user.uid;
-    
-    await db.collection("users").doc(userId).update({
-      name: name,
-      department: department,
-      phone: phone || "",
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    
+
+    await db
+      .collection("users")
+      .doc(userId)
+      .update({
+        name: name,
+        department: department,
+        phone: phone || "",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
     res.json({ success: true, message: "Profile updated successfully" });
   } catch (error) {
     console.error("Profile update error:", error.message);

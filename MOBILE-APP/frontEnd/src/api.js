@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
 
-const API_URL = "http://10.163.82.249:3000";
+const API_URL = "http://192.168.1.54:3000";
 console.log(" API URL:", API_URL);
 const api = axios.create({
   baseURL: API_URL,
@@ -380,7 +380,11 @@ export const saveJob = async (jobId) => {
     console.log("✅ Job saved successfully:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
-    console.error("❌ Save job error:", err.response?.status, err.response?.data);
+    console.error(
+      "❌ Save job error:",
+      err.response?.status,
+      err.response?.data,
+    );
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -394,7 +398,11 @@ export const unsaveJob = async (jobId) => {
     console.log("✅ Job unsaved successfully:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
-    console.error("❌ Unsave job error:", err.response?.status, err.response?.data);
+    console.error(
+      "❌ Unsave job error:",
+      err.response?.status,
+      err.response?.data,
+    );
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -408,7 +416,11 @@ export const getSavedJobs = async () => {
     console.log("📥 Saved jobs response:", JSON.stringify(res.data, null, 2));
     return res.data; // { success: true, data: [...] }
   } catch (err) {
-    console.error("❌ Get saved jobs error:", err.response?.status, err.response?.data);
+    console.error(
+      "❌ Get saved jobs error:",
+      err.response?.status,
+      err.response?.data,
+    );
     return { success: false, data: [] };
   }
 };
