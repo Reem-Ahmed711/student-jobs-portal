@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
 import { mockEmployerJobs, mockApplicants } from '../../utils/mockData';
 import { acceptApplication } from '../../services/api';
-
+import { getEmployerDashboard, getEmployerJobs, getEmployerStats } from '../../services/api';
 const EmployerDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -17,19 +17,56 @@ const EmployerDashboard = () => {
   const [activeJobs, setActiveJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setTimeout(() => {
+// D:\student-jobs-portal\Frontend\src\pages\employer\EmployerDashboard.jsx
+// استبدل الـ useEffect بهذا:
+
+
+
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // جلب الـ dashboard كامل
+      const response = await getEmployerDashboard();
+      console.log('Dashboard response:', response);
+      
+      const data = response.data?.data || response.data || {};
+      const profile = data.profile || {};
+      const jobs = data.jobs || [];
+      const stats = data.stats || {};
+      
+      // تحديث الإحصائيات
       setStats({
-        activeJobs: 6,
-        totalApplicants: 48,
-        positionsToFill: 4,
-        avgMatchScore: 76
+        activeJobs: stats.totalJobs || 0,
+        totalApplicants: stats.totalApplications || 0,
+        positionsToFill: stats.pending || 0,
+        avgMatchScore: stats.accepted ? Math.round((stats.accepted / (stats.totalApplications || 1)) * 100) : 0
       });
-      setRecentApplicants(mockApplicants.slice(0, 4));
-      setActiveJobs(mockEmployerJobs);
+      
+      // تحويل jobs للصيغة المطلوبة
+      const formattedJobs = jobs.map(job => ({
+        id: job.id,
+        title: job.title,
+        department: job.department,
+        applicants: job.applicantsCount || 0,
+        daysLeft: job.deadline ? Math.ceil((new Date(job.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : 30,
+        matchScore: job.topMatch || 75,
+        status: job.status === 'active' ? 'Active' : 'Urgent'
+      }));
+      setActiveJobs(formattedJobs);
+      
+      // TODO: جلب الـ recent applicants من API منفصل
+      // setRecentApplicants(...);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+  
+  fetchDashboardData();
+}, []);
 
 const handleAccept = async (applicantId) => {
   try {

@@ -1,6 +1,8 @@
 // D:\student-jobs-portal\Frontend\src\services\api.js
 import axios from 'axios';
 
+
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const apiClient = axios.create({
@@ -157,11 +159,30 @@ export const getEmployerJobs = async () => {
   return response;
 };
 
+// ✅ الطريقة الموصى بها - أوضح وأسهل للقراءة
 export const getJobApplicants = async (jobId) => {
-  const response = await apiClient.get(`/employer/jobs/${jobId}/applications`);
-  return response;
+  try {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    
+    const url = `${API_BASE_URL}/employer/jobs/${jobId}/applications`;
+    
+    const response = await axios.get(url, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('Error in getJobApplicants:', error);
+    throw error;
+  }
 };
-
 // ==================== CV & AI ====================
 export const uploadCV = async (file) => {
   const formData = new FormData();
@@ -347,5 +368,6 @@ export const deleteUser = async (userId) => {
 export const getAdminStats = async () => {
   return getPlatformStats();
 };
+
 
 export default apiClient;

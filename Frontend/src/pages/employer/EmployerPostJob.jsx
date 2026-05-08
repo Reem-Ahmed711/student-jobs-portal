@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
+import { createJob } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const EmployerPostJob = () => {
   const [step, setStep] = useState(1);
