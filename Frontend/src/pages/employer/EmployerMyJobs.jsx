@@ -1,120 +1,129 @@
-// D:\student-jobs-portal\Frontend\src\pages\employer\EmployerMyJobs.jsx
+// C:\Student-job-portal\Frontend\src\pages\employer\EmployerMyJobs.jsx
 import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
-import { getEmployerJobs } from '../../services/api';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { useAuth } from '../../context/AuthContext';
+import { getEmployerJobs, deleteJob, updateJob } from '../../services/api';
 
 const EmployerMyJobs = () => {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState([]);
-  const [filteredJobs, setFilteredJobs] = useState([]);
-  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [editingJob, setEditingJob] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+
+  // Form data for editing
+  const [editForm, setEditForm] = useState({
+    title: '',
+    department: '',
+    type: '',
+    location: '',
+    description: '',
+    requirements: [],
+    salary: '',
+    hours: '',
+    deadline: ''
+  });
 
   useEffect(() => {
     fetchJobs();
   }, []);
 
-  useEffect(() => {
-    // فلترة الوظائف حسب الحالة
-    let result = [...jobs];
-    
-    if (filter !== 'all') {
-      if (filter === 'active') {
-        result = result.filter(job => job.status === 'active' || job.status === 'Active');
-      } else if (filter === 'pending') {
-        result = result.filter(job => job.status === 'pending' || job.status === 'Pending');
-      } else if (filter === 'urgent') {
-        result = result.filter(job => job.status === 'urgent' || job.status === 'Urgent');
-      } else if (filter === 'closed') {
-        result = result.filter(job => job.status === 'closed' || job.status === 'Closed');
-      }
-    }
-    
-    setFilteredJobs(result);
-  }, [filter, jobs]);
-
   const fetchJobs = async () => {
     setLoading(true);
-    setError('');
     try {
       const response = await getEmployerJobs();
-      console.log('Jobs response:', response);
-      
-      // استخراج البيانات من الـ response بشكل صحيح
-      let jobsData = [];
-      if (response.data?.success && Array.isArray(response.data?.data)) {
-        jobsData = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        jobsData = response.data;
-      } else if (response.data?.data && Array.isArray(response.data?.data)) {
-        jobsData = response.data.data;
-      } else if (response.data?.jobs && Array.isArray(response.data?.jobs)) {
-        jobsData = response.data.jobs;
-      } else {
-        jobsData = [];
-      }
-      
-      // تنسيق البيانات للعرض
-      const formattedJobs = jobsData.map(job => ({
-        id: job.id,
-        title: job.title || 'Untitled Job',
-        department: job.department || job.category || 'N/A',
-        postedDate: job.createdAt ? new Date(job.createdAt).toLocaleDateString('en-GB') : 'N/A',
-        deadline: job.deadline ? new Date(job.deadline).toLocaleDateString('en-GB') : 'Not set',
-        applicants: job.applicantsCount || job.applicationsCount || 0,
-        status: getJobStatus(job),
-        matchScore: job.topMatchScore || job.matchScore || 75,
-        views: job.views || 0,
-        description: job.description || '',
-        type: job.type || 'Part-Time',
-        location: job.location || 'On Campus'
-      }));
-      
-      setJobs(formattedJobs);
-      setFilteredJobs(formattedJobs);
+      setJobs(response.data || []);
     } catch (error) {
       console.error('Error fetching jobs:', error);
-      setError('Failed to load jobs. Please refresh the page.');
+      setMessage('Failed to load jobs');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
   };
 
-  const getJobStatus = (job) => {
-    // تحديد حالة الوظيفة بناءً على البيانات من الباكند
-    if (job.status === 'active' || job.approved === true) {
-      return 'Active';
-    }
-    if (job.status === 'closed') {
-      return 'Closed';
-    }
-    if (job.deadline && new Date(job.deadline) < new Date()) {
-      return 'Expired';
-    }
-    if (job.isUrgent === true || job.priority === 'high') {
-      return 'Urgent';
-    }
-    return 'Pending';
+  const handleEditClick = (job) => {
+    setEditingJob(job);
+    setEditForm({
+      title: job.title || '',
+      department: job.department || '',
+      type: job.type || 'Part-Time',
+      location: job.location || '',
+      description: job.description || '',
+      requirements: job.requirements || [],
+      salary: job.salary || '',
+      hours: job.hours || '',
+      deadline: job.deadline || ''
+    });
+    setShowEditModal(true);
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Active': return { bg: '#d4edda', color: '#155724' };
-      case 'Urgent': return { bg: '#fff3cd', color: '#856404' };
-      case 'Expired': return { bg: '#f8d7da', color: '#721c24' };
-      case 'Closed': return { bg: '#e2e3e5', color: '#383d41' };
-      default: return { bg: '#cce5ff', color: '#004085' };
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddRequirement = () => {
+    const input = document.getElementById('newRequirement');
+    if (input.value.trim()) {
+      setEditForm(prev => ({
+        ...prev,
+        requirements: [...prev.requirements, input.value.trim()]
+      }));
+      input.value = '';
     }
   };
 
-  const getStatusBadgeClass = (status) => {
-    switch(status) {
-      case 'Active': return 'success';
-      case 'Urgent': return 'warning';
-      case 'Expired': return 'danger';
-      case 'Closed': return 'secondary';
-      default: return 'info';
+  const handleRemoveRequirement = (index) => {
+    setEditForm(prev => ({
+      ...prev,
+      requirements: prev.requirements.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleUpdateJob = async () => {
+    try {
+      await updateJob(editingJob.id, editForm);
+      setMessage('Job updated successfully!');
+      setMessageType('success');
+      setShowEditModal(false);
+      fetchJobs(); // Refresh list
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating job:', error);
+      setMessage('Failed to update job');
+      setMessageType('error');
     }
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    try {
+      await deleteJob(jobId);
+      setMessage('Job deleted successfully!');
+      setMessageType('success');
+      setShowDeleteConfirm(null);
+      fetchJobs(); // Refresh list
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      setMessage('Failed to delete job');
+      setMessageType('error');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    if (status === 'active') {
+      return { bg: '#d4edda', color: '#155724', text: 'Active' };
+    } else if (status === 'pending') {
+      return { bg: '#fff3cd', color: '#856404', text: 'Pending' };
+    } else if (status === 'closed') {
+      return { bg: '#f8d7da', color: '#721c24', text: 'Closed' };
+    }
+    return { bg: '#e5e7eb', color: '#374151', text: status || 'Draft' };
   };
 
   if (loading) {
@@ -122,10 +131,7 @@ const EmployerMyJobs = () => {
       <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh' }}>
         <Navbar />
         <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-            <div className="spinner"></div>
-            <p style={{ marginLeft: '15px', color: '#666' }}>Loading your jobs...</p>
-          </div>
+          <LoadingSpinner size="large" />
         </div>
       </div>
     );
@@ -137,298 +143,221 @@ const EmployerMyJobs = () => {
       
       <div style={{ marginLeft: '280px', padding: '30px', width: 'calc(100% - 280px)' }}>
         {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '30px',
-          animation: 'slideInUp 0.5s ease-out'
-        }}>
-          <div>
-            <h1 style={{ fontSize: '28px', color: '#0B2A4A', fontWeight: '600', marginBottom: '5px' }}>
-              My Job Postings
-            </h1>
-            <p style={{ color: '#666' }}>Manage and track all your job listings</p>
-          </div>
-          <button
-            onClick={() => window.location.href = '/employer-post-job'}
-            className="btn btn-primary"
-            style={{
-              padding: '12px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#0B2A4A',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            <i className="fas fa-plus"></i>
-            Post New Job
-          </button>
+        <div style={{ marginBottom: '30px', animation: 'slideInUp 0.5s ease-out' }}>
+          <h1 style={{ fontSize: '28px', color: '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>
+            <i className="fas fa-briefcase" style={{ marginRight: '10px' }}></i>
+            My Jobs
+          </h1>
+          <p style={{ color: '#666' }}>Manage your posted jobs - edit, update, or remove listings</p>
         </div>
 
-        {/* Error Message */}
-        {error && (
+        {/* Message */}
+        {message && (
           <div style={{
-            background: '#f8d7da',
-            color: '#721c24',
-            padding: '15px',
-            borderRadius: '8px',
+            background: messageType === 'success' ? '#d4edda' : '#f8d7da',
+            color: messageType === 'success' ? '#155724' : '#721c24',
+            padding: '15px 20px',
+            borderRadius: '12px',
             marginBottom: '20px',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'slideInUp 0.3s ease-out'
           }}>
-            <span><i className="fas fa-exclamation-triangle"></i> {error}</span>
-            <button 
-              onClick={fetchJobs}
-              style={{
-                background: '#721c24',
-                color: 'white',
-                border: 'none',
-                padding: '5px 15px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-            >
-              Retry
-            </button>
+            <i className={`fas ${messageType === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
+            <span>{message}</span>
           </div>
         )}
 
-        {/* Filter Bar */}
-        <div className="card" style={{ 
-          marginBottom: '30px', 
-          animation: 'slideInUp 0.6s ease-out',
-          background: 'white',
-          borderRadius: '12px',
-          padding: '20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        {/* Stats Summary */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '20px',
+          marginBottom: '30px'
         }}>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ color: '#0B2A4A', fontWeight: '500' }}>Filter by:</span>
-            {['all', 'active', 'pending', 'urgent', 'closed'].map(status => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`btn ${filter === status ? 'btn-primary' : 'btn-outline'}`}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  textTransform: 'capitalize',
-                  background: filter === status ? '#0B2A4A' : 'transparent',
-                  color: filter === status ? 'white' : '#0B2A4A',
-                  border: filter === status ? 'none' : '1px solid #0B2A4A',
-                  borderRadius: '20px',
-                  cursor: 'pointer'
-                }}
-              >
-                {status === 'all' ? 'All Jobs' : 
-                 status === 'active' ? 'Active' :
-                 status === 'pending' ? 'Pending Approval' :
-                 status === 'urgent' ? 'Urgent' : 'Closed'}
-                {status !== 'all' && (
-                  <span style={{
-                    marginLeft: '8px',
-                    background: filter === status ? 'rgba(255,255,255,0.2)' : '#E6F0FA',
-                    padding: '2px 6px',
-                    borderRadius: '20px',
-                    fontSize: '11px'
-                  }}>
-                    {filteredJobs.filter(j => {
-                      if (status === 'active') return j.status === 'Active';
-                      if (status === 'pending') return j.status === 'Pending';
-                      if (status === 'urgent') return j.status === 'Urgent';
-                      if (status === 'closed') return j.status === 'Closed';
-                      return false;
-                    }).length}
-                  </span>
-                )}
-              </button>
-            ))}
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={fetchJobs}
-              style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
-            >
-              <i className="fas fa-sync-alt"></i> Refresh
-            </button>
+          <div className="stat-card" style={{ background: 'white', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '28px', color: '#1E3A5F' }}>{jobs.length}</h3>
+            <p style={{ color: '#666' }}>Total Jobs</p>
+          </div>
+          <div className="stat-card" style={{ background: 'white', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '28px', color: '#16a34a' }}>{jobs.filter(j => j.status === 'active').length}</h3>
+            <p style={{ color: '#666' }}>Active</p>
+          </div>
+          <div className="stat-card" style={{ background: 'white', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '28px', color: '#f59e0b' }}>{jobs.filter(j => j.status === 'pending').length}</h3>
+            <p style={{ color: '#666' }}>Pending</p>
+          </div>
+          <div className="stat-card" style={{ background: 'white', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '28px', color: '#ef4444' }}>{jobs.reduce((sum, j) => sum + (j.applicantsCount || 0), 0)}</h3>
+            <p style={{ color: '#666' }}>Total Applicants</p>
           </div>
         </div>
 
         {/* Jobs List */}
-        {filteredJobs.length === 0 ? (
-          <div className="card" style={{ 
-            textAlign: 'center', 
-            padding: '60px',
-            background: 'white',
-            borderRadius: '12px',
-            animation: 'slideInUp 0.7s ease-out'
-          }}>
-            <i className="fas fa-briefcase" style={{ fontSize: '48px', color: '#ccc', marginBottom: '15px' }}></i>
-            <h3 style={{ color: '#666', marginBottom: '10px' }}>No jobs found</h3>
-            <p style={{ color: '#999', marginBottom: '20px' }}>
-              {filter !== 'all' 
-                ? `You don't have any ${filter} jobs at the moment.` 
-                : "You haven't posted any jobs yet."}
-            </p>
-            <button
+        {jobs.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '60px', animation: 'slideInUp 0.6s ease-out' }}>
+            <i className="fas fa-briefcase" style={{ fontSize: '64px', color: '#ccc', marginBottom: '20px' }}></i>
+            <h3 style={{ color: '#666', marginBottom: '10px' }}>No jobs posted yet</h3>
+            <p style={{ color: '#999', marginBottom: '20px' }}>Click "Post a Job" to create your first job listing</p>
+            <button 
               onClick={() => window.location.href = '/employer-post-job'}
               className="btn btn-primary"
-              style={{
-                padding: '10px 20px',
-                background: '#0B2A4A',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+              style={{ padding: '12px 24px' }}
             >
-              <i className="fas fa-plus"></i> Post Your First Job
+              <i className="fas fa-plus" style={{ marginRight: '8px' }}></i>
+              Post a Job
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {filteredJobs.map((job, index) => {
-              const statusColors = getStatusColor(job.status);
-              const daysLeft = job.deadline !== 'Not set' 
-                ? Math.ceil((new Date(job.deadline) - new Date()) / (1000 * 60 * 60 * 24))
-                : null;
-              
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {jobs.map((job, index) => {
+              const status = getStatusBadge(job.status);
               return (
-                <div 
-                  key={job.id} 
-                  className="card" 
-                  style={{ 
-                    animation: `slideInUp ${0.7 + index * 0.05}s ease-out`,
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    borderLeft: job.status === 'Urgent' ? '4px solid #f59e0b' : 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px', flexWrap: 'wrap', gap: '15px' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ color: '#0B2A4A', fontSize: '18px', fontWeight: '600', marginBottom: '5px' }}>
+                <div key={job.id} className="card" style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  animation: `slideInUp ${0.6 + index * 0.1}s ease-out`
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                }}>
+                  {/* Job Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1E3A5F', marginBottom: '4px' }}>
                         {job.title}
                       </h3>
-                      <p style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
-                        {job.department} Department • {job.type}
+                      <p style={{ color: '#666', fontSize: '14px' }}>
+                        <i className="fas fa-building" style={{ marginRight: '6px' }}></i>
+                        {job.department || 'Department'}
                       </p>
-                      <div style={{ display: 'flex', gap: '20px', color: '#999', fontSize: '13px', flexWrap: 'wrap' }}>
-                        <span><i className="far fa-calendar-alt"></i> Posted: {job.postedDate}</span>
-                        {daysLeft !== null && daysLeft > 0 && (
-                          <span><i className="far fa-clock"></i> {daysLeft} days left</span>
-                        )}
-                        {daysLeft !== null && daysLeft <= 0 && (
-                          <span><i className="fas fa-exclamation-circle"></i> Deadline passed</span>
-                        )}
-                        <span><i className="far fa-eye"></i> {job.views} views</span>
-                      </div>
                     </div>
-                    
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{
-                        background: '#E6F0FA',
-                        padding: '8px 16px',
-                        borderRadius: '30px',
-                        marginBottom: '8px',
-                        textAlign: 'center'
-                      }}>
-                        <span style={{ fontSize: '20px', fontWeight: '700', color: '#0B2A4A' }}>{job.applicants}</span>
-                        <span style={{ color: '#666', fontSize: '12px', marginLeft: '4px' }}>applicants</span>
-                      </div>
-                      <span className={`badge badge-${getStatusBadgeClass(job.status)}`} style={{
-                        background: statusColors.bg,
-                        color: statusColors.color,
-                        padding: '4px 12px',
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span className="badge" style={{
+                        background: status.bg,
+                        color: status.color,
+                        padding: '6px 14px',
                         borderRadius: '20px',
                         fontSize: '12px',
                         fontWeight: '600'
                       }}>
-                        {job.status}
+                        {status.text}
                       </span>
+                      <button
+                        onClick={() => setShowDeleteConfirm(job.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          borderRadius: '8px',
+                          transition: 'background 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <i className="fas fa-trash" style={{ fontSize: '18px' }}></i>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Match Score Bar - فقط للوظائف النشطة */}
-                  {job.status === 'Active' && (
-                    <div style={{ marginBottom: '15px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span style={{ fontSize: '12px', color: '#666' }}>Top Match Score</span>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#0B2A4A' }}>{job.matchScore}%</span>
-                      </div>
-                      <div className="progress-bar" style={{
-                        background: '#e0e0e0',
-                        borderRadius: '10px',
-                        height: '8px',
-                        overflow: 'hidden'
-                      }}>
-                        <div className="progress-fill" style={{ 
-                          width: `${job.matchScore}%`, 
-                          background: '#0B2A4A',
-                          height: '100%',
-                          borderRadius: '10px'
-                        }} />
-                      </div>
+                  {/* Job Details */}
+                  <div style={{ display: 'flex', gap: '20px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    {job.type && (
+                      <span style={{ fontSize: '13px', color: '#666' }}>
+                        <i className="fas fa-clock" style={{ marginRight: '4px' }}></i>
+                        {job.type}
+                      </span>
+                    )}
+                    {job.hours && (
+                      <span style={{ fontSize: '13px', color: '#666' }}>
+                        <i className="fas fa-hourglass-half" style={{ marginRight: '4px' }}></i>
+                        {job.hours}
+                      </span>
+                    )}
+                    {job.salary && (
+                      <span style={{ fontSize: '13px', color: '#666' }}>
+                        <i className="fas fa-money-bill-alt" style={{ marginRight: '4px' }}></i>
+                        {job.salary}
+                      </span>
+                    )}
+                    {job.location && (
+                      <span style={{ fontSize: '13px', color: '#666' }}>
+                        <i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i>
+                        {job.location}
+                      </span>
+                    )}
+                    {job.applicantsCount !== undefined && (
+                      <span style={{ fontSize: '13px', color: '#1E3A5F' }}>
+                        <i className="fas fa-users" style={{ marginRight: '4px' }}></i>
+                        {job.applicantsCount} applicants
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description Preview */}
+                  {job.description && (
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px', lineHeight: '1.5' }}>
+                      {job.description.length > 150 ? job.description.substring(0, 150) + '...' : job.description}
+                    </p>
+                  )}
+
+                  {/* Skills */}
+                  {job.skills && job.skills.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                      {job.skills.slice(0, 5).map((skill, idx) => (
+                        <span key={idx} className="skill-tag" style={{
+                          background: '#E8F0FE',
+                          color: '#1E3A5F',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px'
+                        }}>
+                          {skill}
+                        </span>
+                      ))}
+                      {job.skills.length > 5 && (
+                        <span style={{ fontSize: '12px', color: '#666' }}>+{job.skills.length - 5} more</span>
+                      )}
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                    <button 
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: '16px', marginTop: '8px' }}>
+                    <button
+                      onClick={() => handleEditClick(job)}
                       className="btn btn-outline"
-                      onClick={() => window.location.href = `/employer-job-analytics?id=${job.id}`}
                       style={{
-                        padding: '8px 16px',
-                        background: 'transparent',
-                        border: '1px solid #0B2A4A',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: '#0B2A4A'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 20px'
                       }}
                     >
-                      <i className="fas fa-chart-bar"></i> Analytics
+                      <i className="fas fa-edit"></i>
+                      Edit Job
                     </button>
-                    <button 
-                      className="btn btn-outline"
-                      onClick={() => window.location.href = `/employer-edit-job?id=${job.id}`}
-                      style={{
-                        padding: '8px 16px',
-                        background: 'transparent',
-                        border: '1px solid #0B2A4A',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: '#0B2A4A'
-                      }}
-                    >
-                      <i className="fas fa-edit"></i> Edit
-                    </button>
-                    <button 
-                      className="btn btn-primary"
+                    <button
                       onClick={() => window.location.href = `/employer-applicants?jobId=${job.id}`}
+                      className="btn btn-primary"
                       style={{
-                        padding: '8px 16px',
-                        background: '#0B2A4A',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 20px'
                       }}
                     >
-                      <i className="fas fa-users"></i> View Applicants ({job.applicants})
+                      <i className="fas fa-users"></i>
+                      View Applicants
                     </button>
                   </div>
                 </div>
@@ -436,26 +365,277 @@ const EmployerMyJobs = () => {
             })}
           </div>
         )}
-
-        {/* Summary Stats */}
-        {jobs.length > 0 && (
-          <div style={{ 
-            marginTop: '20px', 
-            padding: '15px', 
-            background: 'white', 
-            borderRadius: '8px', 
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <p style={{ color: '#666' }}>
-              Total Jobs: <strong>{jobs.length}</strong> | 
-              Active: <strong>{jobs.filter(j => j.status === 'Active').length}</strong> |
-              Pending: <strong>{jobs.filter(j => j.status === 'Pending').length}</strong> |
-              Total Applicants: <strong>{jobs.reduce((sum, j) => sum + (j.applicants || 0), 0)}</strong>
-            </p>
-          </div>
-        )}
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && editingJob && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeIn 0.3s ease-out'
+        }} onClick={() => setShowEditModal(false)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            width: '90%',
+            maxWidth: '700px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            padding: '30px',
+            animation: 'slideInUp 0.3s ease-out'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '24px', color: '#1E3A5F' }}>
+                <i className="fas fa-edit" style={{ marginRight: '10px' }}></i>
+                Edit Job
+              </h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '20px' }}>
+              <div>
+                <label className="input-label">Job Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={editForm.title}
+                  onChange={handleEditChange}
+                  className="input-field"
+                  style={{ paddingLeft: '1rem' }}
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Department</label>
+                <select
+                  name="department"
+                  value={editForm.department}
+                  onChange={handleEditChange}
+                  className="input-field"
+                  style={{ paddingLeft: '1rem' }}
+                >
+                  <option value="">Select Department</option>
+                  <option>Computer Science</option>
+                  <option>Physics</option>
+                  <option>Chemistry</option>
+                  <option>Mathematics</option>
+                  <option>Biology</option>
+                  <option>Geology</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label className="input-label">Job Type</label>
+                  <select
+                    name="type"
+                    value={editForm.type}
+                    onChange={handleEditChange}
+                    className="input-field"
+                    style={{ paddingLeft: '1rem' }}
+                  >
+                    <option>Part-Time</option>
+                    <option>Full-Time</option>
+                    <option>Internship</option>
+                    <option>Research Assistant</option>
+                    <option>Teaching Assistant</option>
+                    <option>Lab Assistant</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="input-label">Location</label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={editForm.location}
+                    onChange={handleEditChange}
+                    className="input-field"
+                    style={{ paddingLeft: '1rem' }}
+                    placeholder="Building, Room number"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label className="input-label">Salary</label>
+                  <input
+                    type="text"
+                    name="salary"
+                    value={editForm.salary}
+                    onChange={handleEditChange}
+                    className="input-field"
+                    style={{ paddingLeft: '1rem' }}
+                    placeholder="2000 EGP/mo"
+                  />
+                </div>
+
+                <div>
+                  <label className="input-label">Hours</label>
+                  <input
+                    type="text"
+                    name="hours"
+                    value={editForm.hours}
+                    onChange={handleEditChange}
+                    className="input-field"
+                    style={{ paddingLeft: '1rem' }}
+                    placeholder="15 hrs/week"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">Job Description</label>
+                <textarea
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditChange}
+                  rows="4"
+                  className="input-field"
+                  style={{ paddingLeft: '1rem', resize: 'vertical' }}
+                  placeholder="Describe the job responsibilities and expectations..."
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Requirements</label>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <input
+                    type="text"
+                    id="newRequirement"
+                    placeholder="e.g., GPA > 3.0, Python experience..."
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddRequirement()}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddRequirement}
+                    className="btn btn-primary"
+                    style={{ padding: '10px 20px' }}
+                  >
+                    Add
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {editForm.requirements.map((req, idx) => (
+                    <span key={idx} style={{
+                      background: '#E6F0FA',
+                      color: '#1E3A5F',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      {req}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRequirement(idx)}
+                        style={{ background: 'none', border: 'none', color: '#1E3A5F', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="btn btn-outline"
+                  style={{ padding: '12px 24px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateJob}
+                  className="btn btn-primary"
+                  style={{ padding: '12px 24px' }}
+                >
+                  <i className="fas fa-save" style={{ marginRight: '8px' }}></i>
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={() => setShowDeleteConfirm(null)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            width: '400px',
+            textAlign: 'center',
+            animation: 'slideInUp 0.3s ease-out'
+          }} onClick={(e) => e.stopPropagation()}>
+            <i className="fas fa-exclamation-triangle" style={{ fontSize: '48px', color: '#ef4444', marginBottom: '20px' }}></i>
+            <h3 style={{ fontSize: '20px', color: '#1E3A5F', marginBottom: '10px' }}>Delete Job?</h3>
+            <p style={{ color: '#666', marginBottom: '25px' }}>This action cannot be undone. All applicants will be notified.</p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="btn btn-outline"
+                style={{ padding: '10px 24px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteJob(showDeleteConfirm)}
+                className="btn btn-danger"
+                style={{ padding: '10px 24px' }}
+              >
+                <i className="fas fa-trash" style={{ marginRight: '8px' }}></i>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
