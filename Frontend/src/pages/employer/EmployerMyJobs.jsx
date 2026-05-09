@@ -1,4 +1,5 @@
-// C:\Student-job-portal\Frontend\src\pages\employer\EmployerMyJobs.jsx
+// D:\student-jobs-portal\Frontend\src\pages\employer\EmployerMyJobs.jsx
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -36,14 +37,73 @@ const EmployerMyJobs = () => {
     setLoading(true);
     try {
       const response = await getEmployerJobs();
-      setJobs(response.data || []);
+      console.log('Jobs response:', response.data);
+      
+      // ✅ استخراج البيانات بشكل آمن والتأكد إنها array
+      let jobsData = [];
+      
+      if (response.data?.success && Array.isArray(response.data?.data)) {
+        jobsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        jobsData = response.data;
+      } else if (response.data?.data && Array.isArray(response.data?.data)) {
+        jobsData = response.data.data;
+      } else if (response.data?.jobs && Array.isArray(response.data?.jobs)) {
+        jobsData = response.data.jobs;
+      } else {
+        console.log("Unexpected response structure:", response.data);
+        jobsData = [];
+      }
+      
+      // ✅ التأكد أن jobsData array
+      if (!Array.isArray(jobsData)) {
+        console.error("jobsData is not an array:", jobsData);
+        jobsData = [];
+      }
+      
+      // ✅ تنسيق البيانات للعرض مع التأكد من وجود القيم
+      const formattedJobs = jobsData.map(job => ({
+        id: job.id || Math.random().toString(),
+        title: job.title || 'Untitled Job',
+        department: job.department || job.category || 'N/A',
+        type: job.type || 'Part-Time',
+        location: job.location || 'On Campus',
+        description: job.description || '',
+        requirements: job.requirements || job.skills || [],
+        salary: job.salary || (job.salaryMin && job.salaryMax ? `${job.salaryMin}-${job.salaryMax} EGP` : 'Negotiable'),
+        hours: job.hours || '15 hrs/week',
+        deadline: job.deadline || '',
+        status: getJobStatus(job),
+        applicantsCount: job.applicantsCount || job.applicationsCount || 0,
+        skills: job.skills || [],
+        createdAt: job.createdAt
+      }));
+      
+      setJobs(formattedJobs);
     } catch (error) {
       console.error('Error fetching jobs:', error);
       setMessage('Failed to load jobs');
       setMessageType('error');
+      setJobs([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getJobStatus = (job) => {
+    if (job.status === 'active' || job.approved === true) {
+      return 'active';
+    }
+    if (job.status === 'closed') {
+      return 'closed';
+    }
+    if (job.deadline && new Date(job.deadline) < new Date()) {
+      return 'closed';
+    }
+    if (job.isUrgent === true || job.priority === 'high') {
+      return 'pending';
+    }
+    return job.status || 'pending';
   };
 
   const handleEditClick = (job) => {
@@ -69,7 +129,7 @@ const EmployerMyJobs = () => {
 
   const handleAddRequirement = () => {
     const input = document.getElementById('newRequirement');
-    if (input.value.trim()) {
+    if (input && input.value.trim()) {
       setEditForm(prev => ({
         ...prev,
         requirements: [...prev.requirements, input.value.trim()]
