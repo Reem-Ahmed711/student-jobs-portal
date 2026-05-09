@@ -1,6 +1,5 @@
 const { db } = require("../config/firebase");
 
-// ---- LIKES ----
 const checkExistingLike = async (userId, jobId) => {
   const likeRef = db.collection("likes").doc(`${userId}_${jobId}`);
   const likeDoc = await likeRef.get();
@@ -21,7 +20,6 @@ const removeLike = async (userId, jobId) => {
   await likeRef.delete();
 };
 
-// ---- COMMENTS ----
 const createComment = async ({ userId, jobId, comment }) => {
   const newComment = {
     userId,
