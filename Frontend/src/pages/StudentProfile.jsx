@@ -1,115 +1,109 @@
-// src/pages/StudentProfile.jsx
+// C:\Student-job-portal\Frontend\src\pages\StudentProfile.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { getProfile, updateProfile, uploadCV, uploadProfileImage, deleteProfileImage } from '../services/api';
+import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getProfile, updateProfile, uploadProfileImage, deleteProfileImage } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const StudentProfile = () => {
-  const { user, setUser, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { darkMode } = useTheme();
-  const [profileData, setProfileData] = useState(null);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [formData, setFormData] = useState({
+  const [stats, setStats] = useState({
+    totalApplications: 0,
+    savedJobs: 0,
+    interviews: 0,
+    profileCompletion: 0
+  });
+  
+  const [profile, setProfile] = useState({
     name: '',
     email: '',
     phone: '',
-    bio: '',
     department: '',
     year: '',
     gpa: '',
-    skills: []
+    bio: '',
+    skills: [],
+    linkedin: '',
+    github: '',
+    website: '',
+    profileImage: ''
   });
-  const [newSkill, setNewSkill] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
       try {
-        const response = await getProfile();
-        console.log('📦 Profile response:', response.data);
-        
-        let data = response.data;
-        if (response.data?.data) data = response.data.data;
-        if (response.data?.user) data = response.data.user;
-        
-        if (data && typeof data === 'object') {
-          setProfileData(data);
-          setFormData({
-            name: data.name || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            bio: data.bio || '',
-            department: data.department || '',
-            year: data.year || '',
-            gpa: data.gpa || '',
-            skills: data.skills || []
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
+        // First from user context
         if (user) {
-          setProfileData(user);
-          setFormData({
+          setProfile({
             name: user.name || '',
             email: user.email || '',
             phone: user.phone || '',
-            bio: user.bio || '',
             department: user.department || '',
             year: user.year || '',
             gpa: user.gpa || '',
-            skills: user.skills || []
+            bio: user.bio || '',
+            skills: user.skills || [],
+            linkedin: user.linkedin || '',
+            github: user.github || '',
+            website: user.website || '',
+            profileImage: user.profileImage || ''
+          });
+          if (user.profileImage) setProfileImagePreview(user.profileImage);
+          
+          setStats({
+            totalApplications: user.totalApplications || 0,
+            savedJobs: user.savedJobs || 0,
+            interviews: user.interviews || 0,
+            profileCompletion: user.profileCompletion || 70
           });
         }
+        
+        // Then fetch fresh from API
+        try {
+          const response = await getProfile();
+          if (response.data) {
+            setProfile(prev => ({
+              ...prev,
+              ...response.data,
+              skills: response.data.skills || prev.skills
+            }));
+            if (response.data.profileImage) setProfileImagePreview(response.data.profileImage);
+            setStats({
+              totalApplications: response.data.totalApplications || 0,
+              savedJobs: response.data.savedJobs || 0,
+              interviews: response.data.interviews || 0,
+              profileCompletion: response.data.profileCompletion || 70
+            });
+          }
+        } catch (err) {
+          console.log('Could not fetch fresh profile');
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchProfile();
   }, [user]);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const addSkill = () => {
-    if (newSkill && !formData.skills.includes(newSkill)) {
-      setFormData(prev => ({ ...prev, skills: [...prev.skills, newSkill] }));
-      setNewSkill('');
-    }
-  };
-
-  const removeSkill = (skill) => {
-    setFormData(prev => ({ ...prev, skills: prev.skills.filter(s => s !== skill) }));
-  };
-
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      const response = await updateProfile(formData);
-      if (response.data?.success) {
-        setProfileData(formData);
-        if (setUser) {
-          setUser({ ...user, ...formData });
-        }
-        if (updateUser) {
-          updateUser(formData);
-        }
-        setIsEditing(false);
-        alert('✅ Profile updated successfully!');
-      } else {
-        alert('❌ Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('❌ Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
+    setProfile(prev => ({ ...prev, [name]: value }));
   };
 
   const handleImageUpload = async (e) => {
@@ -117,41 +111,25 @@ const StudentProfile = () => {
     if (!file) return;
     
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (jpg, png, gif)');
+      setMessage('Please upload an image file');
+      setMessageType('error');
       return;
     }
     
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+      setMessage('Image size must be less than 5MB');
+      setMessageType('error');
       return;
     }
     
     setUploadingImage(true);
-    try {
-      const response = await uploadProfileImage(file);
-      console.log('Image upload response:', response.data);
-      
-      if (response.data?.success) {
-        const imageUrl = response.data.url;
-        
-        // Update local state
-        setProfileData(prev => ({ ...prev, profileImage: imageUrl }));
-        
-        // Update user context
-        if (setUser) {
-          setUser({ ...user, profileImage: imageUrl });
-        }
-        
-        alert('✅ Profile image updated successfully!');
-      } else {
-        alert('❌ Failed to upload image');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('❌ Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+    setProfileImage(file);
+    setUploadingImage(false);
   };
 
   const handleRemoveImage = async () => {
@@ -159,471 +137,654 @@ const StudentProfile = () => {
     
     setUploadingImage(true);
     try {
-      const response = await deleteProfileImage();
-      if (response.data?.success) {
-        setProfileData(prev => ({ ...prev, profileImage: '' }));
-        if (setUser) {
-          setUser({ ...user, profileImage: '' });
-        }
-        alert('✅ Profile image removed');
-      } else {
-        alert('❌ Failed to remove image');
-      }
+      await deleteProfileImage();
+      setProfileImagePreview(null);
+      setProfileImage(null);
+      setProfile(prev => ({ ...prev, profileImage: '' }));
+      setMessage('✅ Profile image removed', 'success');
     } catch (error) {
-      console.error('Error removing image:', error);
-      alert('❌ Failed to remove image');
+      setMessage('❌ Failed to remove image', 'error');
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const handleCVUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || file.type !== 'application/pdf') {
-      alert('Please upload a PDF file');
-      return;
-    }
-    
-    setUploading(true);
+  const uploadImage = async () => {
+    if (!profileImage) return null;
+    const formData = new FormData();
+    formData.append('profileImage', profileImage);
     try {
-      const response = await uploadCV(file);
-      console.log('CV Upload response:', response.data);
-      
-      let cvData = response.data;
-      if (response.data?.data) cvData = response.data.data;
-      
-      if (cvData) {
-        const updatedFormData = { ...formData };
-        
-        if (cvData.name && !updatedFormData.name) updatedFormData.name = cvData.name;
-        if (cvData.email && !updatedFormData.email) updatedFormData.email = cvData.email;
-        if (cvData.phone && !updatedFormData.phone) updatedFormData.phone = cvData.phone;
-        if (cvData.skills && cvData.skills.length > 0) {
-          updatedFormData.skills = [...new Set([...updatedFormData.skills, ...cvData.skills])];
-        }
-        if (cvData.gpa && !updatedFormData.gpa) updatedFormData.gpa = cvData.gpa;
-        if (cvData.university && !updatedFormData.department) updatedFormData.department = cvData.university;
-        
-        setFormData(updatedFormData);
-        alert('✅ CV data extracted! Review and save your changes.');
-      }
+      const response = await uploadProfileImage(formData);
+      return response.data?.url;
     } catch (error) {
-      console.error('Error uploading CV:', error);
-      alert('❌ Failed to extract CV data');
-    } finally {
-      setUploading(false);
+      console.error('Error uploading image:', error);
+      return null;
     }
   };
 
-  const safeData = profileData || user || {};
-  const departments = ['Computer Science', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Geology'];
-  const years = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate'];
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage('');
+    
+    try {
+      let imageUrl = profile.profileImage;
+      if (profileImage) {
+        const uploadedUrl = await uploadImage();
+        if (uploadedUrl) imageUrl = uploadedUrl;
+      }
+      
+      const updatedProfile = { ...profile, profileImage: imageUrl };
+      await updateProfile(updatedProfile);
+      if (updateUser) updateUser(updatedProfile);
+      
+      setMessage('✅ Profile updated successfully!', 'success');
+      setIsEditing(false);
+      
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setMessage(error.response?.data?.message || 'Failed to update profile', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  if (loading && !profileData) {
+  const addSkill = (skill) => {
+    if (skill && !profile.skills.includes(skill)) {
+      setProfile(prev => ({
+        ...prev,
+        skills: [...prev.skills, skill]
+      }));
+    }
+  };
+
+  const removeSkill = (skill) => {
+    setProfile(prev => ({
+      ...prev,
+      skills: prev.skills.filter(s => s !== skill)
+    }));
+  };
+
+  const popularSkills = [
+    'JavaScript', 'React', 'Python', 'Java', 'C++', 'HTML/CSS', 'Node.js',
+    'Machine Learning', 'Data Analysis', 'Teaching', 'Research', 'Communication',
+    'Leadership', 'Problem Solving', 'Team Work', 'Git', 'SQL', 'TypeScript',
+    'Django', 'Flask', 'MongoDB', 'Express'
+  ];
+
+  if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <LoadingSpinner size="large" />
-      </div>
+      <Layout>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <LoadingSpinner size="large" />
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div>
-      {/* Header with CV Upload Button */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '30px', 
-        flexWrap: 'wrap', 
-        gap: '15px' 
-      }}>
-        <div>
-          <h1 style={{ fontSize: '28px', color: darkMode ? '#f1f5f9' : '#1E3A5F', fontWeight: '600', marginBottom: '5px' }}>
-            My Profile
-          </h1>
-          <p style={{ color: darkMode ? '#94a3b8' : '#666' }}>View and manage your personal information</p>
+    <Layout>
+      <style>{`
+        @keyframes slideInUp {
+          from { transform: translateY(30px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.02); }
+          100% { transform: scale(1); }
+        }
+        .profile-card {
+          animation: slideInUp 0.5s ease-out;
+        }
+        .info-item {
+          transition: all 0.3s ease;
+        }
+        .stat-card {
+          transition: all 0.3s ease;
+          animation: slideInUp 0.6s ease-out;
+        }
+        .stat-card:hover {
+          transform: translateY(-5px);
+        }
+      `}</style>
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ marginBottom: '30px', animation: 'slideInUp 0.4s ease-out' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+            <div style={{
+              width: '50px',
+              height: '50px',
+              background: 'linear-gradient(135deg, #1E3A5F, #2a4a7a)',
+              borderRadius: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <i className="fas fa-user-circle" style={{ fontSize: '24px', color: 'white' }}></i>
+            </div>
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: '700', color: darkMode ? '#f1f5f9' : '#1E3A5F' }}>
+                My Profile
+              </h1>
+              <p style={{ color: darkMode ? '#94a3b8' : '#666', marginTop: '4px' }}>
+                View and manage your personal information
+              </p>
+            </div>
+          </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{
-            padding: '10px 20px',
-            background: '#1E3A5F',
-            color: 'white',
-            borderRadius: '8px',
-            cursor: uploading ? 'not-allowed' : 'pointer',
+
+        {/* Message Toast */}
+        {message && (
+          <div style={{
+            background: message.includes('✅') ? '#d4edda' : '#f8d7da',
+            color: message.includes('✅') ? '#155724' : '#721c24',
+            padding: '15px 20px',
+            borderRadius: '12px',
+            marginBottom: '20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            opacity: uploading ? 0.7 : 1
+            gap: '10px',
+            animation: 'fadeIn 0.3s ease-out'
           }}>
-            <i className="fas fa-cloud-upload-alt"></i>
-            {uploading ? 'Processing...' : 'Upload CV'}
-            <input 
-              type="file" 
-              accept=".pdf" 
-              onChange={handleCVUpload} 
-              style={{ display: 'none' }} 
-              disabled={uploading}
-            />
-          </label>
-        </div>
-      </div>
+            <i className={`fas ${message.includes('✅') ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
+            <span>{message}</span>
+          </div>
+        )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
-        {/* Left Column - Profile Image Card */}
-        <div>
-          <div style={{ 
-            background: darkMode ? '#1e293b' : 'white', 
-            borderRadius: '16px', 
-            padding: '30px', 
-            textAlign: 'center', 
-            boxShadow: '0 2px 12px rgba(0,0,0,0.08)' 
+        {/* Stats Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px',
+          marginBottom: '30px'
+        }}>
+          <div className="stat-card" style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '20px',
+            padding: '22px',
+            color: 'white',
+            textAlign: 'center'
           }}>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <div style={{
-                width: '150px',
-                height: '150px',
-                background: safeData.profileImage ? 'none' : 'linear-gradient(135deg, #1E3A5F 0%, #2a4a7a 100%)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 20px',
-                fontSize: '48px',
-                color: 'white',
-                overflow: 'hidden',
-                border: `4px solid ${darkMode ? '#334155' : '#E6F0FA'}`
-              }}>
-                {safeData.profileImage ? (
-                  <img 
-                    src={safeData.profileImage} 
-                    alt="profile" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                ) : (
-                  <i className="fas fa-user-graduate"></i>
-                )}
-              </div>
-              
-              {/* Image upload buttons */}
-              <label style={{
-                position: 'absolute',
-                bottom: '10px',
-                right: '10px',
-                width: '36px',
-                height: '36px',
-                background: '#1E3A5F',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                cursor: 'pointer',
-                border: '2px solid white'
-              }}>
-                <i className="fas fa-camera"></i>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleImageUpload} 
-                  style={{ display: 'none' }} 
-                  disabled={uploadingImage}
-                />
-              </label>
-              
-              {safeData.profileImage && (
-                <button
-                  onClick={handleRemoveImage}
-                  style={{
-                    position: 'absolute',
-                    bottom: '10px',
-                    left: '10px',
-                    width: '36px',
-                    height: '36px',
-                    background: '#ef4444',
+            <i className="fas fa-file-alt" style={{ fontSize: '28px', marginBottom: '12px' }}></i>
+            <h3 style={{ fontSize: '28px', fontWeight: '700' }}>{stats.totalApplications}</h3>
+            <p style={{ fontSize: '13px', opacity: 0.9 }}>Total Applications</p>
+          </div>
+          <div className="stat-card" style={{
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            borderRadius: '20px',
+            padding: '22px',
+            color: 'white',
+            textAlign: 'center'
+          }}>
+            <i className="fas fa-bookmark" style={{ fontSize: '28px', marginBottom: '12px' }}></i>
+            <h3 style={{ fontSize: '28px', fontWeight: '700' }}>{stats.savedJobs}</h3>
+            <p style={{ fontSize: '13px', opacity: 0.9 }}>Saved Jobs</p>
+          </div>
+          <div className="stat-card" style={{
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            borderRadius: '20px',
+            padding: '22px',
+            color: 'white',
+            textAlign: 'center'
+          }}>
+            <i className="fas fa-calendar-check" style={{ fontSize: '28px', marginBottom: '12px' }}></i>
+            <h3 style={{ fontSize: '28px', fontWeight: '700' }}>{stats.interviews}</h3>
+            <p style={{ fontSize: '13px', opacity: 0.9 }}>Interviews</p>
+          </div>
+          <div className="stat-card" style={{
+            background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            borderRadius: '20px',
+            padding: '22px',
+            color: 'white',
+            textAlign: 'center'
+          }}>
+            <i className="fas fa-chart-line" style={{ fontSize: '28px', marginBottom: '12px' }}></i>
+            <h3 style={{ fontSize: '28px', fontWeight: '700' }}>{stats.profileCompletion}%</h3>
+            <p style={{ fontSize: '13px', opacity: 0.9 }}>Profile Complete</p>
+          </div>
+        </div>
+
+        {/* Main Profile Card */}
+        <div className="profile-card" style={{
+          background: darkMode ? '#1e293b' : 'white',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 35px -10px rgba(0,0,0,0.1)',
+          marginBottom: '30px'
+        }}>
+          {/* Cover Image */}
+          <div style={{
+            height: '120px',
+            background: 'linear-gradient(135deg, #1E3A5F 0%, #2a4a7a 100%)',
+            position: 'relative'
+          }} />
+          
+          {/* Profile Info */}
+          <div style={{ padding: '0 40px 40px 40px', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px', marginTop: '-60px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '25px', flexWrap: 'wrap' }}>
+                {/* Avatar */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '130px',
+                    height: '130px',
+                    background: profileImagePreview ? 'none' : 'linear-gradient(135deg, #E6F0FA 0%, #c4d9f0 100%)',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    fontSize: '50px',
+                    color: '#1E3A5F',
+                    overflow: 'hidden',
+                    border: '4px solid white',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.15)'
+                  }}>
+                    {profileImagePreview ? (
+                      <img src={profileImagePreview} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <i className="fas fa-user-graduate"></i>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <>
+                      <label htmlFor="profile-upload" style={{
+                        position: 'absolute',
+                        bottom: '5px',
+                        right: '5px',
+                        width: '36px',
+                        height: '36px',
+                        background: '#1E3A5F',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        cursor: 'pointer',
+                        border: '3px solid white',
+                        transition: 'transform 0.2s ease'
+                      }}>
+                        <i className="fas fa-camera" style={{ fontSize: '16px' }}></i>
+                      </label>
+                      <input type="file" id="profile-upload" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                      {profileImagePreview && (
+                        <button
+                          onClick={handleRemoveImage}
+                          style={{
+                            position: 'absolute',
+                            bottom: '5px',
+                            left: '5px',
+                            width: '36px',
+                            height: '36px',
+                            background: '#ef4444',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            cursor: 'pointer',
+                            border: '3px solid white'
+                          }}
+                        >
+                          <i className="fas fa-trash" style={{ fontSize: '16px' }}></i>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                <div>
+                  <h2 style={{ fontSize: '26px', color: darkMode ? '#f1f5f9' : '#1E3A5F', marginBottom: '8px', fontWeight: '700' }}>
+                    {profile.name || 'Student Name'}
+                  </h2>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '5px' }}>
+                    <span style={{ color: darkMode ? '#94a3b8' : '#666', fontSize: '14px' }}>
+                      <i className="fas fa-envelope" style={{ marginRight: '8px', color: '#1E3A5F' }}></i>
+                      {profile.email || 'Not provided'}
+                    </span>
+                    {profile.phone && (
+                      <span style={{ color: darkMode ? '#94a3b8' : '#666', fontSize: '14px' }}>
+                        <i className="fas fa-phone" style={{ marginRight: '8px', color: '#1E3A5F' }}></i>
+                        {profile.phone}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
+                    <span style={{ background: '#E6F0FA', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', color: '#1E3A5F' }}>
+                      <i className="fas fa-graduation-cap" style={{ marginRight: '5px' }}></i>
+                      {profile.department || 'Not set'}
+                    </span>
+                    {profile.year && (
+                      <span style={{ background: '#E6F0FA', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', color: '#1E3A5F' }}>
+                        <i className="fas fa-calendar-alt" style={{ marginRight: '5px' }}></i>
+                        {profile.year}
+                      </span>
+                    )}
+                    {profile.gpa && (
+                      <span style={{ background: '#E6F0FA', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', color: '#1E3A5F' }}>
+                        <i className="fas fa-star" style={{ marginRight: '5px' }}></i>
+                        GPA: {profile.gpa}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    padding: '12px 28px',
+                    background: 'linear-gradient(135deg, #1E3A5F 0%, #2a4a7a 100%)',
                     color: 'white',
+                    border: 'none',
+                    borderRadius: '40px',
                     cursor: 'pointer',
-                    border: '2px solid white'
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    boxShadow: '0 4px 15px rgba(30,58,95,0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(30,58,95,0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(30,58,95,0.2)';
                   }}
                 >
-                  <i className="fas fa-trash"></i>
+                  <i className="fas fa-edit"></i>
+                  Edit Profile
                 </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    style={{
+                      padding: '12px 28px',
+                      background: 'transparent',
+                      color: '#1E3A5F',
+                      border: '2px solid #1E3A5F',
+                      borderRadius: '40px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    style={{
+                      padding: '12px 28px',
+                      background: 'linear-gradient(135deg, #1E3A5F 0%, #2a4a7a 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '40px',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      opacity: saving ? 0.7 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {saving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save Changes</>}
+                  </button>
+                </div>
               )}
-            </div>
-            
-            <h2 style={{ color: darkMode ? '#f1f5f9' : '#1E3A5F' }}>{safeData.name || 'Student'}</h2>
-            <p style={{ color: darkMode ? '#94a3b8' : '#666', marginBottom: '5px' }}>{safeData.email || ''}</p>
-            <span style={{ 
-              display: 'inline-block', 
-              background: '#1E3A5F', 
-              color: 'white', 
-              padding: '4px 12px', 
-              borderRadius: '20px', 
-              fontSize: '12px' 
-            }}>
-              Student
-            </span>
-          </div>
-
-          {/* Stats Cards */}
-          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div style={{ 
-              background: darkMode ? '#1e293b' : 'white', 
-              borderRadius: '12px', 
-              padding: '15px', 
-              textAlign: 'center' 
-            }}>
-              <div style={{ width: '40px', height: '40px', background: '#E6F0FA', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#1E3A5F' }}>
-                <i className="fas fa-file-alt"></i>
-              </div>
-              <h3 style={{ fontSize: '20px', color: darkMode ? '#f1f5f9' : '#1E3A5F' }}>{safeData.totalApplications || '0'}</h3>
-              <p style={{ fontSize: '12px', color: darkMode ? '#94a3b8' : '#666' }}>Applications</p>
-            </div>
-            <div style={{ 
-              background: darkMode ? '#1e293b' : 'white', 
-              borderRadius: '12px', 
-              padding: '15px', 
-              textAlign: 'center' 
-            }}>
-              <div style={{ width: '40px', height: '40px', background: '#E6F0FA', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#1E3A5F' }}>
-                <i className="fas fa-calendar-check"></i>
-              </div>
-              <h3 style={{ fontSize: '20px', color: darkMode ? '#f1f5f9' : '#1E3A5F' }}>{safeData.interviews || '0'}</h3>
-              <p style={{ fontSize: '12px', color: darkMode ? '#94a3b8' : '#666' }}>Interviews</p>
             </div>
           </div>
         </div>
 
-        {/* Right Column - Edit Form */}
-        <div style={{ 
-          background: darkMode ? '#1e293b' : 'white', 
-          borderRadius: '16px', 
-          padding: '30px', 
-          boxShadow: '0 2px 12px rgba(0,0,0,0.08)' 
+        {/* Personal Information Section */}
+        <div style={{
+          background: darkMode ? '#1e293b' : 'white',
+          borderRadius: '24px',
+          padding: '35px',
+          marginBottom: '30px',
+          boxShadow: '0 10px 30px -15px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-            <h3 style={{ color: darkMode ? '#f1f5f9' : '#1E3A5F', fontSize: '18px', fontWeight: '600' }}>
-              <i className="fas fa-address-card" style={{ marginRight: '10px' }}></i>
-              Personal Information
-            </h3>
-            {!isEditing && (
-              <button onClick={() => setIsEditing(true)} className="btn btn-outline" style={{ padding: '8px 16px' }}>
-                <i className="fas fa-edit"></i> Edit Profile
-              </button>
+          <h3 style={{ color: darkMode ? '#f1f5f9' : '#1E3A5F', fontSize: '20px', fontWeight: '600', marginBottom: '25px', borderBottom: `2px solid ${darkMode ? '#334155' : '#E6F0FA'}`, paddingBottom: '15px' }}>
+            <i className="fas fa-user" style={{ marginRight: '12px' }}></i>
+            Personal Information
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '25px' }}>
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>FULL NAME</p>
+              {isEditing ? (
+                <input type="text" name="name" value={profile.name} onChange={handleInputChange} style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #1E3A5F', outline: 'none', fontSize: '15px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.name || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>EMAIL ADDRESS</p>
+              <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.email || 'Not provided'}</p>
+            </div>
+
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>PHONE NUMBER</p>
+              {isEditing ? (
+                <input type="tel" name="phone" value={profile.phone} onChange={handleInputChange} placeholder="+20 123 456 789" style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #1E3A5F', outline: 'none', fontSize: '15px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.phone || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>DEPARTMENT</p>
+              {isEditing ? (
+                <select name="department" value={profile.department} onChange={handleInputChange} style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #1E3A5F', outline: 'none', fontSize: '15px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }}>
+                  <option value="">Select Department</option>
+                  <option>Computer Science</option><option>Physics</option><option>Chemistry</option>
+                  <option>Mathematics</option><option>Biology</option><option>Geology</option>
+                </select>
+              ) : (
+                <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.department || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>ACADEMIC YEAR</p>
+              {isEditing ? (
+                <select name="year" value={profile.year} onChange={handleInputChange} style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #1E3A5F', outline: 'none', fontSize: '15px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }}>
+                  <option value="">Select Year</option>
+                  <option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option><option>Graduate</option>
+                </select>
+              ) : (
+                <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.year || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div className="info-item" style={{ padding: '12px 0', borderBottom: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>GPA (out of 5.0)</p>
+              {isEditing ? (
+                <input type="number" name="gpa" value={profile.gpa} onChange={handleInputChange} step="0.1" min="0" max="5" style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #1E3A5F', outline: 'none', fontSize: '15px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{profile.gpa || 'Not provided'}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="info-item" style={{ marginTop: '20px', padding: '12px 0', borderTop: `1px solid ${darkMode ? '#334155' : '#f0f0f0'}` }}>
+            <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px', letterSpacing: '0.5px' }}>BIO</p>
+            {isEditing ? (
+              <textarea name="bio" value={profile.bio} onChange={handleInputChange} rows="3" style={{ width: '100%', padding: '10px', border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, borderRadius: '8px', outline: 'none', fontSize: '14px', resize: 'vertical', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} placeholder="Tell us about yourself..." />
+            ) : (
+              <p style={{ fontSize: '15px', color: darkMode ? '#94a3b8' : '#666', lineHeight: '1.6' }}>{profile.bio || 'No bio added yet. Click edit to add a bio.'}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Skills Section */}
+        <div style={{
+          background: darkMode ? '#1e293b' : 'white',
+          borderRadius: '24px',
+          padding: '35px',
+          marginBottom: '30px',
+          boxShadow: '0 10px 30px -15px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ color: darkMode ? '#f1f5f9' : '#1E3A5F', fontSize: '20px', fontWeight: '600', marginBottom: '25px', borderBottom: `2px solid ${darkMode ? '#334155' : '#E6F0FA'}`, paddingBottom: '15px' }}>
+            <i className="fas fa-code" style={{ marginRight: '12px' }}></i>
+            Skills & Expertise
+          </h3>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '25px' }}>
+            {profile.skills.length === 0 ? (
+              <p style={{ color: '#999', fontStyle: 'italic' }}>No skills added yet. Add skills to get better job matches!</p>
+            ) : (
+              profile.skills.map((skill, index) => (
+                <span key={index} style={{
+                  background: 'linear-gradient(135deg, #E6F0FA 0%, #d4e4f5 100%)',
+                  color: '#1E3A5F',
+                  padding: '8px 18px',
+                  borderRadius: '30px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <i className="fas fa-check-circle" style={{ fontSize: '12px' }}></i>
+                  {skill}
+                  {isEditing && (
+                    <button type="button" onClick={() => removeSkill(skill)} style={{ background: 'none', border: 'none', color: '#1E3A5F', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}>
+                      <i className="fas fa-times-circle"></i>
+                    </button>
+                  )}
+                </span>
+              ))
             )}
           </div>
 
-          {isEditing ? (
-            // Edit Mode
-            <div>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Full Name</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  value={formData.name} 
-                  onChange={handleChange} 
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Email</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  value={formData.email} 
-                  onChange={handleChange} 
-                  disabled
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#1e293b' : '#f5f5f5',
-                    color: darkMode ? '#94a3b8' : '#999',
-                    cursor: 'not-allowed'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Phone</label>
-                <input 
-                  type="tel" 
-                  name="phone" 
-                  value={formData.phone} 
-                  onChange={handleChange} 
-                  placeholder="+20 123 456 7890"
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Department</label>
-                <select 
-                  name="department" 
-                  value={formData.department} 
-                  onChange={handleChange}
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
+          {isEditing && (
+            <>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  id="newSkillInput"
+                  placeholder="Add a new skill (e.g., React, Python, Teaching...)"
+                  style={{ flex: 1, padding: '12px 16px', border: `1px solid ${darkMode ? '#475569' : '#e0e0e0'}`, borderRadius: '30px', fontSize: '14px', outline: 'none', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      addSkill(e.target.value);
+                      e.target.value = '';
+                    }
                   }}
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Academic Year</label>
-                <select 
-                  name="year" 
-                  value={formData.year} 
-                  onChange={handleChange}
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('newSkillInput');
+                    addSkill(input.value);
+                    input.value = '';
                   }}
+                  style={{ padding: '12px 28px', background: '#1E3A5F', color: 'white', border: 'none', borderRadius: '30px', cursor: 'pointer', fontWeight: '500' }}
                 >
-                  <option value="">Select Year</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>GPA (out of 5.0)</label>
-                <input 
-                  type="number" 
-                  name="gpa" 
-                  value={formData.gpa} 
-                  onChange={handleChange} 
-                  step="0.01" 
-                  min="0" 
-                  max="5"
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Bio</label>
-                <textarea 
-                  name="bio" 
-                  value={formData.bio} 
-                  onChange={handleChange} 
-                  rows="3" 
-                  placeholder="Tell us about yourself..."
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                    borderRadius: '8px',
-                    resize: 'vertical',
-                    background: darkMode ? '#0f172a' : 'white',
-                    color: darkMode ? '#e2e8f0' : '#333'
-                  }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: darkMode ? '#94a3b8' : '#666', fontSize: '13px' }}>Skills</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-                  {formData.skills.map((skill, i) => (
-                    <span key={i} style={{ background: '#E6F0FA', padding: '4px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', color: '#1E3A5F' }}>
-                      {skill}
-                      <button onClick={() => removeSkill(skill)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1E3A5F', fontSize: '16px' }}>×</button>
-                    </span>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    value={newSkill} 
-                    onChange={(e) => setNewSkill(e.target.value)} 
-                    placeholder="Add skill..." 
-                    style={{ 
-                      flex: 1, 
-                      padding: '10px', 
-                      border: `1px solid ${darkMode ? '#475569' : '#ddd'}`, 
-                      borderRadius: '8px',
-                      background: darkMode ? '#0f172a' : 'white',
-                      color: darkMode ? '#e2e8f0' : '#333'
-                    }} 
-                  />
-                  <button onClick={addSkill} className="btn btn-outline" style={{ padding: '10px 20px' }}>Add</button>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button onClick={() => setIsEditing(false)} className="btn btn-outline" style={{ flex: 1, padding: '12px' }}>Cancel</button>
-                <button onClick={handleSave} disabled={loading} className="btn btn-primary" style={{ flex: 1, padding: '12px' }}>
-                  {loading ? 'Saving...' : 'Save Changes'}
+                  Add Skill
                 </button>
               </div>
-            </div>
-          ) : (
-            // View Mode
-            <div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Full Name</p><p style={{ marginBottom: '16px', fontWeight: '500', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.name || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Email</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.email || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Phone</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.phone || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Department</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.department || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Academic Year</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.year || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>GPA</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.gpa || 'Not provided'}</p></div>
-              <div><p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '4px' }}>Bio</p><p style={{ marginBottom: '16px', color: darkMode ? '#e2e8f0' : '#333' }}>{safeData.bio || 'No bio added'}</p></div>
-              {safeData.skills && safeData.skills.length > 0 && (
-                <div>
-                  <p style={{ color: darkMode ? '#94a3b8' : '#999', fontSize: '12px', marginBottom: '8px' }}>Skills</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {safeData.skills.map((s, i) => (
-                      <span key={i} className="skill-tag" style={{ background: '#E6F0FA', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', color: '#1E3A5F' }}>{s}</span>
-                    ))}
-                  </div>
+
+              <div>
+                <p style={{ color: '#666', marginBottom: '12px', fontSize: '13px', fontWeight: '500' }}>Suggested Skills:</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {popularSkills.filter(s => !profile.skills.includes(s)).slice(0, 15).map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => addSkill(skill)}
+                      style={{
+                        padding: '6px 14px',
+                        background: 'transparent',
+                        border: `1px dashed ${darkMode ? '#818cf8' : '#1E3A5F'}`,
+                        borderRadius: '30px',
+                        color: darkMode ? '#818cf8' : '#1E3A5F',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#1E3A5F';
+                        e.currentTarget.style.color = 'white';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = darkMode ? '#818cf8' : '#1E3A5F';
+                      }}
+                    >
+                      + {skill}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
         </div>
+
+        {/* Social Links Section */}
+        <div style={{
+          background: darkMode ? '#1e293b' : 'white',
+          borderRadius: '24px',
+          padding: '35px',
+          boxShadow: '0 10px 30px -15px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ color: darkMode ? '#f1f5f9' : '#1E3A5F', fontSize: '20px', fontWeight: '600', marginBottom: '25px', borderBottom: `2px solid ${darkMode ? '#334155' : '#E6F0FA'}`, paddingBottom: '15px' }}>
+            <i className="fas fa-share-alt" style={{ marginRight: '12px' }}></i>
+            Social & Professional Links
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '25px' }}>
+            <div>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px' }}>
+                <i className="fab fa-linkedin" style={{ marginRight: '8px', color: '#0077B5' }}></i>
+                LINKEDIN
+              </p>
+              {isEditing ? (
+                <input type="text" name="linkedin" value={profile.linkedin} onChange={handleInputChange} placeholder="linkedin.com/in/username" style={{ width: '100%', padding: '10px', border: `1px solid ${darkMode ? '#475569' : '#e0e0e0'}`, borderRadius: '8px', fontSize: '14px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '14px', color: profile.linkedin ? '#0077B5' : '#999' }}>{profile.linkedin || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px' }}>
+                <i className="fab fa-github" style={{ marginRight: '8px', color: '#333' }}></i>
+                GITHUB
+              </p>
+              {isEditing ? (
+                <input type="text" name="github" value={profile.github} onChange={handleInputChange} placeholder="github.com/username" style={{ width: '100%', padding: '10px', border: `1px solid ${darkMode ? '#475569' : '#e0e0e0'}`, borderRadius: '8px', fontSize: '14px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '14px', color: profile.github ? '#333' : '#999' }}>{profile.github || 'Not provided'}</p>
+              )}
+            </div>
+
+            <div style={{ gridColumn: 'span 2' }}>
+              <p style={{ color: '#999', fontSize: '12px', marginBottom: '5px' }}>
+                <i className="fas fa-globe" style={{ marginRight: '8px', color: '#1E3A5F' }}></i>
+                WEBSITE / PORTFOLIO
+              </p>
+              {isEditing ? (
+                <input type="text" name="website" value={profile.website} onChange={handleInputChange} placeholder="yourportfolio.com" style={{ width: '100%', padding: '10px', border: `1px solid ${darkMode ? '#475569' : '#e0e0e0'}`, borderRadius: '8px', fontSize: '14px', background: 'transparent', color: darkMode ? '#e2e8f0' : '#333' }} />
+              ) : (
+                <p style={{ fontSize: '14px', color: profile.website ? '#1E3A5F' : '#999' }}>{profile.website || 'Not provided'}</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
