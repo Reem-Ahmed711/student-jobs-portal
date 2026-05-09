@@ -185,6 +185,7 @@ const adminDeleteUserController = async (req, res) => {
   }
 };
 
+
 const adminGetAllJobsController = async (req, res) => {
   try {
     const snap = await db.collection("jobs").get();
@@ -239,6 +240,7 @@ const adminUpdateJobStatusController = async (req, res) => {
     });
   }
 };
+
 
 const adminGetAllApplicationsController = async (req, res) => {
   try {
