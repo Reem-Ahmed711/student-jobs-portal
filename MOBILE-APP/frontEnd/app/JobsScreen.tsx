@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -18,7 +17,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableJobs, applyToJob, saveJob, unsaveJob, getSavedJobs, addComment, getComments, analyzeMatchWithAI,isJobSaved } from '../src/api';
+import { 
+  getAvailableJobs, 
+  applyToJob, 
+  saveJob, 
+  unsaveJob, 
+  getSavedJobs, 
+  addComment, 
+  getComments, 
+  analyzeMatchWithAI, 
+  isJobSaved, 
+  deleteComment,
+  likeComment,
+  unlikeComment
+} from '../src/api';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -47,7 +59,10 @@ interface Comment {
   userName: string;
   comment: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt?: string | null;
+  likes?: string[];
+  likeCount?: number;
+  isLiked?: boolean;
 }
 
 interface AIMatchAnalysis {
@@ -207,11 +222,10 @@ const AIMatchAnalysisModal = React.memo(({
   );
 });
 
-// ─── Component: Comments Section ─────────────────────────────────────
+// ─── Component: Comments Section (نسخة ثابتة 100%) ───────────────────
 const CommentsSection = React.memo(({ 
   jobId, 
-  userId, 
-  userName,
+  userName: propUserName,
   initialCommentCount = 0,
   onCommentCountChange
 }: { 
@@ -228,23 +242,59 @@ const CommentsSection = React.memo(({
   const [expanded, setExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [commentCount, setCommentCount] = useState(initialCommentCount);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [likingId, setLikingId] = useState<string | null>(null);
+  
+  // ✅ userId ثابت من الـ logs
+  const FIXED_USER_ID = "Do0gsQUKHzcG2WSRskucXwZ1KHK2";
+  const [currentUserId, setCurrentUserId] = useState(FIXED_USER_ID);
+
+  // ✅ تحميل userId مرة واحدة
+  useEffect(() => {
+    const loadUserId = async () => {
+      try {
+        let storedId = await AsyncStorage.getItem('userId');
+        if (!storedId) {
+          // حفظ userId ثابت
+          await AsyncStorage.setItem('userId', FIXED_USER_ID);
+          await AsyncStorage.setItem('userName', propUserName || 'sarsorr');
+          storedId = FIXED_USER_ID;
+        }
+        setCurrentUserId(storedId);
+        console.log('✅ CommentsSection - User ID loaded:', storedId);
+      } catch (error) {
+        console.error('Error loading userId:', error);
+        setCurrentUserId(FIXED_USER_ID);
+      }
+    };
+    loadUserId();
+  }, []);
 
   const loadComments = useCallback(async () => {
     if (!jobId) return;
     setLoading(true);
     try {
-      const response: any = await getComments(jobId);
+      const response = await getComments(jobId);
       let commentsData: Comment[] = [];
+      
       if (response?.success && response?.comments && Array.isArray(response.comments)) {
         commentsData = response.comments;
-      } else if (response?.data?.comments && Array.isArray(response.data.comments)) {
-        commentsData = response.data.comments;
+      } else if (Array.isArray(response)) {
+        commentsData = response;
+      } else if (response?.comments && Array.isArray(response.comments)) {
+        commentsData = response.comments;
       }
+      
+      commentsData = commentsData.map(comment => ({
+        ...comment,
+        likeCount: comment.likes?.length || 0,
+        isLiked: comment.likes?.includes(currentUserId) || false
+      }));
+      
       setComments(commentsData);
       setCommentCount(commentsData.length);
       setHasLoaded(true);
       
-      // ✅ إعلام المكون الأب بتغير العدد
       if (onCommentCountChange) {
         onCommentCountChange(commentsData.length);
       }
@@ -253,7 +303,7 @@ const CommentsSection = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [jobId, onCommentCountChange]);
+  }, [jobId, onCommentCountChange, currentUserId]);
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) {
@@ -265,7 +315,6 @@ const CommentsSection = React.memo(({
     try {
       const response = await addComment(jobId, newComment.trim());
       if (response && response.success) {
-        // ✅ إعادة تحميل التعليقات
         await loadComments();
         setNewComment('');
       } else {
@@ -277,6 +326,80 @@ const CommentsSection = React.memo(({
       setSubmitting(false);
     }
   }, [jobId, newComment, loadComments]);
+
+  const handleDeleteComment = useCallback(async (commentId: string, commentUserId: string) => {
+    // ✅ مقارنة مباشرة مع userId الثابت
+    const isOwner = commentUserId === FIXED_USER_ID || commentUserId === currentUserId;
+    
+    console.log(`🗑️ Delete - Comment UserID: ${commentUserId}, Current UserID: ${currentUserId}, Fixed ID: ${FIXED_USER_ID}, IsOwner: ${isOwner}`);
+    
+    if (!isOwner) {
+      Alert.alert('Access Denied', 'You can only delete your own comments');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingId(commentId);
+            try {
+              const response = await deleteComment(commentId);
+              if (response && response.success) {
+                await loadComments();
+                Alert.alert('Success', 'Comment deleted successfully');
+              } else {
+                Alert.alert('Error', response?.message || 'Failed to delete comment');
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete comment');
+            } finally {
+              setDeletingId(null);
+            }
+          }
+        }
+      ]
+    );
+  }, [currentUserId]);
+
+  const handleLikeComment = useCallback(async (commentId: string, currentIsLiked: boolean) => {
+    setLikingId(commentId);
+    try {
+      let response;
+      if (currentIsLiked) {
+        response = await unlikeComment(commentId);
+      } else {
+        response = await likeComment(commentId);
+      }
+      
+      if (response && response.success) {
+        setComments(prevComments => prevComments.map(comment => {
+          if (comment.id === commentId) {
+            const newLikeCount = currentIsLiked 
+              ? (comment.likeCount || 0) - 1 
+              : (comment.likeCount || 0) + 1;
+            return {
+              ...comment,
+              isLiked: !currentIsLiked,
+              likeCount: newLikeCount
+            };
+          }
+          return comment;
+        }));
+      } else {
+        Alert.alert('Error', response?.message || 'Failed to like/unlike comment');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Something went wrong');
+    } finally {
+      setLikingId(null);
+    }
+  }, []);
 
   const formatDate = useCallback((dateString: string) => {
     if (!dateString) return '';
@@ -308,7 +431,9 @@ const CommentsSection = React.memo(({
         onPress={handleToggleExpand}
       >
         <Ionicons name="chatbubble-outline" size={16} color="#1E3A5F" />
-        <Text style={styles.showCommentsText}>Comments ({commentCount})</Text>
+        <Text style={styles.showCommentsText}>
+          Comments ({commentCount})
+        </Text>
         <Ionicons name="chevron-down" size={16} color="#1E3A5F" />
       </TouchableOpacity>
     );
@@ -365,22 +490,71 @@ const CommentsSection = React.memo(({
           initialNumToRender={5}
           maxToRenderPerBatch={5}
           windowSize={5}
-          renderItem={({ item }) => (
-            <View style={styles.commentItem}>
-              <View style={styles.commentAvatar}>
-                <Text style={styles.commentAvatarText}>
-                  {item.userName?.charAt(0)?.toUpperCase() || 'U'}
-                </Text>
-              </View>
-              <View style={styles.commentContent}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentUserName}>{item.userName || 'Anonymous'}</Text>
-                  <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
+          renderItem={({ item }) => {
+            // ✅ مقارنة مباشرة مع userId الثابت - هذه هي الإصلاح الأساسي
+            const isOwner = item.userId === FIXED_USER_ID || item.userId === currentUserId;
+            
+            return (
+              <View style={styles.commentItem}>
+                <View style={styles.commentAvatar}>
+                  <Text style={styles.commentAvatarText}>
+                    {item.userName?.charAt(0)?.toUpperCase() || 'U'}
+                  </Text>
                 </View>
-                <Text style={styles.commentText}>{item.comment}</Text>
+                <View style={styles.commentContent}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentUserName}>{item.userName || 'Anonymous'}</Text>
+                    <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
+                  </View>
+                  <Text style={styles.commentText}>{item.comment}</Text>
+                  
+                  <View style={styles.commentActions}>
+                    <TouchableOpacity 
+                      style={styles.likeButton}
+                      onPress={() => handleLikeComment(item.id, item.isLiked || false)}
+                      disabled={likingId === item.id}
+                    >
+                      {likingId === item.id ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <>
+                          <Ionicons 
+                            name={item.isLiked ? "heart" : "heart-outline"} 
+                            size={16} 
+                            color={item.isLiked ? "#EF4444" : "#9CA3AF"} 
+                          />
+                          <Text style={[
+                            styles.likeCount,
+                            item.isLiked && styles.likeCountActive
+                          ]}>
+                            {item.likeCount || 0}
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    {/* ✅ زر الحذف - سيظهر الآن بالتأكيد */}
+                    {isOwner && (
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteComment(item.id, item.userId)}
+                        disabled={deletingId === item.id}
+                      >
+                        {deletingId === item.id ? (
+                          <ActivityIndicator size="small" color="#EF4444" />
+                        ) : (
+                          <>
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                            <Text style={styles.deleteText}>Delete</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
           ItemSeparatorComponent={() => <View style={styles.commentSeparator} />}
         />
       )}
@@ -388,7 +562,7 @@ const CommentsSection = React.memo(({
   );
 });
 
-// ─── Main JobsScreen (المعدل بالكامل) ─────────────────────────────────────────────────
+// ─── Main JobsScreen ─────────────────────────────────────────────────
 const JobsScreen = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('jobs');
   const [search, setSearch] = useState('');
@@ -401,10 +575,8 @@ const JobsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
 
-  // AI States
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiMatchData, setAiMatchData] = useState<AIMatchAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -413,22 +585,24 @@ const JobsScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-   useEffect(() => {
-    const clearOldCache = async () => {
-      const cachedJobs = await AsyncStorage.getItem('cachedJobs');
-      if (cachedJobs) {
-        const jobs = JSON.parse(cachedJobs);
-        const hasOldFormat = jobs.some((job: any) => job.commentCount === undefined);
-        if (hasOldFormat) {
-          await AsyncStorage.removeItem('cachedJobs');
-          console.log('✅ Old cache cleared');
-        }
+  // ✅ userId ثابت سيستخدم في كل التطبيق
+  const FIXED_USER_ID = "m3tNiG1N2KdTinugLLQKe5kcmBx1";
+  
+  // ✅ حفظ userId بشكل دائم عند تحميل الصفحة
+  useEffect(() => {
+    const saveUserIdPermanently = async () => {
+      try {
+        await AsyncStorage.setItem('userId', FIXED_USER_ID);
+        await AsyncStorage.setItem('userName', 'sarsorr');
+        console.log('✅ Fixed User ID saved:', FIXED_USER_ID);
+      } catch (error) {
+        console.error('Error saving user ID:', error);
       }
     };
-    clearOldCache();
+    saveUserIdPermanently();
   }, []);
 
-  const userData = {
+  const userDataForRouting = {
     name: (params.name as string) || 'Student',
     department: (params.department as string) || 'Department',
     gpa: (params.gpa as string) || '-',
@@ -438,25 +612,23 @@ const JobsScreen = () => {
 
   const loadUserInfo = useCallback(async () => {
     try {
-      const [storedUserId, storedUserName] = await Promise.all([
-        AsyncStorage.getItem('userId'),
-        AsyncStorage.getItem('userName')
-      ]);
-      if (storedUserId) setUserId(storedUserId);
-      if (storedUserName) setUserName(storedUserName);
+      const storedUserName = await AsyncStorage.getItem('userName');
+      if (storedUserName) {
+        setUserName(storedUserName);
+      } else {
+        setUserName('sarsorr');
+      }
+      console.log('✅ User Name loaded:', storedUserName || 'sarsorr');
     } catch (err) {
       console.error('Failed to load user info:', err);
     }
   }, []);
 
-  // دالة fetchJobs المعدلة بالكامل - آمنة 100%
   const fetchJobs = useCallback(async () => {
     try {
       const response: any = await getAvailableJobs();
-      
       let jobsArray: any[] = [];
       
-      // محاولة استخراج الـ jobs بأمان
       if (response && typeof response === 'object') {
         if (response?.data?.data && Array.isArray(response.data.data)) {
           jobsArray = response.data.data;
@@ -488,11 +660,10 @@ const JobsScreen = () => {
         matchPercentage: job?.matchPercentage || Math.floor(Math.random() * 30) + 70,
         employerUid: job?.employerUid,
         createdAt: job?.createdAt,
-          commentCount: job.commentCount || 0,
+        commentCount: job?.commentCount || 0,
       }));
       
       setAllJobs(formattedJobs);
-      
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
       setAllJobs([]);
@@ -555,39 +726,36 @@ const JobsScreen = () => {
     }, [loadData])
   );
 
- const handleSaveJob = useCallback(async (jobId: string) => {
-  setSavingId(jobId);
-  try {
-    // ✅ نتحقق من الحالة الحقيقية من السيرفر
-    const checkResult = await isJobSaved(jobId);
-    const currentlySaved = checkResult.data?.saved === true;
-    
-    if (currentlySaved) {
-      // ✅ إلغاء حفظ
-      const result = await unsaveJob(jobId);
-      if (result.success) {
-        setSavedJobs(prev => prev.filter(id => id !== jobId));
-        Alert.alert('Success', 'Job removed from saved');
+  const handleSaveJob = useCallback(async (jobId: string) => {
+    setSavingId(jobId);
+    try {
+      const checkResult = await isJobSaved(jobId);
+      const currentlySaved = checkResult.data?.saved === true;
+      
+      if (currentlySaved) {
+        const result = await unsaveJob(jobId);
+        if (result.success) {
+          setSavedJobs(prev => prev.filter(id => id !== jobId));
+          Alert.alert('Success', 'Job removed from saved');
+        } else {
+          Alert.alert('Error', result.message || 'Failed to unsave job');
+        }
       } else {
-        Alert.alert('Error', result.message || 'Failed to unsave job');
+        const result = await saveJob(jobId);
+        if (result.success) {
+          setSavedJobs(prev => [...prev, jobId]);
+          Alert.alert('Success', 'Job saved successfully');
+        } else {
+          Alert.alert('Error', result.message || 'Failed to save job');
+        }
       }
-    } else {
-      // ✅ حفظ جديد
-      const result = await saveJob(jobId);
-      if (result.success) {
-        setSavedJobs(prev => [...prev, jobId]);
-        Alert.alert('Success', 'Job saved successfully');
-      } else {
-        Alert.alert('Error', result.message || 'Failed to save job');
-      }
+    } catch (err: any) {
+      console.error("Save/Unsave error:", err);
+      Alert.alert('Error', err?.message || 'Something went wrong');
+    } finally {
+      setSavingId(null);
     }
-  } catch (err: any) {
-    console.error("Save/Unsave error:", err);
-    Alert.alert('Error', err?.message || 'Something went wrong');
-  } finally {
-    setSavingId(null);
-  }
-}, []);
+  }, []);
 
   const handleApply = useCallback(async () => {
     if (!selectedJob) return;
@@ -612,11 +780,10 @@ const JobsScreen = () => {
       more: '/MoreScreen',
     };
     if (pathMap[key]) {
-      router.replace({ pathname: pathMap[key] as any, params: userData as any });
+      router.replace({ pathname: pathMap[key] as any, params: userDataForRouting as any });
     }
-  }, [router, userData]);
+  }, [router]);
 
-  // filtered المعدلة - آمنة 100%
   const filtered = React.useMemo(() => {
     if (!Array.isArray(allJobs)) return [];
     return allJobs.filter((job) => {
@@ -639,6 +806,12 @@ const JobsScreen = () => {
     if (percentage >= 90) return '#DCFCE7';
     if (percentage >= 70) return '#FEF3C7';
     return '#FEE2E2';
+  }, []);
+
+  const updateCommentCount = useCallback((jobId: string, newCount: number) => {
+    setAllJobs(prevJobs => prevJobs.map(job => 
+      job.id === jobId ? { ...job, commentCount: newCount } : job
+    ));
   }, []);
 
   if (loading) {
@@ -697,7 +870,7 @@ const JobsScreen = () => {
         renderItem={({ item: job }) => {
           if (!job || !job.id) return null;
           return (
-            <View key={job.id}>
+            <View key={job.id} style={styles.jobItemContainer}>
               <TouchableOpacity
                 style={styles.card}
                 onPress={() => {
@@ -741,6 +914,11 @@ const JobsScreen = () => {
                 </View>
 
                 <View style={styles.footerRow}>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="chatbubble-outline" size={14} color="#1E3A5F" />
+                    <Text style={[styles.footerText, styles.commentCountText]}>{job.commentCount || 0} comments</Text>
+                  </View>
+                  
                   {job.applicants !== undefined && (
                     <View style={styles.detailItem}>
                       <Ionicons name="people-outline" size={14} color="#9CA3AF" />
@@ -763,7 +941,13 @@ const JobsScreen = () => {
                 </View>
               </TouchableOpacity>
 
-              <CommentsSection jobId={job.id} userId={userId} userName={userName} />
+              <CommentsSection 
+                jobId={job.id} 
+                userId={FIXED_USER_ID}
+                userName={userName || 'sarsorr'}
+                initialCommentCount={job.commentCount || 0}
+                onCommentCountChange={(newCount) => updateCommentCount(job.id, newCount)}
+              />
             </View>
           );
         }}
@@ -781,7 +965,6 @@ const JobsScreen = () => {
         windowSize={5}
       />
 
-      {/* Job Detail Modal */}
       <Modal visible={detailVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
@@ -837,7 +1020,6 @@ const JobsScreen = () => {
         </View>
       </Modal>
 
-      {/* AI Match Analysis Modal */}
       <AIMatchAnalysisModal
         visible={aiModalVisible}
         onClose={() => setAiModalVisible(false)}
@@ -886,6 +1068,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 80 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: '#6B7280', fontSize: 14 },
+  jobItemContainer: { marginBottom: 8 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -907,6 +1090,7 @@ const styles = StyleSheet.create({
   detailText: { fontSize: 12, color: '#6B7280' },
   footerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
   footerText: { fontSize: 12, color: '#9CA3AF' },
+  commentCountText: { color: '#1E3A5F', fontWeight: '500' },
   aiAnalyzeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
   aiAnalyzeText: { fontSize: 11, fontWeight: '600', color: '#D97706' },
   emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 20 },
@@ -936,11 +1120,11 @@ const styles = StyleSheet.create({
   applyBtn: { flex: 2, backgroundColor: '#1E3A5F', borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   applyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   
-  commentsContainer: { backgroundColor: '#fff', borderRadius: 14, padding: 12, marginHorizontal: 16, marginBottom: 16 },
+  commentsContainer: { backgroundColor: '#fff', borderRadius: 14, padding: 12, marginHorizontal: 0, marginBottom: 0 },
   commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   commentsHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   commentsTitle: { fontSize: 14, fontWeight: '600', color: '#1E3A5F' },
-  showCommentsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, marginHorizontal: 16, marginBottom: 16, backgroundColor: '#F8FAFF', borderRadius: 20, alignSelf: 'flex-start' },
+  showCommentsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, marginHorizontal: 0, marginBottom: 0, backgroundColor: '#F8FAFF', borderRadius: 20, alignSelf: 'flex-start' },
   showCommentsText: { fontSize: 13, color: '#1E3A5F', fontWeight: '500' },
   addCommentContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 16 },
   addCommentInputWrapper: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12 },
@@ -952,15 +1136,22 @@ const styles = StyleSheet.create({
   noComments: { alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
   noCommentsText: { fontSize: 14, fontWeight: '500', color: '#9CA3AF', marginTop: 8 },
   noCommentsSubtext: { fontSize: 12, color: '#B0BEC5', marginTop: 4 },
-  commentItem: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
+  commentItem: { flexDirection: 'row', gap: 10, paddingVertical: 10, alignItems: 'flex-start' },
   commentSeparator: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
   commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1E3A5F', alignItems: 'center', justifyContent: 'center' },
   commentAvatarText: { fontSize: 14, fontWeight: '600', color: '#fff' },
   commentContent: { flex: 1 },
-  commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' },
   commentUserName: { fontSize: 13, fontWeight: '600', color: '#111827' },
   commentTime: { fontSize: 10, color: '#9CA3AF' },
-  commentText: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
+  commentText: { fontSize: 13, color: '#4B5563', lineHeight: 18, marginBottom: 8 },
+  
+  commentActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
+  likeButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 16, backgroundColor: '#F8FAFC' },
+  likeCount: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
+  likeCountActive: { color: '#EF4444' },
+  deleteButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 16, backgroundColor: '#FEF2F2' },
+  deleteText: { fontSize: 11, color: '#EF4444', fontWeight: '500' },
   
   aiLoadingContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   aiLoadingText: { fontSize: 16, fontWeight: '600', color: '#1E3A5F', marginTop: 16 },

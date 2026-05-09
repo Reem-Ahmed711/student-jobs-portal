@@ -236,7 +236,7 @@ onPress={() => router.push("/forgot-password")}
 <Text style={styles.forgotText}>Forgot your password?</Text>
 </TouchableOpacity>
 
-<View style={styles.dividerRow}>
+{/* <View style={styles.dividerRow}>
 <View style={styles.dividerLine} />
 <Text style={styles.orText}>Or sign in with</Text>
 <View style={styles.dividerLine} />
@@ -257,7 +257,7 @@ activeOpacity={0.8}
 Facebook
 </Text>
 </TouchableOpacity>
-</View>
+</View> */}
 </ScrollView>
 </KeyboardAvoidingView>
 </View>

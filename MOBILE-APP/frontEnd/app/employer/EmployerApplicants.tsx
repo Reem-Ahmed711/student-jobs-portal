@@ -4,15 +4,16 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getEmployerJobs, getJobApplicants } from '../../src/api';
+import { getEmployerJobs, getJobApplicants, rateStudent } from '../../src/api';
+import StudentRatingCard from '../employer/StudentRatingCard';
 
 interface Applicant {
   id: string;
@@ -20,6 +21,7 @@ interface Applicant {
   studentName: string;
   studentEmail: string;
   status: string;
+  studentId: string;
   appliedAt: any;
 }
 
@@ -38,6 +40,12 @@ const EmployerApplicants = () => {
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [applicants, setApplicants] = useState<Record<string, Applicant[]>>({});
   const [loadingApplicants, setLoadingApplicants] = useState<Record<string, boolean>>({});
+  
+  // Rating modal state
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Applicant | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -63,25 +71,25 @@ const EmployerApplicants = () => {
   };
 
   const fetchApplicants = async (jobId: string) => {
-  console.log("🔍 Fetching applicants for job:", jobId);
-  
-  setLoadingApplicants(prev => ({ ...prev, [jobId]: true }));
-  try {
-    const res = await getJobApplicants(jobId);
-    console.log("📦 API Response:", JSON.stringify(res));
+    console.log("🔍 Fetching applicants for job:", jobId);
     
-    if (res.success && res.data) {
-      console.log("✅ Found applicants:", res.data.length);
-      setApplicants(prev => ({ ...prev, [jobId]: res.data }));
-    } else {
-      console.log("❌ No data or failed");
+    setLoadingApplicants(prev => ({ ...prev, [jobId]: true }));
+    try {
+      const res = await getJobApplicants(jobId);
+      console.log("📦 API Response:", JSON.stringify(res));
+      
+      if (res.success && res.data) {
+        console.log("✅ Found applicants:", res.data.length);
+        setApplicants(prev => ({ ...prev, [jobId]: res.data }));
+      } else {
+        console.log("❌ No data or failed");
+      }
+    } catch (error) {
+      console.log("🔥 Error:", error);
+    } finally {
+      setLoadingApplicants(prev => ({ ...prev, [jobId]: false }));
     }
-  } catch (error) {
-    console.log("🔥 Error:", error);
-  } finally {
-    setLoadingApplicants(prev => ({ ...prev, [jobId]: false }));
-  }
-};
+  };
 
   const toggleJob = (jobId: string) => {
     if (expandedJob === jobId) {
@@ -89,6 +97,45 @@ const EmployerApplicants = () => {
     } else {
       setExpandedJob(jobId);
       fetchApplicants(jobId);
+    }
+  };
+
+  const handleRateStudent = (job: Job, applicant: Applicant) => {
+    setSelectedJob(job);
+    setSelectedStudent(applicant);
+    setRatingModalVisible(true);
+  };
+
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    if (!selectedStudent || !selectedJob) return;
+
+    setSubmittingRating(true);
+    try {
+      // ✅ إرسال التقييم للباك اند
+      const result = await rateStudent(selectedStudent.studentUid, {
+        rating: rating,
+        review: comment,
+        applicationId: selectedStudent.id,
+      });
+
+     if (result.success) {
+  Alert.alert(
+    '✅ Success',
+    `You rated ${selectedStudent.studentName} ${rating} stars.\nThank you for your feedback!`,
+    [{ text: 'OK' }]
+  );
+} else {
+  Alert.alert('❌ Error', result.message || 'Failed to submit rating');
+}
+} catch (error) {
+  console.log('Error submitting rating:', error);
+  Alert.alert('❌ Error', 'An error occurred while submitting your rating');
+}
+   finally {
+      setSubmittingRating(false);
+      setRatingModalVisible(false);
+      setSelectedStudent(null);
+      setSelectedJob(null);
     }
   };
 
@@ -157,15 +204,24 @@ const EmployerApplicants = () => {
                             {applicant.studentName?.charAt(0) || 'S'}
                           </Text>
                         </View>
-                        <View>
+                        <View style={styles.applicantDetails}>
                           <Text style={styles.applicantName}>{applicant.studentName || 'Student'}</Text>
                           <Text style={styles.applicantEmail}>{applicant.studentEmail || ''}</Text>
                         </View>
                       </View>
-                      <View style={[styles.statusBadgeSmall, { backgroundColor: '#F0FDF4' }]}>
-                        <Text style={[styles.statusTextSmall, { color: getStatusColor(applicant.status) }]}>
-                          {applicant.status || 'Pending'}
-                        </Text>
+                      <View style={styles.applicantActions}>
+                        <View style={[styles.statusBadgeSmall, { backgroundColor: '#F0FDF4' }]}>
+                          <Text style={[styles.statusTextSmall, { color: getStatusColor(applicant.status) }]}>
+                            {applicant.status || 'Pending'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.rateButton}
+                          onPress={() => handleRateStudent(item, applicant)}
+                        >
+                          <Ionicons name="star-outline" size={16} color="#FBBF24" />
+                          <Text style={styles.rateButtonText}>Rate</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   ))
@@ -189,6 +245,23 @@ const EmployerApplicants = () => {
           </View>
         )}
       />
+
+      {/* Rating Modal */}
+      {selectedStudent && selectedJob && (
+        <StudentRatingCard
+          visible={ratingModalVisible}
+          onClose={() => {
+            setRatingModalVisible(false);
+            setSelectedStudent(null);
+            setSelectedJob(null);
+          }}
+          onSubmit={handleSubmitRating}
+          studentName={selectedStudent.studentName}
+          studentId={selectedStudent.studentId || selectedStudent.studentUid}
+          jobTitle={selectedJob.title}
+          submitting={submittingRating}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -293,6 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   applicantAvatar: {
     width: 36,
@@ -307,6 +381,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E3A5F',
   },
+  applicantDetails: {
+    flex: 1,
+  },
   applicantName: {
     fontSize: 14,
     fontWeight: '600',
@@ -316,6 +393,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
   },
+  applicantActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   statusBadgeSmall: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -324,6 +406,20 @@ const styles = StyleSheet.create({
   statusTextSmall: {
     fontSize: 10,
     fontWeight: '600',
+  },
+  rateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  rateButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D97706',
   },
   emptyState: {
     alignItems: 'center',

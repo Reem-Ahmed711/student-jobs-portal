@@ -1,4 +1,4 @@
-// MOBILE-APP/frontEnd/app/StudentDashboard.tsx (كامل مع إضافات AI)
+// MOBILE-APP/frontEnd/app/StudentDashboard.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableJobs, getStudentApplications, getUserRating, getAITips, getAIRecommendations } from '../src/api';
+import { getAvailableJobs, getStudentApplications, getUserRating, getAITips, getAIRecommendations, fetchStudentProfile } from '../src/api';
 
 type TabKey = 'home' | 'jobs' | 'applications' | 'profile' | 'more';
 
@@ -58,16 +58,8 @@ const SkeletonLoader: React.FC = () => {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -86,7 +78,6 @@ const SkeletonLoader: React.FC = () => {
           <SkeletonItem style={{ width: '70%', height: 14 }} />
         </View>
       </View>
-
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { padding: 16 }]}>
           <SkeletonItem style={{ width: 42, height: 42, borderRadius: 11, marginBottom: 12 }} />
@@ -99,7 +90,6 @@ const SkeletonLoader: React.FC = () => {
           <SkeletonItem style={{ width: '40%', height: 13 }} />
         </View>
       </View>
-
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <SkeletonItem style={{ width: 150, height: 20 }} />
@@ -158,7 +148,6 @@ const StudentDashboard: React.FC = () => {
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // AI States
   const [aiTips, setAiTips] = useState<{ tip: string } | null>(null);
   const [aiRecommendationsCount, setAiRecommendationsCount] = useState(0);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -177,7 +166,6 @@ const StudentDashboard: React.FC = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [rating, setRating] = useState<any>(null);
 
-  // جلب بيانات الـ AI
   const loadAIData = async () => {
     setLoadingAI(true);
     try {
@@ -185,13 +173,8 @@ const StudentDashboard: React.FC = () => {
         getAITips(),
         getAIRecommendations()
       ]);
-      
-      if (tipsRes.success && tipsRes.data) {
-        setAiTips(tipsRes.data);
-      }
-      if (recsRes.success && recsRes.data) {
-        setAiRecommendationsCount(recsRes.data.length);
-      }
+      if (tipsRes.success && tipsRes.data) setAiTips(tipsRes.data);
+      if (recsRes.success && recsRes.data) setAiRecommendationsCount(recsRes.data.length);
     } catch (err) {
       console.log("AI load error:", err);
     } finally {
@@ -199,12 +182,13 @@ const StudentDashboard: React.FC = () => {
     }
   };
 
-  // تحميل البيانات المخزنة محلياً فوراً
+  // ✅ تحميل البيانات المخزنة محلياً فوراً — مع الصورة
   const loadCachedData = async () => {
     try {
       const stored = await AsyncStorage.getItem('userData');
       if (stored) {
         const parsed = JSON.parse(stored);
+        console.log("🖼️ Cached profileImage:", parsed.profileImage);
         setUser({
           uid: parsed.uid || '',
           name: parsed.name || parsed.username || 'Student',
@@ -212,40 +196,30 @@ const StudentDashboard: React.FC = () => {
           gpa: parsed.gpa || '-',
           year: parsed.year || '-',
           email: parsed.email || '',
-          profileImage: parsed.profileImage || null,
+          profileImage: parsed.profileImage || null, // ✅ دايمًا بييجي من الـ cache
         });
       }
 
       const cachedJobs = await AsyncStorage.getItem('cachedJobs');
-      if (cachedJobs) {
-        setJobs(JSON.parse(cachedJobs).slice(0, 3));
-      }
-      
-      const cachedApps = await AsyncStorage.getItem('cachedApplications');
-      if (cachedApps) {
-        setApplications(JSON.parse(cachedApps).slice(0, 3));
-      }
-      
-      const cachedRating = await AsyncStorage.getItem('cachedRating');
-      if (cachedRating) {
-        setRating(JSON.parse(cachedRating));
-      }
+      if (cachedJobs) setJobs(JSON.parse(cachedJobs).slice(0, 3));
 
-      // Load cached AI tips
+      const cachedApps = await AsyncStorage.getItem('cachedApplications');
+      if (cachedApps) setApplications(JSON.parse(cachedApps).slice(0, 3));
+
+      const cachedRating = await AsyncStorage.getItem('cachedRating');
+      if (cachedRating) setRating(JSON.parse(cachedRating));
+
       const cachedAiTips = await AsyncStorage.getItem('cachedAiTips');
-      if (cachedAiTips) {
-        setAiTips(JSON.parse(cachedAiTips));
-      }
+      if (cachedAiTips) setAiTips(JSON.parse(cachedAiTips));
+
       const cachedAiCount = await AsyncStorage.getItem('cachedAiCount');
-      if (cachedAiCount) {
-        setAiRecommendationsCount(parseInt(cachedAiCount, 10));
-      }
+      if (cachedAiCount) setAiRecommendationsCount(parseInt(cachedAiCount, 10));
     } catch (err) {
       console.log('Failed to load cached data:', err);
     }
   };
 
-  // تحديث البيانات من الـ API في الخلفية
+  // ✅ جلب البيانات من الـ backend — مع تحديث الصورة فوراً
   const fetchFreshData = async () => {
     try {
       const stored = await AsyncStorage.getItem('userData');
@@ -255,56 +229,78 @@ const StudentDashboard: React.FC = () => {
         uid = parsed.uid || '';
       }
 
-      // تحميل البيانات بالتوازي
-      const promises = [];
-      if (uid) {
-        promises.push(getUserRating(uid));
+      // ✅ جيب بيانات البروفايل الكاملة من الـ backend (بما فيها profileImage)
+      const profileRes = await fetchStudentProfile();
+      if (profileRes.success && profileRes.data) {
+        const backendData = profileRes.data;
+        console.log("🌐 Backend profileImage:", backendData.profileImage);
+
+        // ✅ حدّث الـ user state بالصورة من الـ backend
+        setUser(prev => ({
+          ...prev,
+          name: backendData.name || prev.name,
+          department: backendData.department || prev.department,
+          gpa: backendData.gpa?.toString() || prev.gpa,
+          year: backendData.year?.toString() || prev.year,
+          email: backendData.email || prev.email,
+          uid: backendData.uid || prev.uid,
+          // ✅ الإصلاح الأساسي: خد الصورة من الـ backend لو موجودة، لو لأ خليها زي ما هي
+          profileImage: backendData.profileImage || prev.profileImage,
+        }));
+
+        // ✅ smart merge: لو الـ backend رجع قيمة فاضية، نفضل بالقيمة المحفوظة
+        const localData = stored ? JSON.parse(stored) : {};
+        const smartMerged: any = { ...localData };
+        for (const key of Object.keys(backendData as any)) {
+          const val = (backendData as any)[key];
+          const isEmpty = val === null || val === undefined || val === '';
+          if (!isEmpty) smartMerged[key] = val;
+        }
+        await AsyncStorage.setItem('userData', JSON.stringify(smartMerged));
       }
+
+      const promises = [];
+      const currentUid = uid || (profileRes.data?.uid || '');
+      if (currentUid) promises.push(getUserRating(currentUid));
       promises.push(getAvailableJobs());
       promises.push(getStudentApplications());
       promises.push(getAITips());
       promises.push(getAIRecommendations());
-      
-      const results = await Promise.all(promises);
-      
-      let ratingRes = null;
-      let jobsRes = null;
-      let appsRes = null;
-      let tipsRes = null;
-      let recsRes = null;
-      
-      let idx = 0;
-      if (uid) {
-        ratingRes = results[idx++];
-      }
-      jobsRes = results[idx++];
-      appsRes = results[idx++];
-      tipsRes = results[idx++];
-      recsRes = results[idx++];
 
-      if (ratingRes && ratingRes.success && ratingRes.data) {
+      const results = await Promise.all(promises);
+
+      let idx = 0;
+      let ratingRes = null;
+
+      if (currentUid) ratingRes = results[idx++];
+      const jobsRes = results[idx++];
+      const appsRes = results[idx++];
+      const tipsRes = results[idx++];
+      const recsRes = results[idx++];
+
+      if (ratingRes?.success && ratingRes.data) {
         setRating(ratingRes.data);
         await AsyncStorage.setItem('cachedRating', JSON.stringify(ratingRes.data));
       }
 
-      if (jobsRes && jobsRes.success) {
+      if (jobsRes?.success) {
         const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : jobsRes.data?.data || [];
         setJobs(allJobs.slice(0, 3));
         await AsyncStorage.setItem('cachedJobs', JSON.stringify(allJobs));
       }
 
-      if (appsRes && appsRes.success) {
+      if (appsRes?.success) {
         const allApps = Array.isArray(appsRes.data) ? appsRes.data : [];
         setApplications(allApps.slice(0, 3));
         await AsyncStorage.setItem('cachedApplications', JSON.stringify(allApps));
       }
 
-      if (tipsRes && tipsRes.success && tipsRes.data) {
+      if (tipsRes?.success && tipsRes.data) {
         setAiTips(tipsRes.data);
         await AsyncStorage.setItem('cachedAiTips', JSON.stringify(tipsRes.data));
       }
 
-      if (recsRes && recsRes.success && recsRes.data) {
+      if (recsRes?.success && recsRes.data) {
         setAiRecommendationsCount(recsRes.data.length);
         await AsyncStorage.setItem('cachedAiCount', String(recsRes.data.length));
       }
@@ -317,39 +313,40 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       setShowSkeleton(true);
-      await loadCachedData();
+      await loadCachedData();       // ✅ أول حاجة: الـ cache (سريع جداً)
       setShowSkeleton(false);
       setIsFirstLoad(false);
-      await fetchFreshData();
+      await fetchFreshData();       // ✅ تاني حاجة: الـ backend (بما فيه الصورة)
       await loadAIData();
     };
-    
     initialize();
   }, []);
 
-  // تحديث البيانات عند العودة للشاشة
-useFocusEffect(
-  useCallback(() => {
-    const loadUserData = async () => {
-      const stored = await AsyncStorage.getItem('userData');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        console.log("🖼️ Dashboard loading image:", parsed.profileImage);
-        setUser(prev => ({
-          ...prev,
-          name: parsed.name || prev.name,
-          department: parsed.department || prev.department,
-          gpa: parsed.gpa || prev.gpa,
-          year: parsed.year || prev.year,
-          profileImage: parsed.profileImage,  // ✅ أهم سطر
-        }));
-      }
-    };
-    loadUserData();
-    fetchFreshData();
-    loadAIData();
-  }, [])
-);
+  // ✅ تحديث عند العودة للشاشة — بدون مسح الصورة
+  useFocusEffect(
+    useCallback(() => {
+      const loadUserData = async () => {
+        const stored = await AsyncStorage.getItem('userData');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          console.log("🖼️ Dashboard focus - profileImage:", parsed.profileImage);
+          setUser(prev => ({
+            ...prev,
+            name: parsed.name || prev.name,
+            department: parsed.department || prev.department,
+            gpa: parsed.gpa || prev.gpa,
+            year: parsed.year || prev.year,
+            email: parsed.email || prev.email,
+            // ✅ الإصلاح: لو parsed.profileImage موجود خده، لو لأ خلي القديم
+            profileImage: parsed.profileImage ?? prev.profileImage,
+          }));
+        }
+      };
+      loadUserData();
+      fetchFreshData();
+      loadAIData();
+    }, [])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -360,13 +357,13 @@ useFocusEffect(
 
   const handleTabPress = useCallback((key: TabKey) => {
     setActiveTab(key);
-    const userData = { 
-      name: user.name, 
-      email: user.email, 
-      department: user.department, 
-      gpa: user.gpa, 
+    const userData = {
+      name: user.name,
+      email: user.email,
+      department: user.department,
+      gpa: user.gpa,
       year: user.year,
-      profileImage: user.profileImage 
+      profileImage: user.profileImage,
     };
     const pathMap: Record<string, string> = {
       profile: '/ProfileScreen',
@@ -405,9 +402,9 @@ useFocusEffect(
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1E3A5F" />
 
-      <ScrollView 
-        style={styles.scroll} 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
         bounces={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E3A5F']} />
@@ -427,15 +424,15 @@ useFocusEffect(
         </View>
 
         <View style={styles.content}>
-          {/* Profile Card - مع الصورة */}
+          {/* Profile Card */}
           <TouchableOpacity style={styles.profileCard} onPress={() => handleTabPress('profile')}>
-           {user.profileImage ? (
-  <Image 
-    key={user.profileImage}  // 🔥 دي أهم حاجة - بتخلي الصورة تتحدث
-    source={{ uri: user.profileImage }} 
-    style={styles.avatarImage} 
-  />
-) : (
+            {user.profileImage ? (
+              <Image
+                key={user.profileImage}
+                source={{ uri: user.profileImage }}
+                style={styles.avatarImage}
+              />
+            ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarInitial}>{initial}</Text>
               </View>
@@ -465,7 +462,7 @@ useFocusEffect(
               <Ionicons name="sparkles" size={22} color="#F59E0B" />
               <Text style={styles.aiTitle}>AI Assistant</Text>
             </View>
-            
+
             {loadingAI ? (
               <ActivityIndicator size="small" color="#1E3A5F" />
             ) : (
@@ -475,9 +472,8 @@ useFocusEffect(
                     <Text style={styles.aiTipText}>💡 {aiTips.tip}</Text>
                   </View>
                 )}
-                
                 {aiRecommendationsCount > 0 ? (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.aiRecommendBtn}
                     onPress={() => router.push('/AIRecommendations')}
                   >
@@ -487,10 +483,7 @@ useFocusEffect(
                     <Ionicons name="arrow-forward" size={16} color="#1E3A5F" />
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity 
-                    style={[styles.aiRecommendBtn, { opacity: 0.6 }]}
-                    disabled={true}
-                  >
+                  <TouchableOpacity style={[styles.aiRecommendBtn, { opacity: 0.6 }]} disabled={true}>
                     <Text style={[styles.aiRecommendText, { color: '#9CA3AF' }]}>
                       🎯 Complete your profile for AI recommendations
                     </Text>
@@ -574,9 +567,9 @@ useFocusEffect(
                     <Text style={styles.cardDept}>{app.jobDepartment || `Job ID: ${app.jobId?.slice(0, 8)}...`}</Text>
                     {app.appliedAt && (
                       <Text style={styles.appliedDate}>
-                        Applied: {app.appliedAt?.toDate?.()?.toLocaleDateString() 
-                          || (app.appliedAt?._seconds 
-                            ? new Date(app.appliedAt._seconds * 1000).toLocaleDateString() 
+                        Applied: {app.appliedAt?.toDate?.()?.toLocaleDateString()
+                          || (app.appliedAt?._seconds
+                            ? new Date(app.appliedAt._seconds * 1000).toLocaleDateString()
                             : null)}
                       </Text>
                     )}
@@ -712,7 +705,6 @@ const styles = StyleSheet.create({
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, color: '#9CA3AF', marginTop: 3 },
   tabLabelActive: { color: '#1E3A5F', fontWeight: '600' },
-  // AI Card Styles
   aiCard: {
     backgroundColor: '#FEF3C7',
     borderRadius: 16,

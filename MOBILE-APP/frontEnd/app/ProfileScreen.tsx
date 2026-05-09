@@ -86,7 +86,6 @@ const ProfileScreen: React.FC = () => {
   const [ratingData, setRatingData] = useState<any>(null);
   const [uploadingCV, setUploadingCV] = useState(false);
   
-  // ✅ State for counts
   const [appliedJobs, setAppliedJobs] = useState(0);
   const [savedJobsCount, setSavedJobsCount] = useState(0);
 
@@ -116,7 +115,6 @@ const ProfileScreen: React.FC = () => {
     year: '',
   });
 
-  // ✅ Load counts from Firebase
   const loadCounts = async () => {
     try {
       const [appliedRes, savedRes] = await Promise.all([
@@ -138,7 +136,6 @@ const ProfileScreen: React.FC = () => {
 
   const loadProfile = async () => {
     try {
-      // ✅ First: fetch from backend
       let backendData = null;
       try {
         const freshData = await fetchStudentProfile();
@@ -149,14 +146,12 @@ const ProfileScreen: React.FC = () => {
         console.log('Backend fetch error:', err);
       }
 
-      // ✅ Second: fetch from AsyncStorage as backup
       const stored = await AsyncStorage.getItem('userData');
       let localData = null;
       if (stored) {
         localData = JSON.parse(stored);
       }
 
-      // ✅ Third: merge data (backend takes priority)
       const finalData = backendData || localData || {};
 
       console.log("🔍 finalData.profileImage:", finalData.profileImage);
@@ -188,15 +183,20 @@ const ProfileScreen: React.FC = () => {
         year: finalData.year?.toString() || '',
       });
 
-      // ✅ Update AsyncStorage with latest backend data
       if (backendData) {
-        await AsyncStorage.setItem('userData', JSON.stringify({
-          ...localData,
-          ...backendData,
-        }));
+        // ✅ smart merge: لو الـ backend رجع قيمة فاضية أو null،
+        // نفضل بالقيمة الموجودة في localData بدل ما نمسحها
+        const smartMerged: any = { ...(localData || {}) };
+        for (const key of Object.keys(backendData)) {
+          const val = (backendData as any)[key];
+          const isEmpty = val === null || val === undefined || val === '';
+          if (!isEmpty) {
+            smartMerged[key] = val;
+          }
+        }
+        await AsyncStorage.setItem('userData', JSON.stringify(smartMerged));
       }
 
-      // ✅ Load ratings
       const uid = finalData.uid || localData?.uid;
       if (uid) {
         const ratingRes = await getUserRating(uid);
@@ -231,41 +231,40 @@ const ProfileScreen: React.FC = () => {
       await uploadAndSaveImage(base64);
     }
   };
-const uploadAndSaveImage = async (base64Image: string) => {
-  setSaving(true);
-  try {
-    const res = await uploadProfileImage(base64Image);
 
-    if (res.success && res.data?.url) {
-      const imageUrl = res.data.url;
-      console.log("✅ Image URL from Cloudinary:", imageUrl);
+  const uploadAndSaveImage = async (base64Image: string) => {
+    setSaving(true);
+    try {
+      const res = await uploadProfileImage(base64Image);
 
-      setProfile(prev => ({ ...prev, profileImage: imageUrl }));
+      if (res.success && res.data?.url) {
+        const imageUrl = res.data.url;
+        console.log("✅ Image URL from Cloudinary:", imageUrl);
 
-      // 🔥 أهم حاجة: تحديث AsyncStorage بالصورة الجديدة
-      const userData = await AsyncStorage.getItem('userData');
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        parsed.profileImage = imageUrl;  // ✅ تحديث الصورة
-        await AsyncStorage.setItem('userData', JSON.stringify(parsed));
-        console.log("✅ تم حفظ الصورة في AsyncStorage:", imageUrl);
+        setProfile(prev => ({ ...prev, profileImage: imageUrl }));
+
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          parsed.profileImage = imageUrl;
+          await AsyncStorage.setItem('userData', JSON.stringify(parsed));
+          console.log("✅ تم حفظ الصورة في AsyncStorage:", imageUrl);
+        } else {
+          const newUserData = { profileImage: imageUrl };
+          await AsyncStorage.setItem('userData', JSON.stringify(newUserData));
+        }
+
+        Alert.alert('Success', 'Profile picture updated!');
       } else {
-        // لو مفيش data، اعمل data جديدة
-        const newUserData = { profileImage: imageUrl };
-        await AsyncStorage.setItem('userData', JSON.stringify(newUserData));
+        Alert.alert('Error', res.message || 'Failed to upload image');
       }
-
-      Alert.alert('Success', 'Profile picture updated!');
-    } else {
-      Alert.alert('Error', res.message || 'Failed to upload image');
+    } catch (err) {
+      console.error("Upload error:", err);
+      Alert.alert('Error', 'Failed to upload profile picture');
+    } finally {
+      setSaving(false);
     }
-  } catch (err) {
-    console.error("Upload error:", err);
-    Alert.alert('Error', 'Failed to upload profile picture');
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const handleUploadCV = async () => {
     if (Platform.OS === 'web') {
@@ -370,7 +369,7 @@ const uploadAndSaveImage = async (base64Image: string) => {
         phone: editForm.phone.trim(),
         about: editForm.about.trim(),
         skills: skillsArray,
-        studentId: editForm.studentId.trim(),
+        studentId: editForm.studentId.trim(), // ✅ دايمًا بيتبعت للـ backend
         gpa: editForm.gpa.trim(),
         year: editForm.year.trim(),
       };
@@ -383,28 +382,69 @@ const uploadAndSaveImage = async (base64Image: string) => {
 
       if (res.success) {
         const freshData = await fetchStudentProfile();
+
+        // ✅ دايمًا اجيب الـ AsyncStorage الموجود الأول عشان نعمل merge صح
+        const existingStored = await AsyncStorage.getItem('userData');
+        const existingData = existingStored ? JSON.parse(existingStored) : {};
         
         if (freshData.success && freshData.data) {
+          // ✅ smart merge: لو الـ backend رجع قيمة فاضية، نفضل بالقيمة القديمة
+          const backendFields: any = freshData.data;
+          const mergedFromBackend: any = { ...profile };
+          for (const key of Object.keys(backendFields)) {
+            const val = backendFields[key];
+            const isEmpty = val === null || val === undefined || val === '';
+            if (!isEmpty) mergedFromBackend[key] = val;
+          }
           const updatedProfile = {
-            ...profile,
-            ...freshData.data,
-            gpa: freshData.data.gpa?.toString() || editForm.gpa,
-            year: freshData.data.year?.toString() || editForm.year,
+            ...mergedFromBackend,
+            gpa: (backendFields.gpa && backendFields.gpa !== '') ? backendFields.gpa.toString() : editForm.gpa,
+            year: (backendFields.year && backendFields.year !== '') ? backendFields.year.toString() : editForm.year,
+            // ✅ studentId: خد من الـ backend لو موجود، لو لأ من الـ form، لو لأ من القديم
+            studentId: backendFields.studentId || editForm.studentId.trim() || profile.studentId,
           };
           setProfile(updatedProfile);
           
-          await AsyncStorage.setItem('userData', JSON.stringify(updatedProfile));
+          // ✅ smart merge مع existingData: لا تمسح أي حاجة موجودة بقيمة فاضية
+          const finalStorage: any = { ...existingData };
+          for (const key of Object.keys(updatedProfile)) {
+            const val = (updatedProfile as any)[key];
+            const isEmpty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+            if (!isEmpty) finalStorage[key] = val;
+          }
+          // studentId لازم يتحفظ دايمًا حتى لو الـ loop فاته
+          if (updatedProfile.studentId) finalStorage.studentId = updatedProfile.studentId;
+          await AsyncStorage.setItem('userData', JSON.stringify(finalStorage));
           
           setEditForm({
             name: updatedProfile.name,
             phone: updatedProfile.phone,
             about: updatedProfile.about,
             skills: (updatedProfile.skills || []).join(', '),
-            studentId: updatedProfile.studentId || '',
+            studentId: updatedProfile.studentId || editForm.studentId.trim(),
             cv: updatedProfile.cv,
             gpa: updatedProfile.gpa,
             year: updatedProfile.year,
           });
+        } else {
+          // ✅ لو fetchStudentProfile فشل، نحدث من الـ editForm مع merge
+          const updatedProfile = {
+            ...profile,
+            name: editForm.name.trim(),
+            phone: editForm.phone.trim(),
+            about: editForm.about.trim(),
+            skills: skillsArray,
+            studentId: editForm.studentId.trim(),
+            gpa: editForm.gpa.trim(),
+            year: editForm.year.trim(),
+            cv: editForm.cv || profile.cv,
+          };
+          setProfile(updatedProfile);
+          // ✅ نفس الإصلاح: merge بدل overwrite
+          await AsyncStorage.setItem('userData', JSON.stringify({
+            ...existingData,
+            ...updatedProfile,
+          }));
         }
 
         Alert.alert('Success', 'Profile updated successfully');
@@ -495,9 +535,53 @@ const uploadAndSaveImage = async (base64Image: string) => {
               <Text style={styles.ratingCount}>({ratingData.total || 0} ratings)</Text>
             </View>
           )}
+          {ratingData?.ratings && ratingData.ratings.length > 0 && (
+            <>
+              <View style={styles.sectionLabel}>
+                <Text style={styles.sectionLabelText}>EMPLOYER REVIEWS</Text>
+              </View>
+              <View style={styles.card}>
+                {ratingData.ratings.map((review: any, index: number) => (
+                  <View key={review.id || index} style={styles.reviewItem}>
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewEmployer}>
+                        <Ionicons name="business-outline" size={14} color="#6B7280" />
+                        <Text style={styles.reviewEmployerName}>
+                          {review.raterName || 'Employer'}
+                        </Text>
+                      </View>
+                      <View style={styles.reviewStars}>
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <Ionicons 
+                            key={star}
+                            name={star <= review.rating ? "star" : "star-outline"}
+                            size={12}
+                            color={star <= review.rating ? "#F59E0B" : "#D1D5DB"}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    {review.review ? (
+                      <Text style={styles.reviewComment}>"{review.review}"</Text>
+                    ) : (
+                      <Text style={styles.reviewCommentNoText}>No comment provided</Text>
+                    )}
+                    {review.createdAt && (
+                      <Text style={styles.reviewDate}>
+                        {review.createdAt?.seconds 
+                          ? new Date(review.createdAt.seconds * 1000).toLocaleDateString('en-US')
+                          : new Date(review.createdAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                    {index < ratingData.ratings.length - 1 && <View style={styles.reviewDivider} />}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
-        {/* Stats Row - Only Applied & Saved (removed Interviews) */}
+        {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{appliedJobs}</Text>
@@ -606,7 +690,7 @@ const uploadAndSaveImage = async (base64Image: string) => {
           </View>
         </View>
 
-        {/* Settings - Removed Logout */}
+        {/* Settings */}
         <View style={styles.sectionLabel}>
           <Text style={styles.sectionLabelText}>SETTINGS</Text>
         </View>
@@ -1102,6 +1186,51 @@ const styles = StyleSheet.create({
   rowFields: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  reviewItem: {
+    paddingVertical: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewEmployer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewEmployerName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  reviewStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewComment: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginBottom: 6,
+    lineHeight: 18,
+  },
+  reviewCommentNoText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginBottom: 6,
+  },
+  reviewDate: {
+    fontSize: 10,
+    color: '#9CA3AF',
+  },
+  reviewDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginTop: 8,
   },
 });
 

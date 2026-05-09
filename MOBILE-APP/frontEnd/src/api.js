@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // const API_URL = "http://localhost:3000";
 // لو موبايل حقيقي غيّره لـ IP جهازك:
 
-const API_URL = "http://192.168.1.54:3000";
+const API_URL = "http://10.104.209.249:3000";
 console.log(" API URL:", API_URL);
 const api = axios.create({
   baseURL: API_URL,
@@ -458,21 +458,17 @@ export const getAppliedJobsCount = async () => {
 };
 
 // ================= COMMENTS =================
+// ================= COMMENTS (معدل بالكامل مع اللايك) =================
 export const addComment = async (jobId, comment) => {
   try {
     const res = await api.post("/api/comment", { jobId, comment });
     console.log("✅ Comment added:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
-    console.error(
-      "❌ Add comment error:",
-      err.response?.status,
-      err.response?.data,
-    );
+    console.error("❌ Add comment error:", err.response?.status, err.response?.data);
     return {
       success: false,
-      message:
-        err?.response?.data?.message || err.message || "Failed to add comment",
+      message: err?.response?.data?.message || err.message || "Failed to add comment",
     };
   }
 };
@@ -481,14 +477,10 @@ export const getComments = async (jobId) => {
   try {
     const res = await api.get(`/api/comments/${jobId}`);
     console.log(`📝 Got comments for job ${jobId}:`, res.data);
-    const comments = res.data.comments || res.data || [];
+    const comments = res.data.comments || [];
     return { success: true, comments };
   } catch (err) {
-    console.error(
-      "❌ Get comments error:",
-      err.response?.status,
-      err.response?.data,
-    );
+    console.error("❌ Get comments error:", err.response?.status, err.response?.data);
     return {
       success: false,
       comments: [],
@@ -500,8 +492,10 @@ export const getComments = async (jobId) => {
 export const deleteComment = async (commentId) => {
   try {
     const res = await api.delete(`/api/comments/${commentId}`);
+    console.log("✅ Comment deleted:", res.data);
     return { success: true, data: res.data };
   } catch (err) {
+    console.error("❌ Delete comment error:", err.response?.status, err.response?.data);
     return {
       success: false,
       message: err?.response?.data?.message || err.message,
@@ -509,6 +503,58 @@ export const deleteComment = async (commentId) => {
   }
 };
 
+export const updateComment = async (commentId, comment) => {
+  try {
+    const res = await api.put(`/api/comments/${commentId}`, { comment });
+    console.log("✅ Comment updated:", res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error("❌ Update comment error:", err.response?.data);
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+// ✅ دوال اللايك (Like) على التعليقات
+export const likeComment = async (commentId) => {
+  try {
+    const res = await api.post(`/api/comments/${commentId}/like`);
+    console.log("✅ Comment liked:", res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error("❌ Like comment error:", err.response?.data);
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const unlikeComment = async (commentId) => {
+  try {
+    const res = await api.delete(`/api/comments/${commentId}/like`);
+    console.log("✅ Comment unliked:", res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error("❌ Unlike comment error:", err.response?.data);
+    return {
+      success: false,
+      message: err?.response?.data?.message || err.message,
+    };
+  }
+};
+
+export const getCommentLikes = async (commentId) => {
+  try {
+    const res = await api.get(`/api/comments/${commentId}/likes`);
+    return { success: true, data: res.data };
+  } catch (err) {
+    console.error("❌ Get comment likes error:", err.response?.data);
+    return { success: false, likes: [], count: 0 };
+  }
+};
 // ================= IMAGE UPLOAD (Cloudinary) =================
 export const uploadProfileImage = async (imageBase64) => {
   try {

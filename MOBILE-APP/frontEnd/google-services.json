@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "798059091860",
+    "project_id": "student-jobs-portal-81fab",
+    "storage_bucket": "student-jobs-portal-81fab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798059091860:android:088a3a08739f0971bb2181",
+        "android_client_info": {
+          "package_name": "com.sara.studentjobs"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "798059091860-sr61ga6p1k7gg5uvs4k79cir5sou8k40.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2rUGWF-jl9tMWSJJRuxrwL7m3VYRZEMw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "798059091860-sr61ga6p1k7gg5uvs4k79cir5sou8k40.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

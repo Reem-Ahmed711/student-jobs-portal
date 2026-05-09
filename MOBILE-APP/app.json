@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "ee940c90-ecbc-49ec-8c77-1a5724f5ec7e"
+      }
+    },
+    "android": {
+      "package": "ycom.sara.studentjobs"
+    }
+  }
+}

@@ -11,16 +11,18 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
-    },
+   "android": {
+  "adaptiveIcon": {
+    "backgroundColor": "#E6F4FE",
+    "foregroundImage": "./assets/images/android-icon-foreground.png",
+    "backgroundImage": "./assets/images/android-icon-background.png",
+    "monochromeImage": "./assets/images/android-icon-monochrome.png"
+  },
+  "predictiveBackGestureEnabled": false,
+  "package": "com.sara.studentjobs",
+  "googleServicesFile": "./google-services.json",
+  "usesCleartextTraffic": true
+},
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
@@ -54,6 +56,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c2fc3d0c-6edd-4e19-9375-ae7828203d97"
+      }
     }
   }
 }

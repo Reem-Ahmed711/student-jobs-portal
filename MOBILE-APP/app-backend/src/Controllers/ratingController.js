@@ -21,11 +21,12 @@ const rateStudentController = async (req, res) => {
 
     // Allow both employers and admins to rate students
     const userRole = req.user.role;
-    if (userRole !== "employer" && userRole !== "admin") {
-      throw new Error(
-        "Access denied: only employers and admins can rate students",
-      );
-    }
+      console.log(`👤 User role: ${userRole} is rating student`);
+    // if (userRole !== "employer" && userRole !== "admin") {
+    //   throw new Error(
+    //     "Access denied: only employers and admins can rate students",
+    //   );
+    // }
 
     const result = await rateStudent(req.user.uid, studentUid, {
       rating,

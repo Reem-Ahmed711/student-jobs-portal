@@ -4,6 +4,9 @@ const {
   getCommentsByJob,
   deleteComment,
   updateComment,
+  likeComment,      // ✅ أضف هذا الاستيراد
+  unlikeComment,    // ✅ أضف هذا الاستيراد
+  getCommentLikes,
 } = require("../Service/commentService");
 
 // إضافة تعليق
@@ -70,10 +73,47 @@ const updateCommentController = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+// لايك تعليق
+const likeCommentController = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.uid;
+    const result = await likeComment(commentId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// إلغاء اللايك
+const unlikeCommentController = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.uid;
+    const result = await unlikeComment(commentId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// جلب اللايكات
+const getCommentLikesController = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const result = await getCommentLikes(commentId);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
 
 module.exports = {
   addCommentController,
   getCommentsController,
   deleteCommentController,
   updateCommentController,
+   likeCommentController,      // ✅ أضف هذا
+  unlikeCommentController,    // ✅ أضف هذا
+  getCommentLikesController,
 };

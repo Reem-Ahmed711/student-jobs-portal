@@ -24,6 +24,7 @@ const addComment = async (userId, userName, jobId, comment) => {
       comment: comment.trim(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: null,
+      likes: [], // ✅ إضافة مصفوفة اللايكات
     };
 
     await commentRef.set(newComment);
@@ -74,6 +75,8 @@ const getCommentsByJob = async (jobId) => {
       comments.push({
         id: doc.id,
         ...data,
+        likes: data.likes || [],
+        likeCount: (data.likes || []).length,
         createdAt:
           data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       });
@@ -157,9 +160,101 @@ const updateComment = async (commentId, userId, newComment) => {
   }
 };
 
+// ✅ لايك تعليق
+const likeComment = async (commentId, userId) => {
+  try {
+    const commentRef = db.collection("comments").doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      throw new Error("Comment not found");
+    }
+    
+    const commentData = commentDoc.data();
+    const currentLikes = commentData.likes || [];
+    
+    // التحقق من أنه لم يعمل لايك من قبل
+    if (currentLikes.includes(userId)) {
+      throw new Error("You already liked this comment");
+    }
+    
+    await commentRef.update({
+      likes: admin.firestore.FieldValue.arrayUnion(userId)
+    });
+    
+    const newLikeCount = currentLikes.length + 1;
+    
+    return { 
+      success: true, 
+      message: "Comment liked successfully",
+      likeCount: newLikeCount
+    };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// ✅ إلغاء اللايك
+const unlikeComment = async (commentId, userId) => {
+  try {
+    const commentRef = db.collection("comments").doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      throw new Error("Comment not found");
+    }
+    
+    const commentData = commentDoc.data();
+    const currentLikes = commentData.likes || [];
+    
+    // التحقق من أنه عمل لايك من قبل
+    if (!currentLikes.includes(userId)) {
+      throw new Error("You haven't liked this comment");
+    }
+    
+    await commentRef.update({
+      likes: admin.firestore.FieldValue.arrayRemove(userId)
+    });
+    
+    const newLikeCount = currentLikes.length - 1;
+    
+    return { 
+      success: true, 
+      message: "Comment unliked successfully",
+      likeCount: newLikeCount
+    };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// ✅ جلب اللايكات
+const getCommentLikes = async (commentId) => {
+  try {
+    const commentDoc = await db.collection("comments").doc(commentId).get();
+    
+    if (!commentDoc.exists) {
+      throw new Error("Comment not found");
+    }
+    
+    const likes = commentDoc.data().likes || [];
+    return { 
+      success: true, 
+      likes, 
+      count: likes.length 
+    };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// ✅ تصدير جميع الدوال
 module.exports = {
   addComment,
   getCommentsByJob,
   deleteComment,
   updateComment,
+  likeComment,      // ✅ أضف هذا
+  unlikeComment,    // ✅ أضف هذا
+  getCommentLikes,  // ✅ أضف هذا
 };

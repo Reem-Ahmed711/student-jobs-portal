@@ -93,11 +93,12 @@ const ApplicationsScreen: React.FC = () => {
     email: (params.email as string) || '',
   };
 
+  
   // جلب بيانات الوظيفة لكل application
   const fetchJobDetails = async (jobId: string) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const API_URL = 'http://192.168.1.54:3000';
+      const API_URL = 'http://10.104.209.249:3000';
       const res = await axios.get(`${API_URL}/api/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });

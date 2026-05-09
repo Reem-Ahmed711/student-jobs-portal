@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { admin, db } = require("../firebase");
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI("AIzaSyDM78BUFir31yf1iG9rCxfFdpq8FH7flyM"); 
+const genAI = new GoogleGenerativeAI("AIzaSyCD3-s0qrIQ4oIgI8T3r7_HnbMSO1Z6K1s"); 
 // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const model = genAI.getGenerativeModel({  model: "gemini-2.0-flash" });
 
