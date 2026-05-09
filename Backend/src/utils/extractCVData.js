@@ -1,32 +1,26 @@
 function extractCVData(text) {
   const result = {};
 
-
   const nameMatch =
     text.match(/Name[:\-]\s*(.*)/i) ||
     text.match(/Full Name[:\-]\s*(.*)/i);
 
   result.name = nameMatch ? nameMatch[1].split("\n")[0].trim() : null;
 
-
   const emailMatch =
     text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
 
   result.email = emailMatch ? emailMatch[0] : null;
 
-  
   const phoneMatch = text.match(/(\+?\d{10,15})/);
   result.phone = phoneMatch ? phoneMatch[0] : null;
-
 
   const linkedinMatch = text.match(/linkedin\.com\/in\/[a-zA-Z0-9\-_/]+/i);
   result.linkedin = linkedinMatch ? linkedinMatch[0] : null;
 
- 
   const githubMatch = text.match(/github\.com\/[a-zA-Z0-9\-_/]+/i);
   result.github = githubMatch ? githubMatch[0] : null;
 
-  
   const experienceMatch = text.match(
     /Experience[:\-]\s*([\s\S]*?)(Education|Skills|Projects|$)/i
   );
@@ -37,7 +31,6 @@ function extractCVData(text) {
         .map((e) => e.trim())
         .filter(Boolean)
     : [];
-
 
   const projectsMatch = text.match(
     /Projects[:\-]\s*([\s\S]*?)(Experience|Education|Skills|$)/i
@@ -50,7 +43,6 @@ function extractCVData(text) {
         .filter(Boolean)
     : [];
 
-  
   const skillsMatch = text.match(
     /Skills[:\-]\s*([\s\S]*?)(Education|Experience|Projects|$)/i
   );
@@ -65,7 +57,6 @@ function extractCVData(text) {
   const gpaMatch = text.match(/GPA[:\-]?\s*([0-4]\.\d+)/i);
   result.gpa = gpaMatch ? gpaMatch[1] : null;
 
-  
   const deptMatch = text.match(/Department[:\-]\s*(.*)/i);
   result.department = deptMatch
     ? deptMatch[1].split("\n")[0].trim()
@@ -82,11 +73,9 @@ function extractCVData(text) {
     ? gradMatch[1].toLowerCase() === "yes"
     : null;
 
-  
   const ageMatch = text.match(/Age[:\-]?\s*(\d{1,3})/i);
   result.age = ageMatch ? ageMatch[1] : null;
 
- //score
   let score = 0;
 
   if (result.name) score += 10;
@@ -101,9 +90,6 @@ function extractCVData(text) {
 
   result.cvScore = score;
 
-
-  //  VALID CV CHECK
- 
   result.isValidCV =
     !!result.name &&
     !!result.email &&
