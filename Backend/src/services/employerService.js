@@ -420,6 +420,171 @@ const getHiringHistory = async (uid) => {
     return { success: false, message: error.message };
   }
 };
+
+// ── Get Shortlisted Candidates ─────────────────────────────────────
+const getShortlistedCandidates = async (uid) => {
+  try {
+    const shortlistSnap = await db
+      .collection("shortlisted")
+      .where("employerUid", "==", uid)
+      .get();
+
+    if (shortlistSnap.empty) {
+      return { success: true, data: [], message: "No shortlisted candidates" };
+    }
+
+    const shortlisted = await Promise.all(
+      shortlistSnap.docs.map(async (doc) => {
+        const data = doc.data();
+        
+        // جلب بيانات الطالب
+        const studentSnap = await db.collection("users").doc(data.studentUid).get();
+        const studentData = studentSnap.exists ? studentSnap.data() : {};
+        
+        // جلب بيانات الوظيفة
+        const jobSnap = await db.collection("jobs").doc(data.jobId).get();
+        const jobData = jobSnap.exists ? jobSnap.data() : {};
+        
+        return {
+          id: doc.id,
+          studentUid: data.studentUid,
+          studentName: studentData.name || "Unknown",
+          studentEmail: studentData.email || "",
+          studentYear: studentData.year || "N/A",
+          studentGpa: studentData.gpa || "N/A",
+          studentSkills: studentData.skills || [],
+          jobId: data.jobId,
+          jobTitle: jobData.title || "Unknown Position",
+          jobDepartment: jobData.department || "General",
+          stage: data.stage || "Under Review",
+          interviewDate: data.interviewDate || null,
+          feedback: data.feedback || "",
+          matchScore: data.matchScore || Math.floor(Math.random() * 20) + 75,
+          addedAt: data.addedAt,
+          updatedAt: data.updatedAt
+        };
+      })
+    );
+    
+    // ترتيب حسب تاريخ الإضافة (الأحدث أولاً)
+    shortlisted.sort((a, b) => {
+      const dateA = a.addedAt?.toDate ? a.addedAt.toDate() : new Date(a.addedAt);
+      const dateB = b.addedAt?.toDate ? b.addedAt.toDate() : new Date(b.addedAt);
+      return dateB - dateA;
+    });
+    
+    return { success: true, data: shortlisted };
+  } catch (error) {
+    console.error("Error in getShortlistedCandidates:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Add to Shortlist ───────────────────────────────────────────────
+const addToShortlist = async (uid, applicationId, notes) => {
+  try {
+    // جلب بيانات التطبيق
+    const appSnap = await db.collection("applications").doc(applicationId).get();
+    
+    if (!appSnap.exists) {
+      return { success: false, message: "Application not found" };
+    }
+    
+    const appData = appSnap.data();
+    
+    // التحقق من ملكية الوظيفة
+    const jobSnap = await db.collection("jobs").doc(appData.jobId).get();
+    if (!jobSnap.exists || jobSnap.data().employerUid !== uid) {
+      return { success: false, message: "Unauthorized" };
+    }
+    
+    // التحقق من عدم التكرار
+    const existingSnap = await db
+      .collection("shortlisted")
+      .where("employerUid", "==", uid)
+      .where("studentUid", "==", appData.studentUid)
+      .where("jobId", "==", appData.jobId)
+      .get();
+    
+    if (!existingSnap.empty) {
+      return { success: false, message: "Candidate already in shortlist" };
+    }
+    
+    // إضافة إلى القائمة المختصرة
+    const shortlistRef = db.collection("shortlisted").doc();
+    await shortlistRef.set({
+      id: shortlistRef.id,
+      employerUid: uid,
+      studentUid: appData.studentUid,
+      jobId: appData.jobId,
+      applicationId: applicationId,
+      stage: "Under Review",
+      notes: notes || "",
+      matchScore: appData.matchScore || 75,
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    
+    return { success: true, message: "Candidate added to shortlist", data: { id: shortlistRef.id } };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Remove from Shortlist ──────────────────────────────────────────
+const removeFromShortlist = async (uid, shortlistId) => {
+  try {
+    const shortlistRef = db.collection("shortlisted").doc(shortlistId);
+    const shortlistSnap = await shortlistRef.get();
+    
+    if (!shortlistSnap.exists) {
+      return { success: false, message: "Shortlist item not found" };
+    }
+    
+    if (shortlistSnap.data().employerUid !== uid) {
+      return { success: false, message: "Unauthorized" };
+    }
+    
+    await shortlistRef.delete();
+    return { success: true, message: "Candidate removed from shortlist" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Update Shortlist Stage ─────────────────────────────────────────
+const updateShortlistStage = async (uid, shortlistId, stage, interviewDate, feedback) => {
+  try {
+    const shortlistRef = db.collection("shortlisted").doc(shortlistId);
+    const shortlistSnap = await shortlistRef.get();
+    
+    if (!shortlistSnap.exists) {
+      return { success: false, message: "Shortlist item not found" };
+    }
+    
+    if (shortlistSnap.data().employerUid !== uid) {
+      return { success: false, message: "Unauthorized" };
+    }
+    
+    const updateData = {
+      stage: stage,
+      updatedAt: serverTimestamp()
+    };
+    
+    if (interviewDate) {
+      updateData.interviewDate = new Date(interviewDate);
+    }
+    
+    if (feedback) {
+      updateData.feedback = feedback;
+    }
+    
+    await shortlistRef.update(updateData);
+    return { success: true, message: "Shortlist updated successfully" };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
 module.exports = {
   getEmployerProfile,
   updateEmployerProfile,
@@ -429,5 +594,10 @@ module.exports = {
   rejectApplication,
   getEmployerStats,
   getEmployerDashboard,
-  createJob
+  createJob,
+  getHiringHistory,
+  getShortlistedCandidates,
+  addToShortlist,
+  removeFromShortlist,
+  updateShortlistStage,
 };
