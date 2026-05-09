@@ -39,8 +39,6 @@ export async function updateUserByAdmin(uid, updatedData) {
   }
 }
 
-/////(Firestore Only) 
-
 export async function deleteUser(uid) {
   try {
     const userRef = doc(db, "users", uid);
